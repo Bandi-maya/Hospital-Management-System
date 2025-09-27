@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_restful import Api
+from flask_cors import CORS
 
 from Resources.AppointmentsResource import Appointments
 from Resources.FeedbackResource import Feedbacks
@@ -33,6 +34,7 @@ from Resources.Wards import Wards
 
 # ---------------- App Init ----------------
 app = Flask(__name__)
+cors = CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Vignesh@localhost:5432/hms'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 

@@ -38,7 +38,7 @@ class UserFields(Resource):
             for user in users:
                 user_extra_fields_data = UserExtraFields.query.filter_by(user_id=user.id).first()
                 if user_extra_fields_data:
-                    setattr(user, 'fields_data', {**user_extra_fields_data.fields_data, json_data.get('field_name'): None})
+                    setattr(user_extra_fields_data, 'fields_data', {**user_extra_fields_data.fields_data, json_data.get('field_name'): None})
                 else:
                     extra_field = UserExtraFields(
                         user_id=user.id,
@@ -75,10 +75,32 @@ class UserFields(Resource):
             if not user_field:
                 return {"error": "Field not found"}, 404
 
+            user_type_id = json_data.get("user_type")
+            users = User.query.filter_by(user_type_id=user_type_id, is_active=True).all()
+
+            print(users)
+
+            for user in users:
+                user_extra_fields_data = UserExtraFields.query.filter_by(user_id=user.id).first()
+                if user_extra_fields_data:
+                    extra_fields_data = user_extra_fields_data.fields_data
+                    if user_field.field_name in extra_fields_data:
+                        del extra_fields_data[user_field.field_name]
+                    setattr(user_extra_fields_data, 'fields_data',
+                            {**extra_fields_data})
+                else:
+                    extra_field = UserExtraFields(
+                        user_id=user.id,
+                        # field_id=user_field_data.id,
+                        fields_data={json_data.get('field_name'): None}
+                    )
+                    db.session.add(extra_field)
+
             # ✅ Update all editable fields
             for key, value in json_data.items():
                 if hasattr(user_field, key):
                     setattr(user_field, key, value)
+
 
             db.session.commit()
             return user_field_serializer.dump(user_field), 200
@@ -108,8 +130,13 @@ class UserFields(Resource):
             if not user_field:
                 return {"error": "Field not found"}, 404
 
-            # ✅ Delete all extra field values for this field
-            UserExtraFields.query.filter_by(id=field_id).delete()
+            users = User.query.filter_by(user_type_id=user_field.user_type).all()
+            for user in users:
+                user_extra_fields_data = UserExtraFields.query.filter_by(user_id=user.id).first()
+                if user_extra_fields_data and user_extra_fields_data.fields_data:
+                    return {"error": "Cannot delete as this field is linked to user(s)"}, 400
+
+            UserField.query.filter_by(id=field_id).delete()
 
             db.session.delete(user_field)
             db.session.commit()

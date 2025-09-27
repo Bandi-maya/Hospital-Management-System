@@ -1,12 +1,25 @@
-from extensions import ma  # ✅ Assuming ma is Marshmallow() instance
-from Models import Users, UserType  # ✅ Import your SQLAlchemy model
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from marshmallow import fields
 
-class UserSerializer(ma.SQLAlchemyAutoSchema):
+from Models.UserExtraFields import UserExtraFields
+from Models.Users import User
+from Serializers.UserTypeSerializer import UserTypeSerializer
+
+
+class UserExtraFieldsSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = Users.User
-        load_instance = True  # ✅ For deserialization into User instances
-        include_fk = True     # ✅ Includes foreign keys (optional, but often needed)
+        model = UserExtraFields
+        load_instance = True
+        include_fk = True
 
-# Single and multiple instances
-user_serializer = UserSerializer()
-user_serializers = UserSerializer(many=True)
+class UserSchema(SQLAlchemyAutoSchema):
+    extra_fields = fields.Nested(UserExtraFieldsSchema, many=False)
+    user_type = fields.Nested(UserTypeSerializer, many=False)
+
+    class Meta:
+        model = User
+        load_instance = True
+        include_fk = True
+
+user_serializer = UserSchema()
+user_serializers = UserSchema(many=True)

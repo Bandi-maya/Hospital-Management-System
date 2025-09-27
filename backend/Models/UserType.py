@@ -23,7 +23,7 @@ class UserType(db.Model):
             raise ValueError(f"{key} must be a non-empty string")
 
         if key == 'type':
-            existing_user_type = UserType.query.filter_by(type=value).first()
+            existing_user_type = UserType.query.filter_by(type=value, is_active=True).first()
             if existing_user_type and (not self.id or existing_user_type.id != self.id):
                 raise ValueError("Type must be unique")
 

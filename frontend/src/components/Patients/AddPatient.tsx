@@ -19,6 +19,8 @@ import { useNavigate } from "react-router-dom";
 import { Patient, BloodType } from "@/types/patient";
 import { v4 as uuidv4 } from "uuid";
 import { Form, Select as AntdSelect } from "antd";
+import TextArea from "antd/es/input/TextArea";
+import { PostApi } from "@/ApiService";
 
 interface AddPatientProps {
     onAddPatient?: (patient: Patient) => void;
@@ -40,8 +42,8 @@ const doctorList = [
     "Dr. Emily Johnson",
     "Dr. Michael Brown",
 ];
-const wardList = ["Ward 1", "Ward 2", "Ward 3", "Ward 4"];
-const bedList = ["Bed 1", "Bed 2", "Bed 3", "Bed 4", "Bed 5"];
+const wardList = ["Ward 1", "Ward 2", "Ward 3", "Ward 4", ""];
+const bedList = ["Bed 1", "Bed 2", "Bed 3", "Bed 4", "Bed 5", ""];
 
 // ✅ Full country list
 const countries = [
@@ -159,18 +161,31 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
 
     const [form] = Form.useForm();
 
-    const handleSubmit = (values: any) => {
-        const newPatient: Patient = {
-            id: uuidv4(),
-            patientId: `P${Math.floor(Math.random() * 1000)
-                .toString()
-                .padStart(3, "0")}`,
-            firstName: values.firstName,
-            lastName: values.lastName,
-            dateOfBirth: new Date(values.dateOfBirth),
+    const handleSubmit = async (values: any) => {
+        const date = new Date(values.dateOfBirth);
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+        const dd = String(date.getDate()).padStart(2, '0');
+
+        const formattedDate = `${yyyy}-${mm}-${dd}`;
+
+        const newPatient: any = {
+            extra_fields: {
+                first_name: values.firstName,
+                last_name: values.lastName,
+                disease: (values.diseases ?? []).join(", "),
+                previous_diseases: values.previousDiseases || "",
+                assigned_to_doctor: values.assignedDoctor || "",
+            },
+            user_type_id: 3,
+            username: values.email,
+            name: `${values.firstName} ${values.lastName}`,
+            date_of_birth: formattedDate,
+            blood_type: values.bloodType,
+            age: values.age ?? '0',
+            phone_no: values.phone,
+            email: values.email,
             gender: values.gender,
-            bloodType: values.bloodType,
-            contact: { phone: values.phone, email: values.email },
             address: {
                 street: values.street,
                 city: values.city,
@@ -178,41 +193,41 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                 zipCode: values.zipCode,
                 country: values.country,
             },
-            status: values.status,
-            medicalHistory: values.diseases.map((disease: string) => ({
-                id: uuidv4(),
-                patientId: "",
-                doctorId: "",
-                condition: disease,
-                diagnosisDate: new Date(),
-                treatment: "",
-                notes: "",
-                doctor: values.assignedDoctor,
-                status: "active",
-                isActive: true,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            })),
-            allergies: [],
-            currentMedications: [],
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            wardNumber: values.wardNumber,
-            bedNumber: values.bedNumber,
-            assignedDoctor: values.assignedDoctor,
+            // status: values.status,
+            // medicalHistory: values.diseases.map((disease: string) => ({
+            //     id: uuidv4(),
+            //     patientId: "",
+            //     doctorId: "",
+            //     condition: disease,
+            //     diagnosisDate: new Date(),
+            //     treatment: "",
+            //     notes: "",
+            //     doctor: values.assignedDoctor,
+            //     status: "active",
+            //     isActive: true,
+            //     createdAt: new Date(),
+            //     updatedAt: new Date(),
+            // })),
+            // allergies: [],
+            // currentMedications: [],
+            // createdAt: new Date(),
+            // updatedAt: new Date(),
+            // assignedDoctor: values.assignedDoctor,
         };
 
-        // ✅ Save in localStorage so PatientList can fetch it
-        const existingPatients = JSON.parse(
-            localStorage.getItem("patients") || "[]"
-        );
-        const updatedPatients = [...existingPatients, newPatient];
-        localStorage.setItem("patients", JSON.stringify(updatedPatients));
+        await PostApi(`/users`, newPatient)
+            .then((data) => {
+                if (!data?.error) {
+                    alert("Patient added successfully!");
+                    navigate("/patients");
+                }
+                else {
+                    console.error("Error fetching user fields:", data.error);
+                }
+            }).catch((error) => {
+                console.error("Error deleting user field:", error);
+            });
 
-        if (onAddPatient) onAddPatient(newPatient);
-
-        alert("Patient added successfully!");
-        navigate("/patients");
     };
 
     return (
@@ -270,9 +285,9 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                             >
                                 <AntdSelect
                                     options={[
-                                        { value: "male", label: "Male" },
-                                        { value: "female", label: "Female" },
-                                        { value: "other", label: "Other" },
+                                        { value: "MALE", label: "Male" },
+                                        { value: "FEMALE", label: "Female" },
+                                        { value: "OTHER", label: "Other" },
                                     ]}
                                 />
                             </Form.Item>
@@ -363,20 +378,6 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                             </Form.Item>
 
                             <Form.Item
-                                label="Status"
-                                name="status"
-                                rules={[{ required: true, message: "Please select status" }]}
-                            >
-                                <AntdSelect
-                                    options={[
-                                        { value: "active", label: "Active" },
-                                        { value: "inactive", label: "Inactive" },
-                                        { value: "pending", label: "Pending" },
-                                    ]}
-                                />
-                            </Form.Item>
-
-                            <Form.Item
                                 label="Assigned Doctor"
                                 name="assignedDoctor"
                                 rules={[{ required: true, message: "Please select doctor" }]}
@@ -390,7 +391,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                             <Form.Item
                                 label="Ward Number"
                                 name="wardNumber"
-                                rules={[{ required: true, message: "Please select ward" }]}
+                            // rules={[{ required: true, message: "Please select ward" }]}
                             >
                                 <AntdSelect
                                     options={wardList.map((w) => ({ value: w, label: w }))}
@@ -400,7 +401,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                             <Form.Item
                                 label="Bed Number"
                                 name="bedNumber"
-                                rules={[{ required: true, message: "Please select bed" }]}
+                            // rules={[{ required: true, message: "Please select bed" }]}
                             >
                                 <AntdSelect
                                     options={bedList.map((b) => ({ value: b, label: b }))}
@@ -421,6 +422,15 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                                         value: d,
                                         label: d,
                                     }))}
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                label="Previous Diseases"
+                                name="previous_diseases"
+                            >
+                                <TextArea
+                                    placeholder="Select disease(s)"
                                 />
                             </Form.Item>
                         </div>

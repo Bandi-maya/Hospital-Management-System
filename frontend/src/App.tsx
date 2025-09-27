@@ -34,6 +34,8 @@ import AuditLogs from "./components/Admin/AuditLogs";
 
 // ✅ Import PatientProvider to wrap entire app
 import { PatientProvider } from "../src/components/Patients/PatientContext";
+import UserTypesList from "./components/Admin/UserTypes";
+import UserFieldsList from "./components/Admin/UserFields";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -354,6 +356,28 @@ const App = () => (
                     <AuthGuard requiredPermission="appointments:read">
                       <Layout>
                         <AuditLogs />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/admin/user-types"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <UserTypesList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/admin/user-fields"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <UserFieldsList />
                       </Layout>
                     </AuthGuard>
                   }

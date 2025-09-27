@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 import logging
 
 from Models.UserType import UserType
+from Models.Users import User
 from Serializers.UserTypeSerializer import user_type_serializers, user_type_serializer
 from extensions import db
 
@@ -84,6 +85,11 @@ class UserTypes(Resource):
             user_type = UserType.query.get(user_type_id)
             if not user_type:
                 return {"error": "User Type not found"}, 404
+
+            user = User.query.filter_by(user_type_id=user_type.id, is_active=True).first()
+            if user:
+                return {"error": "User Type can not be deleted as a user(s) is assigned to it"}, 404
+
 
             user_type.is_active = False
             db.session.commit()

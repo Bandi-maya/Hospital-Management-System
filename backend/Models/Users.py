@@ -5,6 +5,7 @@ from sqlalchemy.orm import validates
 
 from Models.UserType import UserType
 from extensions import db
+from Models.UserExtraFields import UserExtraFields  # Import directly at the top
 
 
 class GenderEnum(enum.Enum):
@@ -24,10 +25,11 @@ class User(db.Model):
     age = db.Column(db.SmallInteger, nullable=False)
     gender = db.Column(db.Enum(GenderEnum), nullable=False)
     address = db.Column(JSON, nullable=False)
+    blood_type = db.Column(db.String, nullable=True)
 
     username = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=False)
-    password = db.Column(db.String(100), nullable=False)
+    password = db.Column(db.String(100), nullable=True)
 
     shift_id = db.Column(db.Integer, db.ForeignKey('shifts.id'), nullable=True)
 
@@ -35,6 +37,8 @@ class User(db.Model):
 
     user_type_id = db.Column(db.Integer, db.ForeignKey('user_type.id'), nullable=False)
     user_type = db.relationship('UserType', backref=db.backref('users', lazy=True))
+
+    extra_fields = db.relationship("UserExtraFields", backref="user_parent", uselist=False)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

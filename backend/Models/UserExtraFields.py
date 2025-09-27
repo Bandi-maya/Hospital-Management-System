@@ -10,11 +10,13 @@ class UserExtraFields(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False)
     fields_data = db.Column(JSONB, nullable=True)
 
-    # Relationship to User (optional but recommended)
-    user = db.relationship(
-        "User",
-        backref=db.backref("extra_fields", cascade="all, delete-orphan", lazy=True)
-    )
+    user = db.relationship("User", back_populates="extra_fields")
+
+    # # Relationship to User (optional but recommended)
+    # user = db.relationship(
+    #     "User",
+    #     backref=db.backref("extra_fields", cascade="all, delete-orphan", lazy=True)
+    # )
 
     def validate(self):
         """
