@@ -1,8 +1,17 @@
+from marshmallow import fields
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+
+from Serializers.LabTestSerializers import LabTestSerializer
+from Serializers.UserSerializers import UserSchema
 from extensions import ma
 from Models.LabRequest import LabRequest
 
 
-class LabRequestSerializer(ma.SQLAlchemyAutoSchema):
+class LabRequestSerializer(SQLAlchemyAutoSchema):
+    test = fields.Nested(LabTestSerializer, many=False)
+    patient = fields.Nested(UserSchema, many=False)
+    requester = fields.Nested(UserSchema, many=False)
+
     class Meta:
         model = LabRequest
         load_instance = True

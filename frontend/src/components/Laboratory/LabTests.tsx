@@ -13,6 +13,8 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { getApi, PostApi } from "@/ApiService";
+import { toast } from "sonner";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -37,128 +39,78 @@ interface PatientTests {
 }
 
 export default function LabTests() {
-  const testSuggestions = [
-    "Complete Blood Count",
-    "Liver Function Test",
-    "Kidney Function Test",
-    "Thyroid Test",
-    "Blood Sugar",
-    "Cholesterol",
-  ];
-
-  const [tests, setTests] = useState<Test[]>([]);
+  const [tests, setTests] = useState([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "Available" | "Not Available" | "Completed">("all");
+  const [filter, setFilter] = useState<"all" | "Available" | "Not Available">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
-  // Load tests and token info from localStorage
+  async function loadData() {
+    await getApi("/lab-tests")
+      .then((data) => {
+        if (!data?.error) {
+          setTests(data);
+        }
+        else {
+          toast.error(data.error);
+          console.error("Error fetching user fields:", data.error);
+        }
+      }).catch((error) => {
+        console.error("Error deleting user field:", error);
+      });
+  }
+
   useEffect(() => {
-    const storedTests = localStorage.getItem("testResults");
-    if (storedTests) setTests(JSON.parse(storedTests));
+    loadData();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("testResults", JSON.stringify(tests));
-  }, [tests]);
+  const filteredTests = tests
+    .filter((pt) => filter === "all" || pt.is_available === (filter === "Available"))
+    .filter((pt) => pt.name.toLowerCase().includes(search.toLowerCase()));
 
-  // Function to get next token for today
-  const getNextToken = (): number => {
-    const today = new Date().toISOString().split("T")[0];
-    const storedInfo = localStorage.getItem("tokenInfo");
-    let lastToken = 0;
-    let lastDate = "";
-
-    if (storedInfo) {
-      const parsed = JSON.parse(storedInfo);
-      lastToken = parsed.lastToken;
-      lastDate = parsed.date;
-    }
-
-    let token = 1;
-    if (lastDate === today) {
-      token = lastToken + 1;
-    }
-
-    localStorage.setItem("tokenInfo", JSON.stringify({ lastToken: token, date: today }));
-    return token;
-  };
-
-  const handleAddTest = (values: any) => {
-    if (!values.testType || values.testType.length === 0) {
-      alert("Please select at least one test type.");
-      return;
-    }
-
-    // Check if patient already exists
-    const existingPatient = tests.find((t) => t.patientName === values.patientName);
-    const patientId = existingPatient ? existingPatient.patientId : uuidv4();
-    const token = existingPatient ? existingPatient.token : getNextToken();
-
-    const newTests: Test[] = values.testType.map((t: string, index: number) => ({
-      id: tests.length ? tests[tests.length - 1].id + index + 1 : index + 1,
-      patientName: values.patientName,
-      patientId,
-      token,
-      testType: t,
-      date: values.date,
-      status: values.status,
-    }));
-
-    setTests((prev) => [...prev, ...newTests]);
-    setIsModalOpen(false);
-    form.resetFields();
-  };
-
-  // Group tests by patient
-  const groupedTests: PatientTests[] = Object.values(
-    tests.reduce((acc: any, test) => {
-      if (!acc[test.patientName]) {
-        acc[test.patientName] = {
-          patientName: test.patientName,
-          patientId: test.patientId,
-          token: test.token,
-          testTypes: [test.testType],
-          date: test.date,
-          status: test.status,
-        };
-      } else {
-        acc[test.patientName].testTypes.push(test.testType);
-      }
-      return acc;
-    }, {})
-  );
-
-  const filteredTests = groupedTests
-    .filter((pt) => filter === "all" || pt.status === filter)
-    .filter((pt) => pt.patientName.toLowerCase().includes(search.toLowerCase()));
-
-  const columns: ColumnsType<PatientTests> = [
-    { title: "Patient Name", dataIndex: "patientName", key: "patientName" },
-    { title: "Patient ID", dataIndex: "patientId", key: "patientId" },
-    { title: "Token", dataIndex: "token", key: "token" },
-    {
-      title: "Test Types",
-      dataIndex: "testTypes",
-      key: "testTypes",
-      render: (tests: string[]) => tests.join(", "),
-    },
-    { title: "Date", dataIndex: "date", key: "date" },
+  const columns = [
+    { title: "Id", dataIndex: "id", key: "id" },
+    { title: "Name", dataIndex: "name", key: "name" },
+    { title: "Description", dataIndex: "description", key: "description" },
+    { title: "Price", dataIndex: "price", key: "price" },
     {
       title: "Status",
-      dataIndex: "status",
+      dataIndex: "is_available",
       key: "status",
       render: (status) =>
-        status === "Available" ? (
+        status ? (
           <Tag color="green">{status}</Tag>
-        ) : status === "Not Available" ? (
-          <Tag color="red">{status}</Tag>
         ) : (
-          <Tag color="blue">{status}</Tag>
-        ),
+          <Tag color="red">{status}</Tag>
+        )
     },
   ];
+
+  const handleSubmit = async (values: any) => {
+    const newPatient: any = {
+      name: values.name,
+      description: values.description,
+      price: parseFloat(values.price),
+      is_available: values.is_available
+    };
+
+    await PostApi(`/lab-tests`, newPatient)
+      .then((data) => {
+        if (!data?.error) {
+          alert("Patient added successfully!");
+          setIsModalOpen(false);
+          form.resetFields();
+          loadData()
+        }
+        else {
+          console.error("Error fetching user fields:", data.error);
+        }
+      }).catch((error) => {
+        console.error("Error deleting user field:", error);
+      });
+
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -170,7 +122,7 @@ export default function LabTests() {
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         <Space style={{ width: "100%", flexWrap: "wrap" }}>
           <Input
-            placeholder="Search by patient..."
+            placeholder="Search by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ flex: 1, minWidth: 200 }}
@@ -183,7 +135,7 @@ export default function LabTests() {
             <Option value="all">All</Option>
             <Option value="Available">Available</Option>
             <Option value="Not Available">Not Available</Option>
-            <Option value="Completed">Completed</Option>
+            {/* <Option value="Completed">Completed</Option> */}
           </Select>
           <Button type="primary" onClick={() => setIsModalOpen(true)}>
             Add Test(s)
@@ -209,48 +161,55 @@ export default function LabTests() {
         onOk={() => form.submit()}
         okText="Add"
       >
-        <Form form={form} layout="vertical" onFinish={handleAddTest}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item
-            name="patientName"
-            label="Patient Name"
-            rules={[{ required: true, message: "Please enter patient name" }]}
+            name="name"
+            label="Test Name"
+            rules={[{ required: true, message: "Please enter test name" }]}
           >
             <Input />
           </Form.Item>
 
           <Form.Item
-            name="testType"
-            label="Test Type(s)"
-            rules={[{ required: true, message: "Please select at least one test type" }]}
+            name="description"
+            label="Description"
           >
-            <Select
-              mode="multiple"
-              showSearch
-              placeholder="Select test(s)"
-              filterOption={(input, option) =>
-                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-              }
-              options={testSuggestions.map((t) => ({ value: t, label: t }))}
+            <Input
+            // mode="multiple"
+            // showSearch
+            // placeholder="Select test(s)"
+            // filterOption={(input, option) =>
+            //   (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+            // }
+            // options={testSuggestions.map((t) => ({ value: t, label: t }))}
             />
           </Form.Item>
 
           <Form.Item
+            name="price"
+            label="Price"
+            rules={[{ required: true, message: "Please enter price" }]}
+          >
+            <Input type="number" min={0} step={0.01} />
+          </Form.Item>
+
+          {/* <Form.Item
             name="date"
             label="Date"
             rules={[{ required: true, message: "Please select date" }]}
           >
             <Input type="date" />
-          </Form.Item>
+          </Form.Item> */}
 
           <Form.Item
-            name="status"
+            name="is_available"
             label="Status"
             rules={[{ required: true, message: "Please select status" }]}
           >
             <Select>
-              <Option value="Available">Available</Option>
-              <Option value="Not Available">Not Available</Option>
-              <Option value="Completed">Completed</Option>
+              <Option value={true}>Available</Option>
+              <Option value={false}>Not Available</Option>
+              {/* <Option value="Completed">Completed</Option> */}
             </Select>
           </Form.Item>
         </Form>

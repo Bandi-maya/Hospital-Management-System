@@ -11,6 +11,7 @@ from Models.DepartmentUsers import DepartmentUser
 from Models.WardUsers import WardUser
 from Models.UserField import UserField
 from Models.UserExtraFields import UserExtraFields
+from Models.LabTest import LabTest
 
 migrate = Migrate(app, db)
 

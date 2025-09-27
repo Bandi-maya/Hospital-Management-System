@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table, Input, Button, Card, Select, Modal, Space, Typography, Tag, Divider, Form } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { getApi } from "@/ApiService";
+import { toast } from "sonner";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -37,57 +39,25 @@ export default function LabReports() {
   const reportRef = useRef<HTMLDivElement>(null);
   const [form] = Form.useForm();
 
-  // Load test results from localStorage and create reports
+  async function loadTests() {
+    await getApi("/lab-reports")
+      .then((data) => {
+        if (!data?.error) {
+          setReports(data);
+        }
+        else {
+          toast.error(data.error);
+          console.error("Error fetching lab tests:", data.error);
+        }
+      }).catch((error) => {
+        toast.error("Error fetching lab tests");
+        console.error("Error deleting lab tests:", error);
+      });
+  }
+
   useEffect(() => {
-    const storedResults = localStorage.getItem("testResults");
-    if (storedResults) {
-      const results: Test[] = JSON.parse(storedResults);
-
-      const grouped: Report[] = Object.values(
-        results.reduce((acc: any, test) => {
-          if (!acc[test.patientId]) {
-            acc[test.patientId] = {
-              patientName: test.patientName,
-              patientId: test.patientId,
-              token: test.token,
-              testTypes: [test.testType],
-              dates: [test.date],
-              statuses: [test.status],
-              ids: [test.id],
-              descriptions: [test.description || ""],
-            };
-          } else {
-            acc[test.patientId].testTypes.push(test.testType);
-            acc[test.patientId].dates.push(test.date);
-            acc[test.patientId].statuses.push(test.status);
-            acc[test.patientId].ids.push(test.id);
-            acc[test.patientId].descriptions.push(test.description || "");
-          }
-          return acc;
-        }, {})
-      );
-
-      setReports(grouped);
-    }
-  }, []);
-
-  // Sync reports back to localStorage if updated
-  useEffect(() => {
-    // Flatten reports back to testResults format
-    const allTests: Test[] = reports.flatMap((rep) =>
-      rep.testTypes.map((t, idx) => ({
-        id: rep.ids[idx],
-        patientName: rep.patientName,
-        patientId: rep.patientId,
-        token: rep.token,
-        testType: t,
-        date: rep.dates[idx],
-        status: rep.statuses[idx] as "Available" | "Not Available" | "Completed",
-        description: rep.descriptions[idx],
-      }))
-    );
-    localStorage.setItem("testResults", JSON.stringify(allTests));
-  }, [reports]);
+    loadTests()
+  }, [])
 
   const handleDeleteReport = (patientId: string) => {
     Modal.confirm({
@@ -145,7 +115,7 @@ export default function LabReports() {
 
   const filteredReports = reports
     .filter((rep) => filter === "all" || rep.statuses.includes(filter))
-    .filter((rep) => rep.patientName.toLowerCase().includes(search.toLowerCase()));
+  // .filter((rep) => rep.patientName.toLowerCase().includes(search.toLowerCase()));
 
   const handlePrint = () => {
     if (reportRef.current) {
@@ -159,45 +129,58 @@ export default function LabReports() {
   };
 
   const columns: ColumnsType<Report> = [
-    { title: "Token", dataIndex: "token", key: "token" },
-    { title: "Patient Name", dataIndex: "patientName", key: "patientName" },
+    // { title: "Token", dataIndex: "token", key: "token" },
+    { title: "Patient Name", dataIndex: ["lab_request", "patient", "username"], key: "patientName" },
     {
-      title: "Test Types",
-      dataIndex: "testTypes",
-      key: "testTypes",
-      render: (tests: string[]) => tests.join(", "),
+      title: "Test",
+      dataIndex: ["lab_request", "test", "name"],
+      key: "test",
+      // render: (tests: string[]) => tests.join(", "),
+    },
+    {
+      title: "Report Data",
+      dataIndex: "report_data",
+      key: "report_data",
+      render: (tests) => {
+        if (typeof (tests.data) === 'string') return tests.data;
+        return Object.entries(tests.data).map(([key, value]: any, idx) => (
+          <div key={idx}>
+            <Text strong>{key}:</Text> {value}
+          </div>
+        ));
+      },
     },
     {
       title: "Statuses",
-      dataIndex: "statuses",
-      key: "statuses",
-      render: (statuses: string[]) =>
-        statuses.map((status, idx) => (
-          <Tag
-            key={idx}
-            color={status === "Completed" ? "blue" : status === "Available" ? "green" : "red"}
-          >
-            {status}
-          </Tag>
-        )),
+      dataIndex: ["lab_request", "status"],
+      key: "status",
+      // render: (statuses: string[]) =>
+      //   statuses.map((status, idx) => (
+      //     <Tag
+      //       key={idx}
+      //       color={status === "Completed" ? "blue" : status === "Available" ? "green" : "red"}
+      //     >
+      //       {status}
+      //     </Tag>
+      //   )),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      render: (_, record) => (
-        <Space>
-          <Button type="primary" onClick={() => setViewingReport(record)}>
-            View
-          </Button>
-          <Button type="default" onClick={() => handleEditReport(record)}>
-            Edit
-          </Button>
-          <Button danger onClick={() => handleDeleteReport(record.patientId)}>
-            Delete
-          </Button>
-        </Space>
-      ),
-    },
+    // {
+    //   title: "Actions",
+    //   key: "actions",
+    //   render: (_, record) => (
+    //     <Space>
+    // {/* <Button type="primary" onClick={() => setViewingReport(record)}>
+    //   View
+    // </Button> */}
+    // {/* <Button type="default" onClick={() => handleEditReport(record)}>
+    //   Edit
+    // </Button> */}
+    // {/* <Button danger onClick={() => handleDeleteReport(record.patientId)}>
+    //   Delete
+    // </Button> */}
+    //   </Space>
+    // ),
+    // },
   ];
 
   return (
@@ -221,7 +204,7 @@ export default function LabReports() {
             <Option value="Not Available">Not Available</Option>
             <Option value="Completed">Completed</Option>
           </Select>
-          <Button
+          {/* <Button
             type="primary"
             onClick={() => {
               setEditingReport(null);
@@ -230,7 +213,7 @@ export default function LabReports() {
             }}
           >
             Add Report
-          </Button>
+          </Button> */}
         </Space>
 
         <Table

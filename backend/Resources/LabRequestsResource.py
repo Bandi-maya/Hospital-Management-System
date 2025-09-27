@@ -18,13 +18,27 @@ class LabRequests(Resource):
             return {"error": "Patient not found"}, 404
         if not User.query.get(json_data.get("requested_by")):
             return {"error": "Requester not found"}, 404
-        if not LabTest.query.get(json_data.get("test_id")):
-            return {"error": "LabTest not found"}, 404
 
-        lab_request = LabRequest(**json_data)
-        db.session.add(lab_request)
-        db.session.commit()
-        return lab_request_serializer.dump(lab_request), 201
+        print("hi")
+
+        if type(json_data.get("test_id")) is list:
+            test_ids = json_data.get("test_id")
+            del json_data["test_id"]
+            for test in test_ids:
+                if not LabTest.query.get(test):
+                    return {"error": "LabTest not found"}, 404
+                print(test, json_data)
+                lab_request = LabRequest(**json_data, test_id=test)
+                db.session.add(lab_request)
+            db.session.commit()
+            return lab_request_serializer.dump(lab_request), 201
+        else:
+            if not LabTest.query.get(json_data.get("test_id")):
+                return {"error": "LabTest not found"}, 404
+            lab_request = LabRequest(**json_data)
+            db.session.add(lab_request)
+            db.session.commit()
+            return lab_request_serializer.dump(lab_request), 201
 
     def put(self):
         json_data = request.get_json(force=True)
