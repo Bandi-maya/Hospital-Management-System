@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 interface InventoryItem {
@@ -14,9 +16,11 @@ interface InventoryItem {
 }
 
 const LOCAL_STORAGE_KEY = "medicalInventory";
+const defaultCategories = ["Tablet", "Syrup", "Injection", "Ointment", "Capsule", "Drops"];
 
 export default function MedicalInventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [categories, setCategories] = useState<string[]>(defaultCategories);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<Partial<InventoryItem>>({
     name: "",
@@ -44,20 +48,37 @@ export default function MedicalInventory() {
       return;
     }
 
+    if (form.quantity! <= 0) {
+      toast.error("Quantity must be greater than 0");
+      return;
+    }
+
+    const today = new Date();
+    const expiry = new Date(form.expiryDate);
+    if (expiry < today) {
+      toast.error("Expiry date cannot be in the past");
+      return;
+    }
+
+    // Add new category if not exists
+    if (!categories.includes(form.category)) {
+      setCategories(prev => [...prev, form.category!]);
+    }
+
     if (selectedItemId) {
       // Update item
       setInventory(prev =>
-        prev.map(item => item.id === selectedItemId ? { ...item, ...form } as InventoryItem : item)
+        prev.map(item => (item.id === selectedItemId ? { ...item, ...form } as InventoryItem : item))
       );
       toast.success("Inventory updated successfully!");
     } else {
       // Add new item
       const newItem: InventoryItem = {
         id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9),
-        name: form.name,
-        category: form.category,
-        quantity: form.quantity,
-        expiryDate: form.expiryDate,
+        name: form.name!,
+        category: form.category!,
+        quantity: form.quantity!,
+        expiryDate: form.expiryDate!,
       };
       setInventory(prev => [...prev, newItem]);
       toast.success("Inventory added successfully!");
@@ -88,52 +109,90 @@ export default function MedicalInventory() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Pharmacy</h1>
-        <p className="text-muted-foreground">Medical Inventory</p>
-        <Input
-          placeholder="Search by name or category"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>{selectedItemId ? "Edit Item" : "Add Item"}</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{selectedItemId ? "Edit Inventory Item" : "Add Inventory Item"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Input
-                placeholder="Medicine Name"
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-              />
-              <Input
-                placeholder="Category"
-                value={form.category}
-                onChange={e => setForm({ ...form, category: e.target.value })}
-              />
-              <Input
-                type="number"
-                placeholder="Quantity"
-                value={form.quantity}
-                onChange={e => setForm({ ...form, quantity: Number(e.target.value) })}
-              />
-              <Input
-                type="date"
-                value={form.expiryDate}
-                onChange={e => setForm({ ...form, expiryDate: e.target.value })}
-              />
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddOrUpdate}>{selectedItemId ? "Update" : "Add"}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <h1 className="text-2xl font-bold">Pharmacy</h1>
+          <p className="text-muted-foreground">Medical Inventory</p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+          <Input
+            placeholder="Search by name or category"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="max-w-xs"
+          />
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>{selectedItemId ? "Edit Item" : "Add Item"}</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{selectedItemId ? "Edit Inventory Item" : "Add Inventory Item"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Medicine Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Medicine Name"
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="category">Category</Label>
+                  <Select
+                    value={form.category || undefined}
+                    onValueChange={value => setForm({ ...form, category: value })}
+                  >
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Or type new category"
+                    value={form.category}
+                    onChange={e => setForm({ ...form, category: e.target.value })}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="quantity">Quantity</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    placeholder="Quantity"
+                    value={form.quantity}
+                    onChange={e => setForm({ ...form, quantity: Number(e.target.value) })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="expiryDate">Expiry Date</Label>
+                  <Input
+                    id="expiryDate"
+                    type="date"
+                    value={form.expiryDate}
+                    onChange={e => setForm({ ...form, expiryDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleAddOrUpdate}>{selectedItemId ? "Update" : "Add"}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -150,9 +209,7 @@ export default function MedicalInventory() {
           <TableBody>
             {filteredInventory.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  No inventory found.
-                </TableCell>
+                <TableCell colSpan={5} className="text-center">No inventory found.</TableCell>
               </TableRow>
             ) : (
               filteredInventory.map(item => (
