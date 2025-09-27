@@ -161,7 +161,7 @@ export default function UserFieldsList() {
             key: "action",
             render: (_: any, record: Patient) => (
                 <>
-                    <Button size="sm" onClick={() => handleOpenModal(record)}>Edit</Button>
+                    <Button size="sm" className="mr-2" onClick={() => handleOpenModal(record)}>Edit</Button>
                     <Popconfirm
                         title="Are you sure you want to delete?"
                         onConfirm={() => deleteUserField(record.id)}
