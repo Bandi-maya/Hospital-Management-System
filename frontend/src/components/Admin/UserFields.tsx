@@ -166,7 +166,7 @@ export default function UserFieldsList() {
                         title="Are you sure you want to delete?"
                         onConfirm={() => deleteUserField(record.id)}
                     >
-                        <Button >Delete</Button>
+                        <Button size="sm" variant="destructive">Delete</Button>
                     </Popconfirm>
                 </>
             ),
