@@ -1,265 +1,266 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar';
+  Layout,
+  Menu,
+  Button,
+  theme,
+  Typography,
+  Avatar
+} from 'antd';
+import type { MenuProps } from 'antd';
 import {
-  LayoutDashboard,
-  Users,
-  UserCheck,
-  Calendar,
-  Pill,
-  FlaskConical,
-  Receipt,
-  Building2,
-  Siren,
-  Settings,
-  Heart,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
+  DashboardOutlined,
+  UserOutlined,
+  TeamOutlined,
+  CalendarOutlined,
+  MedicineBoxOutlined,
+  ExperimentOutlined,
+  FileTextOutlined,
+  BankOutlined,
+  AlertOutlined,
+  SettingOutlined,
+  HeartOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined
+} from '@ant-design/icons';
+
+const { Sider } = Layout;
+const { Title, Text } = Typography;
 
 interface MenuItem {
-  title: string;
-  url: string;
-  icon: React.ComponentType<any>;
-  requiredPermission?: string;
+  key: string;
+  label: string;
+  icon: React.ReactNode;
   children?: MenuItem[];
+  requiredPermission?: string;
 }
 
-const menuItems: MenuItem[] = [
-  {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Patient Management',
-    url: '/patients',
-    icon: Users,
-    requiredPermission: 'patients:read',
-    children: [
-      { title: 'All Patients', url: '/patients', icon: Users },
-      { title: 'Add Patient', url: '/patients/add', icon: Users },
-      { title: 'Medical Records', url: '/patients/records', icon: Users },
-    ],
-  },
-  {
-    title: 'Doctor Management',
-    url: '/doctors',
-    icon: UserCheck,
-    requiredPermission: 'doctors:read',
-    children: [
-      { title: 'All Doctors', url: '/doctors', icon: UserCheck },
-      { title: 'Schedules', url: '/doctors/schedules', icon: Calendar },
-      { title: 'Specializations', url: '/doctors/specializations', icon: UserCheck },
-    ],
-  },
-  {
-    title: 'Appointments',
-    url: '/appointments',
-    icon: Calendar,
-    requiredPermission: 'appointments:read',
-    children: [
-      { title: 'All Appointments', url: '/appointments', icon: Calendar },
-      { title: 'Calendar View', url: '/appointments/calendar', icon: Calendar },
-      { title: 'Book Appointment', url: '/appointments/book', icon: Calendar },
-    ],
-  },
-  {
-    title: 'Pharmacy',
-    url: '/pharmacy',
-    icon: Pill,
-    requiredPermission: 'medicines:read',
-    children: [
-      { title: 'Medicine Inventory', url: '/pharmacy/medicines', icon: Pill },
-      { title: 'Prescriptions', url: '/pharmacy/prescriptions', icon: Receipt },
-      { title: 'Purchase Orders', url: '/pharmacy/orders', icon: Receipt },
-    ],
-  },
-  {
-    title: 'Laboratory',
-    url: '/laboratory',
-    icon: FlaskConical,
-    requiredPermission: 'lab_tests:read',
-    children: [
-      { title: 'Lab Tests', url: '/laboratory/tests', icon: FlaskConical },
-      { title: 'Test Results', url: '/laboratory/results', icon: FlaskConical },
-      { title: 'Lab Reports', url: '/laboratory/reports', icon: Receipt },
-    ],
-  },
-  {
-    title: 'Billing & Invoices',
-    url: '/billing',
-    icon: Receipt,
-    requiredPermission: 'billing:read',
-    children: [
-      { title: 'All Invoices', url: '/billing/invoices', icon: Receipt },
-      { title: 'Payments', url: '/billing/payments', icon: Receipt },
-      { title: 'Insurance Claims', url: '/billing/insurance', icon: Receipt },
-    ],
-  },
-  {
-    title: 'Ward Management',
-    url: '/wards',
-    icon: Building2,
-    requiredPermission: 'wards:read',
-    children: [
-      { title: 'Ward Status', url: '/wards', icon: Building2 },
-      { title: 'Bed Allocation', url: '/wards/beds', icon: Building2 },
-    ],
-  },
-  {
-    title: 'Emergency',
-    url: '/emergency',
-    icon: Siren,
-    requiredPermission: 'emergency:read',
-    children: [
-      { title: 'Emergency Cases', url: '/emergency/cases', icon: Siren },
-      { title: 'Triage', url: '/emergency/triage', icon: Siren },
-    ],
-  },
-];
+const createMenuItems = (): MenuItem[] => {
+  const baseItems: MenuItem[] = [
+    {
+      key: '/dashboard',
+      label: 'Dashboard',
+      icon: <DashboardOutlined />
+    },
+    {
+      key: '/patients',
+      label: 'Patient Management',
+      icon: <UserOutlined />,
+      requiredPermission: 'patients:read',
+      children: [
+        { key: '/patients', label: 'All Patients', icon: <UserOutlined /> },
+        { key: '/patients/add', label: 'Add Patient', icon: <UserOutlined /> },
+        { key: '/patients/records', label: 'Medical Records', icon: <UserOutlined /> },
+      ],
+    },
+    {
+      key: '/doctors',
+      label: 'Doctor Management',
+      icon: <TeamOutlined />,
+      requiredPermission: 'doctors:read',
+      children: [
+        { key: '/doctors', label: 'All Doctors', icon: <TeamOutlined /> },
+        { key: '/doctors/schedules', label: 'Schedules', icon: <CalendarOutlined /> },
+        { key: '/doctors/specializations', label: 'Specializations', icon: <TeamOutlined /> },
+      ],
+    },
+    {
+      key: '/appointments',
+      label: 'Appointments',
+      icon: <CalendarOutlined />,
+      requiredPermission: 'appointments:read',
+      children: [
+        { key: '/appointments', label: 'All Appointments', icon: <CalendarOutlined /> },
+        { key: '/appointments/calendar', label: 'Calendar View', icon: <CalendarOutlined /> },
+        { key: '/appointments/book', label: 'Book Appointment', icon: <CalendarOutlined /> },
+      ],
+    },
+    {
+      key: '/pharmacy',
+      label: 'Pharmacy',
+      icon: <MedicineBoxOutlined />,
+      requiredPermission: 'medicines:read',
+      children: [
+        { key: '/pharmacy/medicines', label: 'Medicine Inventory', icon: <MedicineBoxOutlined /> },
+        { key: '/pharmacy/prescriptions', label: 'Prescriptions', icon: <FileTextOutlined /> },
+        { key: '/pharmacy/orders', label: 'Purchase Orders', icon: <FileTextOutlined /> },
+      ],
+    },
+    {
+      key: '/laboratory',
+      label: 'Laboratory',
+      icon: <ExperimentOutlined />,
+      requiredPermission: 'lab_tests:read',
+      children: [
+        { key: '/laboratory/tests', label: 'Lab Tests', icon: <ExperimentOutlined /> },
+        { key: '/laboratory/results', label: 'Test Results', icon: <ExperimentOutlined /> },
+        { key: '/laboratory/reports', label: 'Lab Reports', icon: <FileTextOutlined /> },
+      ],
+    },
+    {
+      key: '/billing',
+      label: 'Billing & Invoices',
+      icon: <FileTextOutlined />,
+      requiredPermission: 'billing:read',
+      children: [
+        { key: '/billing/invoices', label: 'All Invoices', icon: <FileTextOutlined /> },
+        { key: '/billing/payments', label: 'Payments', icon: <FileTextOutlined /> },
+        { key: '/billing/insurance', label: 'Insurance Claims', icon: <FileTextOutlined /> },
+      ],
+    },
+    {
+      key: '/wards',
+      label: 'Ward Management',
+      icon: <BankOutlined />,
+      requiredPermission: 'wards:read',
+      children: [
+        { key: '/wards', label: 'Ward Status', icon: <BankOutlined /> },
+        { key: '/wards/beds', label: 'Bed Allocation', icon: <BankOutlined /> },
+      ],
+    },
+    {
+      key: '/emergency',
+      label: 'Emergency',
+      icon: <AlertOutlined />,
+      requiredPermission: 'emergency:read',
+      children: [
+        { key: '/emergency/cases', label: 'Emergency Cases', icon: <AlertOutlined /> },
+        { key: '/emergency/triage', label: 'Triage', icon: <AlertOutlined /> },
+      ],
+    },
+  ];
 
-const adminMenuItems: MenuItem[] = [
-  {
-    title: 'System Administration',
-    url: '/admin',
-    icon: Settings,
-    requiredPermission: '*',
-    children: [
-      { title: 'User Management', url: '/admin/users', icon: Users },
-      { title: 'Role Permissions', url: '/admin/roles', icon: Settings },
-      { title: 'System Settings', url: '/admin/settings', icon: Settings },
-      { title: 'Audit Logs', url: '/admin/audit', icon: Settings },
-    ],
-  },
-];
+  const adminItems: MenuItem[] = [
+    {
+      key: '/admin',
+      label: 'System Administration',
+      icon: <SettingOutlined />,
+      requiredPermission: '*',
+      children: [
+        { key: '/admin/users', label: 'User Management', icon: <UserOutlined /> },
+        { key: '/admin/roles', label: 'Role Permissions', icon: <SettingOutlined /> },
+        { key: '/admin/settings', label: 'System Settings', icon: <SettingOutlined /> },
+        { key: '/admin/audit', label: 'Audit Logs', icon: <SettingOutlined /> },
+      ],
+    },
+  ];
+
+  return [...baseItems, ...adminItems];
+};
+
+// Convert our MenuItem to Ant Design's MenuItemType
+const convertToAntdMenuItems = (items: MenuItem[]): MenuProps['items'] => {
+  return items.map(item => ({
+    key: item.key,
+    label: item.label,
+    icon: item.icon,
+    children: item.children ? convertToAntdMenuItems(item.children) : undefined,
+  }));
+};
 
 export const AppSidebar: React.FC = () => {
-  const { state } = useSidebar();
+  const [collapsed, setCollapsed] = useState(false);
   const { hasPermission, hasRole } = useAuth();
   const location = useLocation();
-  const currentPath = location.pathname;
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Dashboard']);
-  
-  const isCollapsed = state === 'collapsed';
+  const navigate = useNavigate();
+  const { token: { colorBgContainer } } = theme.useToken();
 
-  const toggleGroup = (title: string) => {
-    setExpandedGroups(prev => 
-      prev.includes(title) 
-        ? prev.filter(item => item !== title)
-        : [...prev, title]
-    );
-  };
-
-  const isActive = (path: string) => {
-    return currentPath === path || currentPath.startsWith(path + '/');
-  };
-
-  const getNavClassName = (isActive: boolean) => {
-    return isActive 
-      ? "bg-primary text-primary-foreground font-medium"
-      : "hover:bg-accent hover:text-accent-foreground text-sidebar-foreground";
-  };
-
-  const filterMenuItems = (items: MenuItem[]) => {
+  const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
     return items.filter(item => {
       if (!item.requiredPermission) return true;
+      if (item.requiredPermission === '*') return hasRole('admin');
       return hasPermission(item.requiredPermission);
+    }).map(item => ({
+      ...item,
+      children: item.children ? filterMenuItems(item.children) : undefined
+    })).filter(item => {
+      // Remove items that have children but all children were filtered out
+      if (item.children && item.children.length === 0) {
+        return false;
+      }
+      return true;
     });
   };
 
-  const allMenuItems = [
-    ...filterMenuItems(menuItems),
-    ...(hasRole('admin') ? filterMenuItems(adminMenuItems) : [])
-  ];
+  const menuItems = filterMenuItems(createMenuItems());
+  const antdMenuItems = convertToAntdMenuItems(menuItems);
+
+  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    navigate(key);
+  };
+
+  const selectedKeys = [location.pathname];
+  const openKeys = menuItems
+    .filter(item => item.children?.some(child => child.key === location.pathname))
+    .map(item => item.key);
 
   return (
-    <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
+    <Sider
+      trigger={null}
+      collapsible
+      collapsed={collapsed}
+      width={256}
+      style={{
+        background: colorBgContainer,
+        boxShadow: '2px 0 8px 0 rgba(29, 35, 41, 0.05)'
+      }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-2 p-4 border-b border-sidebar-border">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground">
-          <Heart className="h-5 w-5" />
-        </div>
-        {!isCollapsed && (
+      <div style={{
+        padding: '16px',
+        borderBottom: '1px solid #f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
+      }}>
+        <Avatar 
+          size={32} 
+          icon={<HeartOutlined />} 
+          style={{ 
+            backgroundColor: '#1890ff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }} 
+        />
+        {!collapsed && (
           <div>
-            <h2 className="text-lg font-semibold text-sidebar-foreground">MediCare</h2>
-            <p className="text-xs text-sidebar-foreground/60">Hospital System</p>
+            <Title level={5} style={{ margin: 0, fontSize: '16px' }}>MediCare</Title>
+            <Text type="secondary" style={{ fontSize: '12px' }}>Hospital System</Text>
           </div>
         )}
       </div>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {allMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  {item.children ? (
-                    <div>
-                      <SidebarMenuButton
-                        onClick={() => !isCollapsed && toggleGroup(item.title)}
-                        className={`${getNavClassName(isActive(item.url))} justify-between`}
-                      >
-                        <div className="flex items-center">
-                          <item.icon className="mr-2 h-4 w-4" />
-                          {!isCollapsed && <span>{item.title}</span>}
-                        </div>
-                        {!isCollapsed && (
-                          expandedGroups.includes(item.title) ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )
-                        )}
-                      </SidebarMenuButton>
-                      
-                      {!isCollapsed && expandedGroups.includes(item.title) && (
-                        <div className="ml-6 mt-1 space-y-1">
-                          {item.children.map((child) => (
-                            <SidebarMenuButton key={child.title} asChild>
-                              <NavLink
-                                to={child.url}
-                                className={({ isActive }) => 
-                                  `text-sm ${getNavClassName(isActive)} pl-2`
-                                }
-                              >
-                                <span>{child.title}</span>
-                              </NavLink>
-                            </SidebarMenuButton>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={({ isActive }) => getNavClassName(isActive)}
-                      >
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {!isCollapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+      {/* Collapse Button */}
+      <div style={{ padding: '8px', textAlign: 'center' }}>
+        <Button
+          type="text"
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={() => setCollapsed(!collapsed)}
+          style={{
+            fontSize: '16px',
+            width: '100%',
+            height: '40px'
+          }}
+        />
+      </div>
+
+      {/* Menu */}
+      <Menu
+        mode="inline"
+        selectedKeys={selectedKeys}
+        defaultOpenKeys={openKeys}
+        items={antdMenuItems}
+        onClick={handleMenuClick}
+        style={{
+          border: 'none',
+          height: 'calc(100vh - 120px)',
+          overflowY: 'auto'
+        }}
+      />
+    </Sider>
   );
 };
 

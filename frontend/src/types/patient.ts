@@ -24,6 +24,7 @@ export interface Patient extends BaseEntity {
 export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 
 export interface MedicalHistory extends BaseEntity {
+  date: ReactNode;
   patientId: string;
   condition: string;
   diagnosisDate: Date;

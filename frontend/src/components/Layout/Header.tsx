@@ -88,9 +88,7 @@ export const Header: React.FC = () => {
       <div className="flex h-16 items-center justify-between px-6">
         {/* Left Section - Logo and Sidebar Trigger */}
         <div className="flex items-center gap-4">
-          <SidebarTrigger />
           <div className="flex items-center gap-3">
-            <Heart className="h-7 w-7 text-blue-600" />
             <h1 className="text-xl font-bold text-gray-900 hidden sm:block">MediCare HMS</h1>
           </div>
         </div>

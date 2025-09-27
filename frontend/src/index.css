@@ -2,128 +2,142 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Medical-themed Hospital Management System Design System */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    /* Medical Color Palette */
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    /* Modern Vibrant Palette */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 5%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 240 10% 5%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 240 10% 5%;
 
-    /* Medical Blue Primary */
-    --primary: 210 100% 45%;
+    /* Primary - Vibrant Royal Blue */
+    --primary: 222 89% 56%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 210 100% 92%;
-    --primary-dark: 210 100% 35%;
+    --primary-light: 222 100% 96%;
+    --primary-dark: 222 89% 42%;
 
-    /* Medical Green Secondary */
-    --secondary: 142 76% 36%;
+    /* Secondary - Bold Violet */
+    --secondary: 268 83% 60%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-light: 142 76% 92%;
+    --secondary-light: 268 100% 96%;
+    --secondary-dark: 268 70% 45%;
 
-    /* Healthcare Accent Colors */
-    --accent: 195 100% 50%;
+    /* Accent - Bright Pink/Red */
+    --accent: 340 82% 60%;
     --accent-foreground: 0 0% 100%;
-    --accent-light: 195 100% 95%;
+    --accent-light: 340 100% 96%;
+    --accent-dark: 340 70% 48%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    /* Medical Status Colors */
-    --success: 142 76% 36%;
+    /* Success - Vibrant Green */
+    --success: 146 72% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 45 100% 51%;
+    --success-light: 146 85% 92%;
+
+    /* Warning - Bright Amber */
+    --warning: 38 92% 55%;
     --warning-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
+    --warning-light: 38 95% 92%;
+
+    /* Destructive - Intense Red */
+    --destructive: 0 85% 62%;
     --destructive-foreground: 0 0% 100%;
-    --critical: 0 100% 45%;
-    --critical-foreground: 0 0% 100%;
+    --destructive-light: 0 95% 95%;
 
-    --border: 210 20% 90%;
-    --input: 210 20% 98%;
-    --ring: 210 100% 45%;
+    /* Info - Sky/Turquoise */
+    --info: 200 100% 50%;
+    --info-foreground: 0 0% 100%;
+    --info-light: 200 95% 94%;
 
-    /* Medical Sidebar Colors */
-    --sidebar-background: 210 100% 45%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 210 100% 45%;
-    --sidebar-accent: 210 100% 50%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 100% 40%;
-    --sidebar-ring: 210 100% 45%;
+    /* Muted / Neutral */
+    --muted: 240 4.8% 96%;
+    --muted-foreground: 240 4% 45%;
 
-    --radius: 0.5rem;
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 222 89% 56%;
 
-    /* Medical Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark)));
-    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(142 76% 45%));
-    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(195 100% 60%));
-    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    /* Sidebar - Light & Vibrant with Black Text */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 0%; /* Changed to black */
+    --sidebar-primary: 222 89% 56%;
+    --sidebar-primary-foreground: 0 0% 100%; /* White text on primary */
+    --sidebar-accent: 268 83% 60%;
+    --sidebar-accent-foreground: 0 0% 100%; /* White text on accent */
+    --sidebar-border: 240 6% 88%;
+    --sidebar-ring: 222 89% 56%;
 
-    /* Medical Shadows */
-    --shadow-medical: 0 4px 20px hsl(var(--primary) / 0.15);
-    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.1);
-    --shadow-elevated: 0 8px 32px hsl(var(--primary) / 0.12);
+    --radius: 0.75rem;
 
-    /* Medical Animations */
-    --transition-medical: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Rich Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--accent)));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--primary)));
+    --gradient-rainbow: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--success)));
   }
 
   .dark {
-    --background: 215 30% 8%;
-    --foreground: 0 0% 95%;
+    --background: 240 10% 5%;
+    --foreground: 0 0% 98%;
 
-    --card: 215 25% 12%;
-    --card-foreground: 0 0% 95%;
+    --card: 240 10% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 215 25% 12%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 210 100% 55%;
+    --primary: 222 91% 62%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 210 100% 25%;
-    --primary-dark: 210 100% 45%;
+    --primary-light: 222 91% 25%;
+    --primary-dark: 222 91% 48%;
 
-    --secondary: 142 76% 45%;
+    --secondary: 268 70% 58%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-light: 142 76% 20%;
+    --secondary-light: 268 70% 25%;
+    --secondary-dark: 268 70% 42%;
 
-    --accent: 195 100% 60%;
+    --accent: 340 80% 62%;
     --accent-foreground: 0 0% 100%;
-    --accent-light: 195 100% 25%;
+    --accent-light: 340 80% 25%;
+    --accent-dark: 340 80% 45%;
 
-    --muted: 215 25% 15%;
-    --muted-foreground: 215 15% 65%;
-
-    --success: 142 76% 45%;
+    --success: 146 72% 45%;
     --success-foreground: 0 0% 100%;
-    --warning: 45 100% 60%;
+    --success-light: 146 72% 25%;
+
+    --warning: 38 95% 58%;
     --warning-foreground: 0 0% 100%;
-    --destructive: 0 84% 70%;
+    --warning-light: 38 95% 25%;
+
+    --destructive: 0 85% 62%;
     --destructive-foreground: 0 0% 100%;
-    --critical: 0 100% 55%;
-    --critical-foreground: 0 0% 100%;
+    --destructive-light: 0 85% 25%;
 
-    --border: 215 25% 20%;
-    --input: 215 25% 15%;
-    --ring: 210 100% 55%;
+    --info: 200 100% 52%;
+    --info-foreground: 0 0% 100%;
+    --info-light: 200 100% 25%;
 
-    --sidebar-background: 215 30% 10%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 210 100% 55%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 240 5% 70%;
+
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: 222 91% 62%;
+
+    /* Dark mode sidebar - White text with white on hover */
+    --sidebar-background: 240 10% 8%;
+    --sidebar-foreground: 0 0% 100%; /* White text in dark mode */
+    --sidebar-primary: 222 91% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 18%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 215 25% 18%;
-    --sidebar-ring: 210 100% 55%;
+    --sidebar-accent: 268 70% 58%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 5% 20%;
+    --sidebar-ring: 222 91% 62%;
   }
 }
 
@@ -135,36 +149,171 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
   }
 }
 
 @layer components {
-  /* Medical Component Styles */
-  .medical-card {
-    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-card transition-all duration-200;
+  /* Enhanced Sidebar Styles with Black Text and White on Hover */
+  .sidebar-item {
+    @apply text-black dark:text-white transition-all duration-300;
   }
   
-  .medical-gradient {
-    background: var(--gradient-primary);
+  .sidebar-item:hover {
+    @apply text-white dark:text-white;
+  }
+  
+  .sidebar-button {
+    @apply text-black dark:text-white transition-all duration-300;
+  }
+  
+  .sidebar-button:hover {
+    @apply text-white dark:text-white;
+  }
+
+  /* Modern Component Styles */
+  .medical-card {
+    @apply bg-card border border-border rounded-xl shadow-sm hover:shadow-lg transition-all duration-300;
+  }
+  
+  .glass-card {
+    @apply bg-white/80 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg;
   }
   
   .status-badge {
-    @apply px-2 py-1 rounded-full text-xs font-medium;
+    @apply px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-200;
   }
   
   .status-success {
-    @apply bg-success/10 text-success;
+    @apply bg-success/15 text-success border border-success/30 hover:bg-success/20;
   }
   
   .status-warning {
-    @apply bg-warning/10 text-warning;
+    @apply bg-warning/15 text-warning border border-warning/30 hover:bg-warning/20;
   }
   
-  .status-critical {
-    @apply bg-critical/10 text-critical;
+  .status-destructive {
+    @apply bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/20;
   }
   
-  .medical-button {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md;
+  .status-info {
+    @apply bg-info/15 text-info border border-info/30 hover:bg-info/20;
+  }
+  
+  /* Modern Buttons */
+  .btn {
+    @apply px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-opacity-50 shadow-lg hover:shadow-xl;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground hover:bg-primary-dark focus:ring-primary;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary-dark focus:ring-secondary;
+  }
+  
+  .btn-accent {
+    @apply btn bg-accent text-accent-foreground hover:bg-accent-dark focus:ring-accent;
+  }
+  
+  .btn-success {
+    @apply btn bg-success text-success-foreground hover:bg-success/90 focus:ring-success;
+  }
+  
+  .btn-warning {
+    @apply btn bg-warning text-warning-foreground hover:bg-warning/90 focus:ring-warning;
+  }
+  
+  .btn-destructive {
+    @apply btn bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:ring-destructive;
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent text-foreground border border-border hover:bg-accent hover:text-accent-foreground;
+  }
+  
+  .btn-gradient {
+    @apply btn bg-gradient-to-r from-primary to-secondary text-white hover:from-primary-dark hover:to-secondary-dark focus:ring-primary;
+  }
+  
+  /* Interactive Elements */
+  .hover-lift {
+    @apply transition-transform duration-300 hover:-translate-y-1;
+  }
+  
+  .glow-effect {
+    @apply relative overflow-hidden;
+  }
+  
+  .glow-effect::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/20 opacity-0 transition-opacity duration-300;
+  }
+  
+  .glow-effect:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Enhanced Sidebar Specific Styles */
+  .sidebar-menu-item {
+    @apply text-black dark:text-white transition-all duration-300 ease-in-out;
+  }
+  
+  .sidebar-menu-item:hover {
+    @apply text-white dark:text-white;
+  }
+  
+  .sidebar-group-label {
+    @apply text-black dark:text-white font-semibold;
+  }
+  
+  .sidebar-trigger {
+    @apply text-black dark:text-white hover:text-white dark:hover:text-white;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+  
+  .border-gradient {
+    border-image: var(--gradient-primary) 1;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  
+  @keyframes glow {
+    from { box-shadow: 0 0 20px hsl(var(--primary)/0.3); }
+    to { box-shadow: 0 0 30px hsl(var(--primary)/0.6); }
+  }
+
+  /* Sidebar specific utilities */
+  .sidebar-text-black {
+    color: black;
+  }
+  
+  .sidebar-text-white-on-hover:hover {
+    color: white;
+  }
+  
+  .dark .sidebar-text-black {
+    color: white;
+  }
+  
+  .dark .sidebar-text-white-on-hover:hover {
+    color: white;
   }
 }

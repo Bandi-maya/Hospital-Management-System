@@ -1,10 +1,12 @@
-// src/pages/DoctorManagement.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Select } from "antd";
+
+const { Option } = Select;
 
 interface Doctor {
   id: number;
@@ -14,34 +16,23 @@ interface Doctor {
   phone: string;
 }
 
-// Initial dummy data
-const initialDoctors: Doctor[] = [
-  {
-    id: 1,
-    name: "Dr. Sarah Johnson",
-    specialization: "Cardiology",
-    email: "sarah.johnson@hospital.com",
-    phone: "+1-555-0101"
-  },
-  {
-    id: 2,
-    name: "Dr. Michael Chen",
-    specialization: "Neurology",
-    email: "michael.chen@hospital.com",
-    phone: "+1-555-0102"
-  },
-  {
-    id: 3,
-    name: "Dr. Emily Davis",
-    specialization: "Pediatrics",
-    email: "emily.davis@hospital.com",
-    phone: "+1-555-0103"
-  }
+// Key to store doctors in localStorage
+const LOCAL_STORAGE_KEY = "doctors";
+
+// Predefined specialization options
+const SPECIALIZATIONS = [
+  "Cardiology",
+  "Neurology",
+  "Pediatrics",
+  "Orthopedics",
+  "Dermatology",
+  "Oncology",
+  "Radiology",
+  "General Medicine",
 ];
 
 export default function DoctorManagement() {
-  // Local state for doctors data
-  const [doctors, setDoctors] = useState<Doctor[]>(initialDoctors);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [form, setForm] = useState<Omit<Doctor, "id">>({
@@ -51,8 +42,21 @@ export default function DoctorManagement() {
     phone: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
-  // Simulate loading state
+  // Load doctors from localStorage on mount
+  useEffect(() => {
+    const storedDoctors = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (storedDoctors) {
+      setDoctors(JSON.parse(storedDoctors));
+    }
+  }, []);
+
+  // Save doctors to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(doctors));
+  }, [doctors]);
+
   const simulateLoading = () => {
     setIsLoading(true);
     setTimeout(() => setIsLoading(false), 300);
@@ -77,7 +81,6 @@ export default function DoctorManagement() {
   const handleSubmit = () => {
     simulateLoading();
 
-    // Basic validation
     if (!form.name || !form.specialization || !form.email || !form.phone) {
       toast.error("Please fill in all fields");
       setIsLoading(false);
@@ -87,58 +90,59 @@ export default function DoctorManagement() {
     setTimeout(() => {
       if (selectedDoctor) {
         // Update existing doctor
-        setDoctors(prevDoctors =>
-          prevDoctors.map(doctor =>
-            doctor.id === selectedDoctor.id
-              ? { ...selectedDoctor, ...form }
-              : doctor
+        setDoctors((prev) =>
+          prev.map((d) =>
+            d.id === selectedDoctor.id ? { ...d, ...form } : d
           )
         );
         toast.success("Doctor updated successfully!");
       } else {
         // Add new doctor
         const newDoctor: Doctor = {
-          id: Math.max(0, ...doctors.map(d => d.id)) + 1,
+          id: doctors.length > 0 ? Math.max(...doctors.map(d => d.id)) + 1 : 1,
           ...form,
         };
-        setDoctors(prevDoctors => [...prevDoctors, newDoctor]);
+        setDoctors((prev) => [...prev, newDoctor]);
         toast.success("Doctor added successfully!");
       }
 
       setIsModalOpen(false);
       setSelectedDoctor(null);
       setForm({ name: "", specialization: "", email: "", phone: "" });
+      setIsLoading(false);
     }, 500);
   };
 
   const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this doctor?")) {
       simulateLoading();
-      
       setTimeout(() => {
-        setDoctors(prevDoctors => prevDoctors.filter(doctor => doctor.id !== id));
+        setDoctors((prev) => prev.filter((d) => d.id !== id));
         toast.success("Doctor deleted successfully!");
+        setIsLoading(false);
       }, 500);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Doctor Management</h1>
-          <Button disabled>Add Doctor</Button>
-        </div>
-        <div className="p-6 text-center">Loading doctors...</div>
-      </div>
-    );
-  }
+  // Filter doctors by search
+  const filteredDoctors = doctors.filter((d) =>
+    d.name.toLowerCase().includes(search.toLowerCase()) ||
+    d.specialization.toLowerCase().includes(search.toLowerCase()) ||
+    d.email.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h1 className="text-2xl font-bold">Doctor Management</h1>
-        <Button onClick={() => handleOpenModal()}>Add Doctor</Button>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Search doctors..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Button onClick={() => handleOpenModal()}>Add Doctor</Button>
+        </div>
       </div>
 
       {/* Doctors List */}
@@ -148,12 +152,12 @@ export default function DoctorManagement() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {doctors.length === 0 ? (
+            {filteredDoctors.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No doctors found. Add your first doctor to get started.
+                No doctors found.
               </div>
             ) : (
-              doctors.map((doctor) => (
+              filteredDoctors.map((doctor) => (
                 <div key={doctor.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="space-y-1">
                     <h3 className="font-semibold">{doctor.name}</h3>
@@ -162,19 +166,8 @@ export default function DoctorManagement() {
                     <p className="text-sm text-gray-600">{doctor.phone}</p>
                   </div>
                   <div className="space-x-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleOpenModal(doctor)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(doctor.id)}
-                    >
-                      Delete
-                    </Button>
+                    <Button size="sm" onClick={() => handleOpenModal(doctor)}>Edit</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(doctor.id)}>Delete</Button>
                   </div>
                 </div>
               ))
@@ -200,15 +193,28 @@ export default function DoctorManagement() {
                   placeholder="Doctor name"
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="specialization">Specialization *</Label>
-                <Input
-                  id="specialization"
-                  value={form.specialization}
-                  onChange={(e) => setForm({ ...form, specialization: e.target.value })}
-                  placeholder="Specialization"
-                />
+                <Select
+                  showSearch
+                  placeholder="Select specialization"
+                  optionFilterProp="children"
+                  value={form.specialization || undefined}
+                  onChange={(value) => setForm({ ...form, specialization: value })}
+                  filterOption={(input, option) =>
+                    (option?.children as unknown as string)
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  className="w-full"
+                >
+                  {SPECIALIZATIONS.map((s) => (
+                    <Option key={s} value={s}>{s}</Option>
+                  ))}
+                </Select>
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email *</Label>
                 <Input
@@ -228,19 +234,11 @@ export default function DoctorManagement() {
                   placeholder="Phone number"
                 />
               </div>
+
               <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsModalOpen(false)}
-                  disabled={isLoading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Saving..." : selectedDoctor ? "Update Doctor" : "Add Doctor"}
+                <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                <Button onClick={handleSubmit}>
+                  {selectedDoctor ? "Update Doctor" : "Add Doctor"}
                 </Button>
               </div>
             </CardContent>
