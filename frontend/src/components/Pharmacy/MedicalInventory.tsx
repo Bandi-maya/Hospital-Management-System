@@ -13,6 +13,8 @@ interface InventoryItem {
   category: string;
   quantity: number;
   expiryDate: string;
+  price: number;
+  status: "Pending" | "Delivered";
 }
 
 const LOCAL_STORAGE_KEY = "medicalInventory";
@@ -27,8 +29,11 @@ export default function MedicalInventory() {
     category: "",
     quantity: 0,
     expiryDate: "",
+    price: 0,
+    status: "Pending",
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   // Load inventory from localStorage
@@ -43,13 +48,18 @@ export default function MedicalInventory() {
   }, [inventory]);
 
   const handleAddOrUpdate = () => {
-    if (!form.name || !form.category || !form.quantity || !form.expiryDate) {
+    if (!form.name || !form.category || !form.quantity || !form.expiryDate || !form.price || !form.status) {
       toast.error("All fields are required");
       return;
     }
 
     if (form.quantity! <= 0) {
       toast.error("Quantity must be greater than 0");
+      return;
+    }
+
+    if (form.price! <= 0) {
+      toast.error("Price must be greater than 0");
       return;
     }
 
@@ -79,12 +89,14 @@ export default function MedicalInventory() {
         category: form.category!,
         quantity: form.quantity!,
         expiryDate: form.expiryDate!,
+        price: form.price!,
+        status: form.status!,
       };
       setInventory(prev => [...prev, newItem]);
       toast.success("Inventory added successfully!");
     }
 
-    setForm({ name: "", category: "", quantity: 0, expiryDate: "" });
+    setForm({ name: "", category: "", quantity: 0, expiryDate: "", price: 0, status: "Pending" });
     setSelectedItemId(null);
     setIsDialogOpen(false);
   };
@@ -106,6 +118,8 @@ export default function MedicalInventory() {
     item.name.toLowerCase().includes(search.toLowerCase()) ||
     item.category.toLowerCase().includes(search.toLowerCase())
   );
+
+  const selectedItem = inventory.find(item => item.id === selectedItemId);
 
   return (
     <div className="p-6 space-y-6">
@@ -176,6 +190,17 @@ export default function MedicalInventory() {
                 </div>
 
                 <div>
+                  <Label htmlFor="price">Price (₹)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    placeholder="Price"
+                    value={form.price}
+                    onChange={e => setForm({ ...form, price: Number(e.target.value) })}
+                  />
+                </div>
+
+                <div>
                   <Label htmlFor="expiryDate">Expiry Date</Label>
                   <Input
                     id="expiryDate"
@@ -183,6 +208,22 @@ export default function MedicalInventory() {
                     value={form.expiryDate}
                     onChange={e => setForm({ ...form, expiryDate: e.target.value })}
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={form.status}
+                    onValueChange={value => setForm({ ...form, status: value as "Pending" | "Delivered" })}
+                  >
+                    <SelectTrigger id="status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Delivered">Delivered</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -202,14 +243,16 @@ export default function MedicalInventory() {
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Quantity</TableHead>
+              <TableHead>Price (₹)</TableHead>
               <TableHead>Expiry Date</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredInventory.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">No inventory found.</TableCell>
+                <TableCell colSpan={7} className="text-center">No inventory found.</TableCell>
               </TableRow>
             ) : (
               filteredInventory.map(item => (
@@ -217,10 +260,17 @@ export default function MedicalInventory() {
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
+                  <TableCell>₹{item.price}</TableCell>
                   <TableCell>{item.expiryDate}</TableCell>
+                  <TableCell>{item.status}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button size="sm" onClick={() => handleEdit(item)}>Edit</Button>
                     <Button size="sm" variant="destructive" onClick={() => handleDelete(item.id)}>Delete</Button>
+                    {item.status === "Delivered" && (
+                      <Button size="sm" variant="secondary" onClick={() => { setSelectedItemId(item.id); setIsViewDialogOpen(true); }}>
+                        View
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -228,6 +278,30 @@ export default function MedicalInventory() {
           </TableBody>
         </Table>
       </div>
+
+      {/* View Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Inventory Details</DialogTitle>
+          </DialogHeader>
+          {selectedItem ? (
+            <div className="space-y-2">
+              <p><strong>Name:</strong> {selectedItem.name}</p>
+              <p><strong>Category:</strong> {selectedItem.category}</p>
+              <p><strong>Quantity:</strong> {selectedItem.quantity}</p>
+              <p><strong>Price:</strong> ₹{selectedItem.price}</p>
+              <p><strong>Expiry Date:</strong> {selectedItem.expiryDate}</p>
+              <p><strong>Status:</strong> {selectedItem.status}</p>
+            </div>
+          ) : (
+            <p>No item selected</p>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

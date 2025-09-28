@@ -33,6 +33,9 @@ export default function Prescriptions() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  // For viewing prescription
+  const [viewPrescription, setViewPrescription] = useState<Prescription | null>(null);
+
   // Load prescriptions and inventory from localStorage
   useEffect(() => {
     const storedPrescriptions = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -116,6 +119,38 @@ export default function Prescriptions() {
       p.patient.toLowerCase().includes(search.toLowerCase()) ||
       p.doctor.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handlePrint = () => {
+    const printContent = document.getElementById("prescription-print-area")?.innerHTML;
+    if (!printContent) return;
+    const printWindow = window.open("", "_blank", "width=800,height=600");
+    if (printWindow) {
+      printWindow.document.write(`
+      <html>
+        <head>
+          <title>Prescription</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h2 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            .signature { margin-top: 40px; text-align: right; font-weight: bold; }
+            .signature-line { margin-top: 50px; border-top: 1px solid #000; width: 200px; float: right; text-align: center; }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+          <div class="signature">
+            <div class="signature-line">Doctor's Signature</div>
+          </div>
+        </body>
+      </html>
+    `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
 
   return (
     <div className="p-6 space-y-6">
@@ -244,6 +279,7 @@ export default function Prescriptions() {
                   <TableCell className="text-right space-x-2">
                     <Button size="sm" onClick={() => handleEdit(prescription)}>Edit</Button>
                     <Button size="sm" variant="destructive" onClick={() => handleDelete(prescription.id)}>Delete</Button>
+                    <Button size="sm" variant="outline" onClick={() => setViewPrescription(prescription)}>View</Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -251,6 +287,47 @@ export default function Prescriptions() {
           </TableBody>
         </Table>
       </div>
+
+      {/* View Prescription Modal */}
+      {viewPrescription && (
+        <Dialog open={!!viewPrescription} onOpenChange={() => setViewPrescription(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Prescription Details</DialogTitle>
+            </DialogHeader>
+            <div id="prescription-print-area" className="p-4">
+              <h2>Prescription</h2>
+              <p><strong>Patient:</strong> {viewPrescription.patient}</p>
+              <p><strong>Doctor:</strong> {viewPrescription.doctor}</p>
+              <p><strong>Date:</strong> {viewPrescription.date}</p>
+              <h3 className="mt-2 font-semibold">Medicines</h3>
+              <table className="w-full border mt-2">
+                <thead>
+                  <tr>
+                    <th className="border px-2 py-1">Medicine</th>
+                    <th className="border px-2 py-1">Quantity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewPrescription.medicines.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border px-2 py-1">{m.name}</td>
+                      <td className="border px-2 py-1">{m.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {viewPrescription.notes && (
+                <p className="mt-2"><strong>Notes:</strong> {viewPrescription.notes}</p>
+              )}
+            </div>
+            <DialogFooter className="flex justify-end space-x-2">
+              <Button onClick={handlePrint}>Print / Save PDF</Button>
+              <Button variant="outline" onClick={() => setViewPrescription(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
