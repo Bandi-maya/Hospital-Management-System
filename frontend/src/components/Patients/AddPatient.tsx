@@ -46,7 +46,7 @@ const wardList = ["Ward 1", "Ward 2", "Ward 3", "Ward 4", ""];
 const bedList = ["Bed 1", "Bed 2", "Bed 3", "Bed 4", "Bed 5", ""];
 
 // ✅ Full country list
-const countries = [
+export const countries = [
     "Afghanistan",
     "Albania",
     "Algeria",

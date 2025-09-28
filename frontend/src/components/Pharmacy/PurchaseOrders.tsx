@@ -1,360 +1,355 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead,
+  TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
+  Select, SelectTrigger, SelectValue,
+  SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
 
 interface PurchaseOrder {
-  id: string;
-  item: string;
-  category: string;
-  quantity: number;
-  price: number; // NEW FIELD
-  orderDate: string;
-  deliveryStatus: "Pending" | "Purchased" | "Cancelled"; // updated wording
-  notes?: string;
+  id: number;
+  user_id: number;
+  received_date: string;
+  taken_by: string;
+  taken_by_phone_no: string;
+  created_at?: string;
+  updated_at?: string;
+  items: {
+    medicine_id: number;
+    quantity: number;
+    order_date: string;
+  }[];
 }
 
-const LOCAL_STORAGE_KEY = "purchaseOrders";
-const defaultCategories = [
-  "Tablet",
-  "Syrup",
-  "Injection",
-  "Ointment",
-  "Capsule",
-  "Drops",
-];
+interface Medicine {
+  id: number;
+  name: string;
+}
+
+const defaultOrder: PurchaseOrder = {
+  id: 0,
+  user_id: 0,
+  taken_by: "",
+  taken_by_phone_no: "",
+  received_date: "",
+  items: [],
+};
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
-  const [categories, setCategories] = useState<string[]>(defaultCategories);
-  const [search, setSearch] = useState("");
-  const [form, setForm] = useState<Partial<PurchaseOrder>>({
-    item: "",
-    category: "",
-    quantity: 0,
-    price: 0,
-    orderDate: "",
-    deliveryStatus: "Pending",
-    notes: "",
-  });
+  const [form, setForm] = useState<Partial<PurchaseOrder>>(defaultOrder);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [search, setSearch] = useState("");
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [patients, setPatients] = useState([]);
+  const loginData = JSON.parse(localStorage.getItem("loginData") || '{"user_id":8}');
 
-  // New states for View & Print
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [viewOrder, setViewOrder] = useState<PurchaseOrder | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
-
-  // Load orders from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) setOrders(JSON.parse(stored));
+    fetchOrders();
+    fetchPatients();
+    fetchMedicines();
   }, []);
 
-  // Save orders to localStorage
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(orders));
-  }, [orders]);
-
-  const resetForm = () => {
-    setForm({
-      item: "",
-      category: "",
-      quantity: 0,
-      price: 0,
-      orderDate: "",
-      deliveryStatus: "Pending",
-      notes: "",
-    });
-    setSelectedOrderId(null);
+  const fetchOrders = () => {
+    getApi("/orders")
+      .then((res) => {
+        if (!res.error) {
+          setOrders(res);
+        } else {
+          toast.error("Failed to load orders.");
+        }
+      })
+      .catch(() => toast.error("Server error while fetching orders"));
   };
 
-  const handleAddOrUpdate = () => {
-    if (!form.item || !form.category || !form.quantity || !form.price || !form.orderDate) {
-      toast.error("All fields are required");
+  const fetchPatients = () => {
+    getApi("/users?user_type_id=3")
+      .then((res) => {
+        if (!res.error) {
+          setPatients(res);
+        } else {
+          toast.error("Failed to load orders.");
+        }
+      })
+      .catch(() => toast.error("Server error while fetching orders"));
+  };
+
+  const fetchMedicines = () => {
+    getApi("/medicines")
+      .then((res) => {
+        if (!res.error) {
+          setMedicines(res);
+        } else {
+          toast.error("Failed to load medicines.");
+        }
+      })
+      .catch(() => toast.error("Server error while fetching medicines"));
+  };
+
+  const handleAddOrder = () => {
+    if (!form.user_id || !form.received_date || !form.taken_by || !form.taken_by_phone_no || !form.items || form.items.length === 0) {
+      toast.error("Fill all required fields and add at least one item.");
       return;
     }
+    PostApi("/orders", { ...form, created_by: loginData.user_id })
+      .then((res) => {
+        if (!res.error) {
+          toast.success("Order added successfully");
+          setIsDialogOpen(false);
+          fetchOrders();
+          setForm(defaultOrder);
+          setIsEditMode(false);
+        } else {
+          toast.error(res.error || "Failed to add order");
+        }
+      })
+      .catch(() => toast.error("Server error while adding order"));
+  };
 
-    if (form.quantity! <= 0 || form.price! <= 0) {
-      toast.error("Quantity & Price must be greater than 0");
-      return;
-    }
+  const handleUpdateOrder = () => {
+    if (!form.id) return;
+    PutApi("/orders", form)
+      .then((res) => {
+        if (!res.error) {
+          toast.success("Order updated successfully");
+          setIsDialogOpen(false);
+          fetchOrders();
+          setForm(defaultOrder);
+          setIsEditMode(false);
+        } else {
+          toast.error(res.error || "Failed to update order");
+        }
+      })
+      .catch(() => toast.error("Server error while updating order"));
+  };
 
-    // Ensure category is in dropdown
-    if (form.category && !categories.includes(form.category)) {
-      setCategories((prev) => [...prev, form.category!]);
-    }
-
-    if (selectedOrderId) {
-      // Update existing order
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === selectedOrderId ? ({ ...o, ...form } as PurchaseOrder) : o
-        )
-      );
-      toast.success("Order updated successfully!");
-    } else {
-      // Add new order
-      const newOrder: PurchaseOrder = {
-        id: crypto.randomUUID
-          ? crypto.randomUUID()
-          : Math.random().toString(36).substr(2, 9),
-        item: form.item!,
-        category: form.category!,
-        quantity: form.quantity!,
-        price: form.price!,
-        orderDate: form.orderDate!,
-        deliveryStatus: form.deliveryStatus! || "Pending",
-        notes: form.notes || "",
-      };
-      setOrders((prev) => [...prev, newOrder]);
-      toast.success("New order added!");
-    }
-
-    resetForm();
-    setIsDialogOpen(false);
+  const handleDeleteOrder = (id: number) => {
+    if (!confirm("Are you sure you want to delete this order?")) return;
+    DeleteApi(`/orders?id=${id}`)
+      .then((res) => {
+        if (!res.error) {
+          toast.success("Order deleted");
+          fetchOrders();
+        } else {
+          toast.error(res.error || "Failed to delete order");
+        }
+      })
+      .catch(() => toast.error("Server error while deleting order"));
   };
 
   const handleEdit = (order: PurchaseOrder) => {
-    setForm({ ...order });
-    setSelectedOrderId(order.id);
+    setForm(order);
     setIsDialogOpen(true);
+    setIsEditMode(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this order?")) {
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-      toast.success("Order deleted successfully!");
+  // Handlers for dynamic items editing:
+  const handleItemChange = (
+    index: number,
+    field: keyof PurchaseOrder["items"][0],
+    value: string | number
+  ) => {
+    if (!form.items) return;
+    const updatedItems = [...form.items];
+    if (field === "medicine_id" || field === "quantity") {
+      updatedItems[index][field] = Number(value);
+    } else {
+      updatedItems[index][field] = value as string;
     }
+    setForm({ ...form, items: updatedItems });
   };
 
-  const handleView = (order: PurchaseOrder) => {
-    setViewOrder(order);
-    setIsViewOpen(true);
+  const handleAddItem = () => {
+    const newItem = { medicine_id: 0, quantity: 1, order_date: "" };
+    setForm({ ...form, items: [...(form.items || []), newItem] });
   };
 
-  const handlePrint = () => {
-    if (printRef.current) {
-      const printContent = printRef.current.innerHTML;
-      const win = window.open("", "", "width=800,height=600");
-      if (win) {
-        win.document.write(`
-          <html>
-            <head>
-              <title>Purchase Order</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                h1 { text-align: center; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-                th { background: #f4f4f4; }
-                .stamp {
-                  position: absolute;
-                  top: 50%;
-                  left: 50%;
-                  transform: translate(-50%, -50%) rotate(-20deg);
-                  font-size: 36px;
-                  color: green;
-                  opacity: 0.3;
-                  border: 3px solid green;
-                  padding: 10px 20px;
-                  border-radius: 8px;
-                }
-              </style>
-            </head>
-            <body>
-              ${printContent}
-            </body>
-          </html>
-        `);
-        win.document.close();
-        win.print();
-      }
-    }
+  const handleRemoveItem = (index: number) => {
+    if (!form.items) return;
+    const updatedItems = [...form.items];
+    updatedItems.splice(index, 1);
+    setForm({ ...form, items: updatedItems });
   };
-
-  const filteredOrders = orders.filter(
-    (order) =>
-      order.item.toLowerCase().includes(search.toLowerCase()) ||
-      order.category.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header and controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Pharmacy</h1>
-          <p className="text-muted-foreground">Purchase Orders</p>
+          <h2 className="text-2xl font-bold">Purchase Orders</h2>
+          <p className="text-muted-foreground">Manage all medicine orders</p>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+        <div className="flex gap-2">
           <Input
-            placeholder="Search by item or category"
+            placeholder="Search by User ID or Date..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="max-w-xs"
           />
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setForm(defaultOrder);
+              setIsEditMode(false);
+            }
+          }}>
             <DialogTrigger asChild>
-              <Button>New Order</Button>
+              <Button>{isEditMode ? "Edit Order" : "New Order"}</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>
-                  {selectedOrderId ? "Edit Order" : "New Purchase Order"}
+                  {isEditMode ? "Edit Purchase Order" : "New Purchase Order"}
                 </DialogTitle>
               </DialogHeader>
-              {/* --- Order Form --- */}
+
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="item">Item Name</Label>
-                  <Input
-                    id="item"
-                    placeholder="Item Name"
-                    value={form.item}
-                    onChange={(e) => setForm({ ...form, item: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="category">Category</Label>
+                  <Label>User ID</Label>
                   <Select
-                    value={form.category || undefined}
-                    onValueChange={(value) =>
-                      setForm({ ...form, category: value })
+                    value={form.user_id.toString()}
+                    onValueChange={(val) =>
+                      setForm({ ...form, user_id: Number(val) })
+                      // handleItemChange(index, "medicine_id", Number(val))
                     }
                   >
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Select category" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Medicine" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
+                      {patients.map((med) => (
+                        <SelectItem key={med.id} value={med.id.toString()}>
+                          {med.username}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input
-                    placeholder="Or type new category"
-                    value={form.category}
-                    onChange={(e) =>
-                      setForm({ ...form, category: e.target.value })
-                    }
-                    className="mt-2"
-                  />
                 </div>
-
                 <div>
-                  <Label htmlFor="quantity">Quantity</Label>
+                  <Label>Received Date</Label>
                   <Input
-                    id="quantity"
-                    type="number"
-                    placeholder="Quantity"
-                    value={form.quantity}
-                    onChange={(e) =>
-                      setForm({ ...form, quantity: Number(e.target.value) })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="price">Price (per unit)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    placeholder="Price"
-                    value={form.price}
-                    onChange={(e) =>
-                      setForm({ ...form, price: Number(e.target.value) })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="orderDate">Order Date</Label>
-                  <Input
-                    id="orderDate"
                     type="date"
-                    value={form.orderDate}
+                    value={form.received_date || ""}
                     onChange={(e) =>
-                      setForm({ ...form, orderDate: e.target.value })
+                      setForm({ ...form, received_date: e.target.value })
                     }
                   />
                 </div>
-
                 <div>
-                  <Label htmlFor="deliveryStatus">Status</Label>
-                  <Select
-                    value={form.deliveryStatus || "Pending"}
-                    onValueChange={(value) =>
-                      setForm({
-                        ...form,
-                        deliveryStatus: value as PurchaseOrder["deliveryStatus"],
-                      })
-                    }
-                  >
-                    <SelectTrigger id="deliveryStatus">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Purchased">Purchased</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="notes">Notes</Label>
+                  <Label>Taken by</Label>
                   <Input
-                    id="notes"
-                    placeholder="Additional notes"
-                    value={form.notes}
+                    value={form.taken_by || ""}
                     onChange={(e) =>
-                      setForm({ ...form, notes: e.target.value })
+                      setForm({ ...form, taken_by: e.target.value })
                     }
                   />
+                </div>
+                <div>
+                  <Label>Taken by phone no</Label>
+                  <Input
+                    value={form.taken_by_phone_no || ""}
+                    onChange={(e) =>
+                      setForm({ ...form, taken_by_phone_no: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-2">Items</Label>
+                  {(form.items && form.items.length > 0) ? (
+                    form.items.map((item, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-4 gap-4 items-end mb-4 border p-3 rounded-md"
+                      >
+                        <div>
+                          <Label>Medicine</Label>
+                          <Select
+                            value={item.medicine_id.toString()}
+                            onValueChange={(val) =>
+                              handleItemChange(index, "medicine_id", Number(val))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Medicine" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {medicines.map((med) => (
+                                <SelectItem key={med.id} value={med.id.toString()}>
+                                  {med.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label>Quantity</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={item.quantity}
+                            onChange={(e) =>
+                              handleItemChange(index, "quantity", Number(e.target.value))
+                            }
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Order Date</Label>
+                          <Input
+                            type="date"
+                            value={item.order_date}
+                            onChange={(e) =>
+                              handleItemChange(index, "order_date", e.target.value)
+                            }
+                          />
+                        </div>
+
+                        <div className="flex items-center">
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleRemoveItem(index)}
+                            className="mt-6"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No items added yet.</p>
+                  )}
+
+                  <Button onClick={handleAddItem} variant="outline" className="mt-2">
+                    + Add Item
+                  </Button>
                 </div>
               </div>
 
-              <DialogFooter className="flex justify-end space-x-2">
+              <DialogFooter>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    resetForm();
+                    setForm(defaultOrder);
                     setIsDialogOpen(false);
+                    setIsEditMode(false);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleAddOrUpdate}>
-                  {selectedOrderId ? "Update" : "Add"}
+                <Button onClick={isEditMode ? handleUpdateOrder : handleAddOrder}>
+                  {isEditMode ? "Update" : "Add"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -367,124 +362,50 @@ export default function PurchaseOrders() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Qty</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Order Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Order ID</TableHead>
+              <TableHead>User ID</TableHead>
+              <TableHead>Items Count</TableHead>
+              <TableHead>Received Date</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredOrders.length === 0 ? (
+            {orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center">
-                  No purchase orders found.
+                <TableCell colSpan={5} className="text-center">
+                  No orders found.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell>{order.item}</TableCell>
-                  <TableCell>{order.category}</TableCell>
-                  <TableCell>{order.quantity}</TableCell>
-                  <TableCell>₹{order.price}</TableCell>
-                  <TableCell>₹{order.price * order.quantity}</TableCell>
-                  <TableCell>{order.orderDate}</TableCell>
-                  <TableCell>{order.deliveryStatus}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button size="sm" onClick={() => handleEdit(order)}>
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(order.id)}
-                    >
-                      Delete
-                    </Button>
-                    {order.deliveryStatus === "Purchased" && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleView(order)}
-                      >
-                        View
+              orders
+                .filter((o) =>
+                  o.user_id.toString().includes(search) ||
+                  o.received_date.includes(search)
+                )
+                .map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell>{order.id}</TableCell>
+                    <TableCell>{order.user_id}</TableCell>
+                    <TableCell>{order.items?.length}</TableCell>
+                    <TableCell>{order.received_date}</TableCell>
+                    <TableCell className="flex gap-2">
+                      <Button size="sm" onClick={() => handleEdit(order)}>
+                        Edit
                       </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteOrder(order.id)}
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
             )}
           </TableBody>
         </Table>
       </div>
-
-      {/* View & Print Modal */}
-      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="p-0">
-          {/* Flex wrapper to center content */}
-          <div className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="bg-white rounded-md shadow-lg w-full max-w-lg p-6 relative">
-              <DialogHeader>
-                <DialogTitle>Purchase Order Receipt</DialogTitle>
-              </DialogHeader>
-
-              {viewOrder && (
-                <div ref={printRef} className="space-y-2 relative w-full">
-                  <h2 className="text-xl font-bold text-center">
-                    Pharmacy Purchase Order
-                  </h2>
-                  <p><strong>Order ID:</strong> {viewOrder.id}</p>
-                  <p><strong>Date:</strong> {viewOrder.orderDate}</p>
-
-                  <table className="w-full border mt-4">
-                    <thead>
-                      <tr>
-                        <th className="border p-2">Item</th>
-                        <th className="border p-2">Category</th>
-                        <th className="border p-2">Qty</th>
-                        <th className="border p-2">Price</th>
-                        <th className="border p-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="border p-2">{viewOrder.item}</td>
-                        <td className="border p-2">{viewOrder.category}</td>
-                        <td className="border p-2">{viewOrder.quantity}</td>
-                        <td className="border p-2">₹{viewOrder.price}</td>
-                        <td className="border p-2">
-                          ₹{viewOrder.price * viewOrder.quantity}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <p className="mt-2"><strong>Notes:</strong> {viewOrder.notes || "N/A"}</p>
-                  <p><strong>Status:</strong> {viewOrder.deliveryStatus}</p>
-
-                  {viewOrder.deliveryStatus === "Purchased" && (
-                    <div className="stamp absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-green-600 text-3xl opacity-30 border border-green-600 rounded-md p-3">
-                      PURCHASE COMPLETED
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <DialogFooter className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsViewOpen(false)}>
-                  Close
-                </Button>
-                <Button onClick={handlePrint}>Print</Button>
-              </DialogFooter>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table, Input, Button, Card, Select, Modal, Space, Typography, Tag, Divider, Form } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { getApi } from "@/ApiService";
+import { getApi, PutApi } from "@/ApiService";
 import { toast } from "sonner";
 
 const { Title, Text } = Typography;
@@ -34,7 +34,7 @@ export default function LabReports() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "Available" | "Not Available" | "Completed">("all");
   const [viewingReport, setViewingReport] = useState<Report | null>(null);
-  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [editingReport, setEditingReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const [form] = Form.useForm();
@@ -66,46 +66,66 @@ export default function LabReports() {
     });
   };
 
-  const handleEditReport = (report: Report) => {
+  const handleEditReport = (report) => {
     setEditingReport(report);
     setIsModalOpen(true);
     // Set form values for editing
     form.setFieldsValue({
-      patientName: report.patientName,
-      token: report.token,
-      tests: report.testTypes.map((t, idx) => ({
-        testType: t,
-        date: report.dates[idx],
-        status: report.statuses[idx],
-        description: report.descriptions[idx],
-      })),
+      request_id: report.id,
+      report_data: report.report_data,
+      reported_by: 8,
+      // patientName: report.patientName,
+      // token: report.token,
+      // tests: report.testTypes.map((t, idx) => ({
+      //   testType: t,
+      //   date: report.dates[idx],
+      //   status: report.statuses[idx],
+      //   description: report.descriptions[idx],
+      // })),
     });
   };
 
   const handleSaveReport = () => {
     form.validateFields().then((values) => {
-      if (!values.tests || values.tests.length === 0) return;
+      if (!values.reported_data.data) return;
 
-      const updatedReport: Report = {
-        patientName: values.patientName,
-        patientId: editingReport?.patientId || `pid_${Date.now()}`,
-        token: values.token,
-        testTypes: values.tests.map((t: any) => t.testType),
-        dates: values.tests.map((t: any) => t.date),
-        statuses: values.tests.map((t: any) => t.status),
-        ids: editingReport
-          ? editingReport.ids
-          : values.tests.map((_: any, idx: number) => idx + 1),
-        descriptions: values.tests.map((t: any) => t.description),
+      const updatedReport = {
+        id: editingReport.id,
+        report_data: values.report_data,
+        reported_by: editingReport.reported_by,
+        // patientName: values.patientName,
+        // patientId: editingReport?.patientId || `pid_${Date.now()}`,
+        // token: values.token,
+        // testTypes: values.tests.map((t: any) => t.testType),
+        // dates: values.tests.map((t: any) => t.date),
+        // statuses: values.tests.map((t: any) => t.status),
+        // ids: editingReport
+        //   ? editingReport.ids
+        //   : values.tests.map((_: any, idx: number) => idx + 1),
+        // descriptions: values.tests.map((t: any) => t.description),
       };
-
-      setReports((prev) => {
-        if (editingReport) {
-          return prev.map((r) => (r.patientId === editingReport.patientId ? updatedReport : r));
-        } else {
-          return [...prev, updatedReport];
+      PutApi('/lab-reports', updatedReport).then((data) => {
+        if (!data?.error) {
+          toast.success("Report saved successfully");
+          loadTests()
         }
-      });
+        else {
+          toast.error(data.error);
+          console.error("Error saving report:", data.error);
+        }
+      }).catch((error) => {
+        toast.error("Error saving report");
+        console.error("Error saving report:", error);
+      }
+      )
+
+      // setReports((prev) => {
+      //   if (editingReport) {
+      //     return prev.map((r) => (r.patientId === editingReport.patientId ? updatedReport : r));
+      //   } else {
+      //     return [...prev, updatedReport];
+      //   }
+      // });
 
       setIsModalOpen(false);
       setEditingReport(null);
@@ -164,23 +184,23 @@ export default function LabReports() {
       //     </Tag>
       //   )),
     },
-    // {
-    //   title: "Actions",
-    //   key: "actions",
-    //   render: (_, record) => (
-    //     <Space>
-    // {/* <Button type="primary" onClick={() => setViewingReport(record)}>
-    //   View
-    // </Button> */}
-    // {/* <Button type="default" onClick={() => handleEditReport(record)}>
-    //   Edit
-    // </Button> */}
-    // {/* <Button danger onClick={() => handleDeleteReport(record.patientId)}>
-    //   Delete
-    // </Button> */}
-    //   </Space>
-    // ),
-    // },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space>
+          {/* <Button type="primary" onClick={() => setViewingReport(record)}>
+      View
+    </Button> */}
+          <Button type="default" onClick={() => handleEditReport(record)}>
+            Edit
+          </Button>
+          {/* <Button danger onClick={() => handleDeleteReport(record.patientId)}>
+      Delete
+    </Button> */}
+        </Space>
+      ),
+    },
   ];
 
   return (
@@ -220,7 +240,7 @@ export default function LabReports() {
           columns={columns}
           dataSource={filteredReports}
           rowKey="patientId"
-          pagination={{ pageSize: 5 }}
+          pagination={{ pageSize: 10 }}
           scroll={{ x: "max-content" }}
         />
       </Space>
@@ -239,22 +259,22 @@ export default function LabReports() {
         okText="Save"
       >
         <Form form={form} layout="vertical">
-          <Form.Item
+          {/* <Form.Item
             name="patientName"
             label="Patient Name"
             rules={[{ required: true, message: "Enter patient name" }]}
           >
             <Input />
-          </Form.Item>
+          </Form.Item> */}
           <Form.Item
-            name="token"
-            label="Token"
-            rules={[{ required: true, message: "Enter token" }]}
+            name={["report_data", "data"]}
+            label={["report_data", "data"]}
+            rules={[{ required: true, message: "Enter data" }]}
           >
-            <Input type="number" />
+            <Input />
           </Form.Item>
 
-          <Form.List name="tests">
+          {/* <Form.List name="tests">
             {(fields, { add, remove }) => (
               <>
                 {fields.map(({ key, name, ...restField }) => (
@@ -299,7 +319,7 @@ export default function LabReports() {
                 </Form.Item>
               </>
             )}
-          </Form.List>
+          </Form.List> */}
         </Form>
       </Modal>
 

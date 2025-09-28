@@ -9,9 +9,11 @@ from Resources.InvoiceResource import Invoices
 from Resources.LabReportsResource import LabReports
 from Resources.LabRequestsResource import LabRequests
 from Resources.LabTestsResource import LabTests
+from Resources.MedicalRecordsResource import MedicalRecordsResource
 from Resources.MedicineResource import Medicines
 from Resources.MedicineStockResource import MedicineStocks
 from Resources.NotificationResource import Notifications
+from Resources.Orders import OrdersResource
 from Resources.PharmacyResource import Pharmacies
 from Resources.PurchaseOrders import PurchaseOrders
 from Resources.SupportTicketResource import SupportTickets
@@ -45,6 +47,7 @@ api = Api(app)
 # ---------------- User Management ----------------
 api.add_resource(UserTypes, '/user-types')
 api.add_resource(Users, '/users')
+api.add_resource(MedicalRecordsResource, '/medical_records')
 api.add_resource(UserFields, '/user-fields')
 
 # ---------------- Departments & Wards ----------------
@@ -56,6 +59,7 @@ api.add_resource(Pharmacies, '/pharmacy')
 api.add_resource(Medicines, '/medicines')
 api.add_resource(MedicineStocks, '/medicine-stock')
 api.add_resource(PurchaseOrders, '/purchase-orders')
+api.add_resource(OrdersResource, '/orders')
 
 # ---------------- Laboratory ----------------
 api.add_resource(LabTests, '/lab-tests')

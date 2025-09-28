@@ -59,7 +59,9 @@ class MedicineStocks(Resource):
         return medicine_stock_serializer.dump(stock), 200
 
     def delete(self):
-        stock_id = request.args.get("id")
+        json_data = request.get_json(force=True)
+        stock_id = json_data.get("id")
+        # stock_id = request.args.get("id")
         if not stock_id:
             return {"error": "Stock ID required"}, 400
 

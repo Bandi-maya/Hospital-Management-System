@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { DeleteApi, getApi, PostApi } from "@/ApiService";
 
 interface InventoryItem {
   id: string;
@@ -24,22 +25,36 @@ export default function MedicalInventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<string[]>(defaultCategories);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState<Partial<InventoryItem>>({
+  const [form, setForm] = useState({
     name: "",
-    category: "",
+    // category: "",
     quantity: 0,
+    manufacturer: "",
+    description: "",
+    batch_no: "",
     expiryDate: "",
     price: 0,
-    status: "Pending",
+    // status: "Pending",
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
+  function loadData() {
+    getApi('/medicine-stock')
+      .then((data) => {
+        if (!data?.error) {
+          setInventory(data);
+        }
+      }).catch((err) => {
+        console.error(err);
+        toast.error("Failed to fetch inventory");
+      })
+  }
+
   // Load inventory from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) setInventory(JSON.parse(stored));
+    loadData()
   }, []);
 
   // Save inventory to localStorage
@@ -47,8 +62,8 @@ export default function MedicalInventory() {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventory));
   }, [inventory]);
 
-  const handleAddOrUpdate = () => {
-    if (!form.name || !form.category || !form.quantity || !form.expiryDate || !form.price || !form.status) {
+  async function handleAddOrUpdate() {
+    if (!form.name || !form.manufacturer || !form.quantity || !form.expiryDate || !form.price) {
       toast.error("All fields are required");
       return;
     }
@@ -71,10 +86,6 @@ export default function MedicalInventory() {
     }
 
     // Add new category if not exists
-    if (!categories.includes(form.category)) {
-      setCategories(prev => [...prev, form.category!]);
-    }
-
     if (selectedItemId) {
       // Update item
       setInventory(prev =>
@@ -82,42 +93,89 @@ export default function MedicalInventory() {
       );
       toast.success("Inventory updated successfully!");
     } else {
-      // Add new item
-      const newItem: InventoryItem = {
-        id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9),
+      const newItem = {
         name: form.name!,
-        category: form.category!,
-        quantity: form.quantity!,
-        expiryDate: form.expiryDate!,
-        price: form.price!,
-        status: form.status!,
+        manufacturer: form.manufacturer!,
+        description: form.description!,
       };
-      setInventory(prev => [...prev, newItem]);
-      toast.success("Inventory added successfully!");
+
+      await PostApi('/medicines', newItem)
+        .then(async (data) => {
+          if (!data?.error) {
+            await PostApi('/medicine-stock', {
+              medicine_id: data.id,
+              quantity: form.quantity,
+              price: form.price,
+              expiry_date: form.expiryDate,
+              batch_no: form.batch_no
+            }).then((res) => {
+              if (!res?.error) {
+                toast.success("Inventory added successfully!");
+              }
+            }).catch((err) => {
+              console.error(err);
+              toast.error("Failed to add inventory stock");
+            });
+          }
+        }).catch((err) => {
+          console.error(err);
+          toast.error("Failed to add inventory");
+        });
     }
 
-    setForm({ name: "", category: "", quantity: 0, expiryDate: "", price: 0, status: "Pending" });
+    setForm({
+      manufacturer: "",
+      batch_no: "",
+      description: "",
+      name: "",
+      quantity: 0,
+      expiryDate: "",
+      price: 0
+    });
     setSelectedItemId(null);
     setIsDialogOpen(false);
   };
 
-  const handleEdit = (item: InventoryItem) => {
+  const handleEdit = (item) => {
     setForm({ ...item });
     setSelectedItemId(item.id);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (record) => {
     if (confirm("Are you sure you want to delete this item?")) {
-      setInventory(prev => prev.filter(item => item.id !== id));
-      toast.success("Item deleted successfully!");
+      DeleteApi("/medicine-stock", { id: record.id })
+        .then((data) => {
+          if (!data?.error) {
+            DeleteApi("/medicines", { id: record.medicine.id })
+              .then((data) => {
+                if (!data?.error) {
+                  toast.success("Item deleted successfully!");
+                  loadData();
+                }
+                else {
+                  toast.error(data.error);
+                }
+              }).catch((err) => {
+                console.error(err);
+                toast.error("Failed to delete item");
+              })
+          }
+          else {
+            toast.error(data.error);
+          }
+        }).catch((err) => {
+          console.error(err);
+          toast.error("Failed to delete item");
+        })
     }
   };
 
-  const filteredInventory = inventory.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase()) ||
-    item.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredInventory = inventory
+  // .filter(item =>
+  //   item.name.toLowerCase().includes(search.toLowerCase()) ||
+  //   item.category.toLowerCase().includes(search.toLowerCase())
+  // );
 
   const selectedItem = inventory.find(item => item.id === selectedItemId);
 
@@ -156,6 +214,26 @@ export default function MedicalInventory() {
                 </div>
 
                 <div>
+                  <Label htmlFor="name">Description</Label>
+                  <Input
+                    id="description"
+                    placeholder="Medicine Name"
+                    value={form.description}
+                    onChange={e => setForm({ ...form, description: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="name">Manufacturer</Label>
+                  <Input
+                    id="manufacturer"
+                    placeholder="Medicine Name"
+                    value={form.manufacturer}
+                    onChange={e => setForm({ ...form, manufacturer: e.target.value })}
+                  />
+                </div>
+
+                {/* <div>
                   <Label htmlFor="category">Category</Label>
                   <Select
                     value={form.category || undefined}
@@ -176,7 +254,7 @@ export default function MedicalInventory() {
                     onChange={e => setForm({ ...form, category: e.target.value })}
                     className="mt-2"
                   />
-                </div>
+                </div> */}
 
                 <div>
                   <Label htmlFor="quantity">Quantity</Label>
@@ -201,6 +279,16 @@ export default function MedicalInventory() {
                 </div>
 
                 <div>
+                  <Label htmlFor="price">Batch no</Label>
+                  <Input
+                    id="batch_no"
+                    placeholder="Price"
+                    value={form.batch_no}
+                    onChange={e => setForm({ ...form, batch_no: e.target.value })}
+                  />
+                </div>
+
+                <div>
                   <Label htmlFor="expiryDate">Expiry Date</Label>
                   <Input
                     id="expiryDate"
@@ -210,7 +298,7 @@ export default function MedicalInventory() {
                   />
                 </div>
 
-                <div>
+                {/* <div>
                   <Label htmlFor="status">Status</Label>
                   <Select
                     value={form.status}
@@ -224,7 +312,7 @@ export default function MedicalInventory() {
                       <SelectItem value="Delivered">Delivered</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
               </div>
 
               <DialogFooter className="flex justify-end space-x-2">
@@ -241,11 +329,11 @@ export default function MedicalInventory() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
+              <TableHead>Manufacturer</TableHead>
               <TableHead>Quantity</TableHead>
               <TableHead>Price (₹)</TableHead>
               <TableHead>Expiry Date</TableHead>
-              <TableHead>Status</TableHead>
+              {/* <TableHead>Status</TableHead> */}
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -255,22 +343,22 @@ export default function MedicalInventory() {
                 <TableCell colSpan={7} className="text-center">No inventory found.</TableCell>
               </TableRow>
             ) : (
-              filteredInventory.map(item => (
+              filteredInventory.map((item: any) => (
                 <TableRow key={item.id}>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>{item.category}</TableCell>
+                  <TableCell>{item.medicine.name}</TableCell>
+                  <TableCell>{item.medicine.manufacturer}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>₹{item.price}</TableCell>
-                  <TableCell>{item.expiryDate}</TableCell>
-                  <TableCell>{item.status}</TableCell>
+                  <TableCell>{item.expiry_date}</TableCell>
+                  {/* <TableCell>{item.status}</TableCell> */}
                   <TableCell className="text-right space-x-2">
                     <Button size="sm" onClick={() => handleEdit(item)}>Edit</Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(item.id)}>Delete</Button>
-                    {item.status === "Delivered" && (
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(item)}>Delete</Button>
+                    {/* {item.status === "Delivered" && (
                       <Button size="sm" variant="secondary" onClick={() => { setSelectedItemId(item.id); setIsViewDialogOpen(true); }}>
                         View
                       </Button>
-                    )}
+                    )} */}
                   </TableCell>
                 </TableRow>
               ))

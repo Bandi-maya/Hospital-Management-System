@@ -11,12 +11,13 @@ class MedicineStock(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     batch_no = db.Column(db.String(50), nullable=False)
     expiry_date = db.Column(db.Date, nullable=False)
+    price = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     medicine = db.relationship('Medicine', backref='stocks', lazy=True)
 
-    REQUIRED_FIELDS = ['medicine_id', 'quantity', 'batch_no', 'expiry_date']
+    REQUIRED_FIELDS = ['medicine_id', 'quantity', 'batch_no', 'expiry_date', 'price']
 
     def __init__(self, **kwargs):
         missing = [f for f in self.REQUIRED_FIELDS if f not in kwargs or kwargs[f] is None]

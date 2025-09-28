@@ -181,7 +181,7 @@ export default function Prescriptions() {
                   placeholder="Patient Name"
                 />
               </div>
-              <div>
+              {/* <div>
                 <Label htmlFor="doctor">Doctor Name</Label>
                 <Input
                   id="doctor"
@@ -189,7 +189,7 @@ export default function Prescriptions() {
                   onChange={e => setForm({ ...form, doctor: e.target.value })}
                   placeholder="Doctor Name"
                 />
-              </div>
+              </div> */}
               <div>
                 <Label>Medicines</Label>
                 {form.medicines!.map((med, index) => (
@@ -203,7 +203,7 @@ export default function Prescriptions() {
                       </SelectTrigger>
                       <SelectContent>
                         {inventory.length === 0 ? (
-                          <SelectItem value="">No medicines</SelectItem>
+                          <SelectItem value="--">No medicines</SelectItem>
                         ) : (
                           inventory.map(m => (
                             <SelectItem key={m} value={m}>{m}</SelectItem>

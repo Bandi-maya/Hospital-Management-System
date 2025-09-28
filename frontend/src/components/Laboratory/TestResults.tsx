@@ -127,6 +127,15 @@ export default function TestResults() {
         <Space>
           <Button
             type="primary"
+            disabled={record.status === "COMPLETED"}
+            onClick={() =>
+              inProgressLabRequest(record)
+            }
+          >
+            Start Test
+          </Button>
+          <Button
+            type="primary"
             onClick={() =>
               navigate("/laboratory/reports", {
                 state: {
@@ -140,6 +149,7 @@ export default function TestResults() {
           </Button>
           <Button
             type="primary"
+            disabled={record.status === "COMPLETED"}
             onClick={() => {
               setSelectedResult(record);
               setIsAddReportModalOpen(true);
@@ -177,6 +187,22 @@ export default function TestResults() {
 
   };
 
+  const inProgressLabRequest = async (values: any) => {
+    Promise.all([
+      PutApi(`/lab-requests`, { id: values.id, test_id: values.test_id, patient_id: values.patient_id, reported_by: values.reported_by, status: "IN_PROGRESS" })
+    ]).then(([data]) => {
+      if (!data?.error) {
+        setIsAddReportModalOpen(false);
+        loadData()
+      }
+      else {
+        console.error("Error fetching user fields:", data.error);
+      }
+    }).catch((error) => {
+      console.error("Error deleting user field:", error);
+    })
+  };
+
   const handleSubmit1 = async (values: any) => {
     const newPatient: any = {
       request_id: selectedResult.id,
@@ -186,7 +212,7 @@ export default function TestResults() {
 
     Promise.all([
       PostApi(`/lab-reports`, newPatient),
-      PutApi(`/lab-requests`, { id: selectedResult.id, test_id: selectedResult.test_id, patient_id: selectedResult.patient_id, reported_by: selectedResult.reported_by, status: "IN_PROGRESS" })
+      PutApi(`/lab-requests`, { id: selectedResult.id, test_id: selectedResult.test_id, patient_id: selectedResult.patient_id, reported_by: selectedResult.reported_by, status: "COMPLETED" })
     ]).then(([data, data1]) => {
       if (!data?.error) {
         alert("Patient added successfully!");

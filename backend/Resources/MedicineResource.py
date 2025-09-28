@@ -53,7 +53,8 @@ class Medicines(Resource):
         return medicine_serializer.dump(medicine), 200
 
     def delete(self):
-        medicine_id = request.args.get("id")
+        json_data = request.get_json(force=True)
+        medicine_id = json_data.get("id")
         if not medicine_id:
             return {"error": "Medicine ID required"}, 400
 

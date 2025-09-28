@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Search, Plus, Download, FileText, Eye, Edit, Trash2, Building, Mail, Calendar, DollarSign, Filter } from "lucide-react";
+import { getApi, PutApi } from "@/ApiService";
+import { toast } from "sonner";
 
 type Invoice = {
     id: string;
@@ -34,7 +36,7 @@ const defaultInvoices: Invoice[] = [
 ];
 
 export default function AllInvoices() {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [invoices, setInvoices] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -48,13 +50,17 @@ export default function AllInvoices() {
         const loadInvoices = () => {
             setIsLoading(true);
             try {
-                const storedInvoices = localStorage.getItem("invoices");
-                if (storedInvoices) {
-                    setInvoices(JSON.parse(storedInvoices));
-                } else {
-                    setInvoices(defaultInvoices);
-                    localStorage.setItem("invoices", JSON.stringify(defaultInvoices));
-                }
+                getApi('/invoice-details')
+                    .then((response) => {
+                        if (!response.error) {
+                            setInvoices(response);
+                        } else {
+                            toast.error(response.error)
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error fetching invoices from API:", error);
+                    })
             } catch (error) {
                 console.error("Error loading invoices:", error);
                 setInvoices(defaultInvoices);
@@ -67,20 +73,21 @@ export default function AllInvoices() {
     }, []);
 
     // Enhanced filtering with status filter
-    const filteredInvoices = invoices.filter((inv) => {
-        const matchesSearch = 
-            inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            inv.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            inv.status.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        const matchesStatus = statusFilter === "All" || inv.status === statusFilter;
-        
-        return matchesSearch && matchesStatus;
-    });
+    const filteredInvoices = invoices
+    // .filter((inv) => {
+    //     const matchesSearch =
+    //         inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    //         inv.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    //         inv.status.toLowerCase().includes(searchTerm.toLowerCase());
+
+    //     const matchesStatus = statusFilter === "All" || inv.status === statusFilter;
+
+    //     return matchesSearch && matchesStatus;
+    // });
 
     // Calculate statistics
     const totalInvoices = invoices.length;
-    const totalRevenue = invoices.reduce((sum, inv) => sum + inv.amount, 0);
+    const totalRevenue = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
     const paidInvoices = invoices.filter(inv => inv.status === "Paid").length;
     const pendingInvoices = invoices.filter(inv => inv.status === "Pending").length;
     const overdueInvoices = invoices.filter(inv => inv.status === "Overdue").length;
@@ -126,29 +133,29 @@ export default function AllInvoices() {
             alert("Customer name is required!");
             return;
         }
-        
+
         if (!formInvoice.email?.trim() || !/\S+@\S+\.\S+/.test(formInvoice.email)) {
             alert("Please enter a valid email address!");
             return;
         }
-        
+
         if (!formInvoice.date) {
             alert("Date is required!");
             return;
         }
-        
+
         if (!formInvoice.amount || formInvoice.amount <= 0) {
             alert("Please enter a valid amount greater than 0!");
             return;
         }
-        
+
         if (!formInvoice.status) {
             alert("Status is required!");
             return;
         }
 
         let updatedInvoices: Invoice[];
-        
+
         try {
             if (isAddMode) {
                 const newInvoice: Invoice = {
@@ -161,7 +168,7 @@ export default function AllInvoices() {
                 };
                 updatedInvoices = [...invoices, newInvoice];
             } else if (isEditMode && formInvoice.id) {
-                updatedInvoices = invoices.map((inv) => 
+                updatedInvoices = invoices.map((inv) =>
                     inv.id === formInvoice.id ? {
                         ...formInvoice,
                         customerName: formInvoice.customerName?.trim() || "",
@@ -186,7 +193,7 @@ export default function AllInvoices() {
     // Enhanced PDF generation with better error handling
     const generateSimplePDF = async (invoice: Invoice) => {
         if (isLoading) return;
-        
+
         setIsLoading(true);
         try {
             const { jsPDF } = await import('jspdf');
@@ -450,6 +457,27 @@ export default function AllInvoices() {
         }
     };
 
+    function paymentStatusChange(record, status) {
+        PutApi('/invoice-details', {
+            id: record.id,
+            order_id: record.order_id,
+            total_amount: record.total_amount,
+            status: status,
+            created_by: record.created_by,
+        }).then((response) => {
+            if (!response.error) {
+                toast.success("Payment status updated to Paid");
+                window.location.reload();
+            } else {
+                toast.error(response.error)
+            }
+        }).catch((error) => {
+            toast.error("Error updating payment status");
+            console.error("Error updating payment status:", error);
+        }
+        );
+    }
+
     const getStatusVariant = (status: string) => {
         switch (status) {
             case "Paid": return "default";
@@ -613,13 +641,13 @@ export default function AllInvoices() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredInvoices.map((invoice) => (
+                                        {filteredInvoices.map((invoice: any) => (
                                             <TableRow key={invoice.id} className="hover:bg-gray-50">
-                                                <TableCell className="font-medium">{invoice.customerName}</TableCell>
-                                                <TableCell className="text-gray-600">{invoice.email}</TableCell>
-                                                <TableCell>{invoice.date}</TableCell>
+                                                <TableCell className="font-medium">{invoice.order.user.name}</TableCell>
+                                                <TableCell className="text-gray-600">{invoice.order.user.username}</TableCell>
+                                                <TableCell>{invoice.updated_at}</TableCell>
                                                 <TableCell className="text-right font-semibold">
-                                                    ${invoice.amount.toFixed(2)}
+                                                    ${invoice.total_amount.toFixed(2)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant={getStatusVariant(invoice.status)}>
@@ -628,6 +656,32 @@ export default function AllInvoices() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex justify-end space-x-2">
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => paymentStatusChange(invoice, "CANCELLED")}
+                                                                    disabled={isLoading}
+                                                                >
+                                                                    Cancel
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Cancel</TooltipContent>
+                                                        </Tooltip>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => paymentStatusChange(invoice, "PAID")}
+                                                                    disabled={isLoading}
+                                                                >
+                                                                    Paid
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Paid</TooltipContent>
+                                                        </Tooltip>
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button
@@ -794,8 +848,8 @@ export default function AllInvoices() {
 
                         <DialogFooter className="mt-6 space-x-2">
                             {isEditMode && (
-                                <Button 
-                                    onClick={handleSaveInvoice} 
+                                <Button
+                                    onClick={handleSaveInvoice}
                                     className="bg-blue-600 hover:bg-blue-700"
                                     disabled={isLoading}
                                 >
