@@ -87,12 +87,9 @@ export default function LabReports() {
 
   const handleSaveReport = () => {
     form.validateFields().then((values) => {
-      if (!values.reported_data.data) return;
-
       const updatedReport = {
         id: editingReport.id,
         report_data: values.report_data,
-        reported_by: editingReport.reported_by,
         // patientName: values.patientName,
         // patientId: editingReport?.patientId || `pid_${Date.now()}`,
         // token: values.token,

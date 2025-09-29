@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Popconfirm } from "antd";
+import { Table, Button, Popconfirm, Input } from "antd";
 import { useNavigate } from "react-router-dom";
 import { Patient } from "@/types/patient";
 import { DeleteApi, getApi, PostApi } from "@/ApiService";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogFooter, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+
 
 export default function PatientList() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [form, setForm] = useState({});
+
   const navigate = useNavigate();
 
   const loadPatients = async () => {
-    await getApi(`/users?user_type_id=3`)
+    await getApi(`/users?user_type_id=2`)
       .then((data) => {
         if (!data?.error) {
           setPatients(data);
@@ -78,7 +88,7 @@ export default function PatientList() {
     },
     {
       title: "Doctor",
-      dataIndex: ["extra_fields", "fields_data", "assigned_doctor"],
+      dataIndex: ["extra_fields", "fields_data", "assigned_to_doctor"],
       key: "assignedDoctor",
     },
     {
@@ -101,15 +111,39 @@ export default function PatientList() {
       title: "Action",
       key: "action",
       render: (_: any, record: Patient) => (
-        <Popconfirm
-          title="Are you sure you want to delete?"
-          onConfirm={() => deletePatient(record.id)}
-        >
-          <Button danger>Delete</Button>
-        </Popconfirm>
+        <>
+          <Popconfirm
+            title="Are you sure you want to delete?"
+            onConfirm={() => deletePatient(record.id)}
+          >
+            <Button danger>Delete</Button>
+          </Popconfirm>
+          <Button onClick={() => {
+            setForm({ user_id: record.id, notes: "" });
+            setIsDialogOpen(true);
+          }}>Add Record</Button>
+        </>
       ),
     },
   ];
+
+  function handleAddRecord() {
+    PostApi("/medical-records", form)
+      .then((data) => {
+        if (!data?.error) {
+          setIsDialogOpen(false);
+          setForm({});
+          toast.success("Record added successfully");
+        }
+        else {
+          console.error("Error adding record:", data.error);
+          toast.error("Error adding record");
+        }
+      }).catch((error) => {
+        console.error("Error adding record:", error);
+        toast.error("Error adding record");
+      });
+  }
 
   return (
     <div className="p-6 bg-white rounded-lg shadow">
@@ -121,6 +155,50 @@ export default function PatientList() {
       </div>
 
       <Table dataSource={patients} columns={columns} rowKey="id" />
+
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          setForm({});
+        }
+      }}>
+        <DialogTrigger asChild>
+          <Button>{"New Record"}</Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {"New Record"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Notes</Label>
+              <Input
+                value={form['notes'] || ""}
+                onChange={(e) =>
+                  setForm({ ...form, notes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setForm({});
+                setIsDialogOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAddRecord}>
+              Add Record
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

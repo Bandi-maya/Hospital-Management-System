@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Card,
     CardContent,
@@ -20,7 +20,8 @@ import { Patient, BloodType } from "@/types/patient";
 import { v4 as uuidv4 } from "uuid";
 import { Form, Select as AntdSelect } from "antd";
 import TextArea from "antd/es/input/TextArea";
-import { PostApi } from "@/ApiService";
+import { getApi, PostApi } from "@/ApiService";
+import { toast } from "sonner";
 
 interface AddPatientProps {
     onAddPatient?: (patient: Patient) => void;
@@ -160,6 +161,44 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
     const navigate = useNavigate();
 
     const [form] = Form.useForm();
+    const [doctorList, setDoctorList] = useState<any[]>([])
+    const [departmentList, setDepartmentList] = useState<any[]>([])
+
+    function getDoctors() {
+        getApi(`/users?user_type_id=1`)
+            .then((data) => {
+                if (!data?.error) {
+                    setDoctorList(data);
+                }
+                else {
+                    toast.error("Error fetching doctors: " + data.error);
+                    console.error("Error fetching doctors:", data.error);
+                }
+            }).catch((error) => {
+                toast.error("Error fetching doctors");
+                console.error("Error deleting doctors:", error);
+            });
+    }
+    function getDepartments() {
+        getApi(`/departments`)
+            .then((data) => {
+                if (!data?.error) {
+                    setDepartmentList(data);
+                }
+                else {
+                    toast.error("Error fetching departments: " + data.error);
+                    console.error("Error fetching departments:", data.error);
+                }
+            }).catch((error) => {
+                toast.error("Error fetching departments");
+                console.error("Error deleting departments:", error);
+            });
+    }
+
+    useEffect(() => {
+        getDoctors()
+        getDepartments()
+    }, [])
 
     const handleSubmit = async (values: any) => {
         const date = new Date(values.dateOfBirth);
@@ -174,10 +213,11 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                 first_name: values.firstName,
                 last_name: values.lastName,
                 disease: (values.diseases ?? []).join(", "),
-                previous_diseases: values.previousDiseases || "",
+                notes: values.previousDiseases || "",
                 assigned_to_doctor: values.assignedDoctor || "",
             },
-            user_type_id: 3,
+            department_id: values.department_id,
+            user_type_id: 2,
             username: values.email,
             name: `${values.firstName} ${values.lastName}`,
             date_of_birth: formattedDate,
@@ -384,7 +424,18 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                             >
                                 <AntdSelect
                                     placeholder="Select doctor"
-                                    options={doctorList.map((d) => ({ value: d, label: d }))}
+                                    options={doctorList.map((d) => ({ value: d.id, label: d.name, key: d.id }))}
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                label="Department"
+                                name="department_id"
+                                rules={[{ required: true, message: "Please select doctor" }]}
+                            >
+                                <AntdSelect
+                                    placeholder="Select department"
+                                    options={departmentList.map((d) => ({ value: d.id, label: d.name, key: d.id }))}
                                 />
                             </Form.Item>
 
@@ -427,7 +478,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
 
                             <Form.Item
                                 label="Previous Diseases"
-                                name="previous_diseases"
+                                name="previousDiseases"
                             >
                                 <TextArea
                                     placeholder="Select disease(s)"

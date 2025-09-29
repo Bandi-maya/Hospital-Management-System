@@ -121,6 +121,16 @@ const createMenuItems = (): MenuItem[] => {
       ],
     },
     {
+      key: '/departments',
+      label: 'Department Management',
+      icon: <BankOutlined />,
+      requiredPermission: 'wards:read',
+      children: [
+        { key: '/departments', label: 'Departments', icon: <BankOutlined /> },
+        { key: '/departments/users', label: 'Users', icon: <BankOutlined /> },
+      ],
+    },
+    {
       key: '/emergency',
       label: 'Emergency',
       icon: <AlertOutlined />,
@@ -217,15 +227,15 @@ export const AppSidebar: React.FC = () => {
         alignItems: 'center',
         gap: '12px'
       }}>
-        <Avatar 
-          size={32} 
-          icon={<HeartOutlined />} 
-          style={{ 
+        <Avatar
+          size={32}
+          icon={<HeartOutlined />}
+          style={{
             backgroundColor: '#1890ff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
-          }} 
+          }}
         />
         {!collapsed && (
           <div>

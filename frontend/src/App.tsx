@@ -36,6 +36,8 @@ import AuditLogs from "./components/Admin/AuditLogs";
 import { PatientProvider } from "../src/components/Patients/PatientContext";
 import UserTypesList from "./components/Admin/UserTypes";
 import UserFieldsList from "./components/Admin/UserFields";
+import Department from "./components/Departments/Departments";
+import DepartmentUsers from "./components/Departments/DepartmentUsers";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -290,6 +292,28 @@ const App = () => (
                     <AuthGuard requiredPermission="appointments:read">
                       <Layout>
                         <WardStatus />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/departments"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <Department />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/departments/users"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <DepartmentUsers />
                       </Layout>
                     </AuthGuard>
                   }

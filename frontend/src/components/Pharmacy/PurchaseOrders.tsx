@@ -75,7 +75,7 @@ export default function PurchaseOrders() {
   };
 
   const fetchPatients = () => {
-    getApi("/users?user_type_id=3")
+    getApi("/users?user_type_id=2")
       .then((res) => {
         if (!res.error) {
           setPatients(res);
@@ -392,13 +392,13 @@ export default function PurchaseOrders() {
                       <Button size="sm" onClick={() => handleEdit(order)}>
                         Edit
                       </Button>
-                      <Button
+                      {/* <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => handleDeleteOrder(order.id)}
                       >
                         Delete
-                      </Button>
+                      </Button> */}
                     </TableCell>
                   </TableRow>
                 ))

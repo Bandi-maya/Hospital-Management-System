@@ -13,6 +13,9 @@ import {
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { Patient } from "@/types/patient";
+import { getApi, PutApi } from "@/ApiService";
+import { get } from "node:https";
+import { toast } from "sonner";
 
 const { Option } = Select;
 
@@ -29,18 +32,32 @@ const diseaseSuggestions = [
 ];
 
 export default function MedicalRecords() {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState([]);
+  const [filteredPatients, setFilteredPatients] = useState([]);
   const [search, setSearch] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [form] = Form.useForm();
+  const [notes, setNotes] = useState("")
+
+  function loadPatients() {
+    getApi("/medical-records")
+      .then((data) => {
+        if (!data?.error) {
+          setPatients(data);
+        } else {
+          console.error("Error fetching patients:", data.error);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching patients:", error);
+      }
+      );
+  }
 
   // Load patients from localStorage
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("patients") || "[]");
-    setPatients(stored);
-    setFilteredPatients(stored);
+    loadPatients();
   }, []);
 
   // Search filter
@@ -50,51 +67,42 @@ export default function MedicalRecords() {
     } else {
       const lower = search.toLowerCase();
       setFilteredPatients(
-        patients.filter(
-          (p) =>
-            p.firstName.toLowerCase().includes(lower) ||
-            p.lastName.toLowerCase().includes(lower) ||
-            p.assignedDoctor?.toLowerCase().includes(lower) ||
-            p.status?.toLowerCase().includes(lower)
-        )
+        patients
+        // .filter(
+        //   (p) =>
+        //     p.firstName.toLowerCase().includes(lower) ||
+        //     p.lastName.toLowerCase().includes(lower) ||
+        //     p.assignedDoctor?.toLowerCase().includes(lower) ||
+        //     p.status?.toLowerCase().includes(lower)
+        // )
       );
     }
   }, [search, patients]);
 
   // Add medical record
-  const handleAddRecord = (values: any) => {
+  const handleAddRecord = () => {
     if (!selectedPatient) return;
 
-    const newMedicalHistory = values.diseases.map((disease: string) => ({
-      id: crypto.randomUUID
-        ? crypto.randomUUID()
-        : Math.random().toString(36).substr(2, 9),
-      patientId: selectedPatient.patientId,
-      condition: disease,
-      diagnosisDate: new Date(),
-      treatment: "",
-      doctorId: selectedPatient.assignedDoctor || "",
-      notes: values.notes,
-      date: new Date().toLocaleDateString(),
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
-
-    const updatedPatients = patients.map((p) =>
-      p.id === selectedPatient.id
-        ? {
-            ...p,
-            medicalHistory: [...(p.medicalHistory || []), ...newMedicalHistory],
-          }
-        : p
-    );
-
-    setPatients(updatedPatients);
-    localStorage.setItem("patients", JSON.stringify(updatedPatients));
-    setFilteredPatients(updatedPatients);
-    setIsModalVisible(false);
-    form.resetFields();
+    PutApi('/medical-records', {
+      user_id: selectedPatient.user_id,
+      id: selectedPatient.id,
+      notes: notes,
+    }).then((data) => {
+      if (!data?.error) {
+        loadPatients();
+        setSelectedPatient({})
+        setNotes("")
+        setIsModalVisible(false);
+        form.resetFields();
+      } else {
+        toast.error("Error updating record: " + data.error);
+        console.error("Error updating record:", data.error);
+      }
+    }).catch((error) => {
+      toast.error("Error updating record");
+      console.error("Error updating record:", error);
+    }
+    )
   };
 
   // Delete record
@@ -102,9 +110,9 @@ export default function MedicalRecords() {
     const updatedPatients = patients.map((p) =>
       p.id === patientId
         ? {
-            ...p,
-            medicalHistory: p.medicalHistory.filter((_, i) => i !== index),
-          }
+          ...p,
+          medicalHistory: p.medicalHistory.filter((_, i) => i !== index),
+        }
         : p
     );
     setPatients(updatedPatients);
@@ -113,12 +121,12 @@ export default function MedicalRecords() {
   };
 
   const columns = [
-    { title: "Patient ID", dataIndex: "patientId", key: "patientId" },
+    { title: "Patient ID", dataIndex: "id", key: "patientId" },
     {
       title: "Name",
-      render: (r: Patient) => `${r.firstName} ${r.lastName}`,
+      dataIndex: ["user", "name"]
     },
-    { title: "Doctor", dataIndex: "assignedDoctor", key: "assignedDoctor" },
+    { title: "Doctor", dataIndex: ["user", "extra_fields", "fields_data", "assigned_to_doctor"], key: "assignedDoctor" },
     { title: "Ward", dataIndex: "wardNumber", key: "wardNumber" },
     { title: "Bed", dataIndex: "bedNumber", key: "bedNumber" },
     {
@@ -130,8 +138,8 @@ export default function MedicalRecords() {
           status === "Admitted"
             ? "green"
             : status === "Discharged"
-            ? "red"
-            : "blue";
+              ? "red"
+              : "blue";
         return <Tag color={color}>{status}</Tag>;
       },
     },
@@ -141,17 +149,20 @@ export default function MedicalRecords() {
       render: (_: any, record: Patient) => (
         <Button
           type="link"
-          icon={<PlusOutlined />}
+          // icon={<PlusOutlined />}
           onClick={() => {
+            setNotes(record?.["notes"])
             setSelectedPatient(record);
             setIsModalVisible(true);
           }}
         >
-          Add Record
+          update Record
         </Button>
       ),
     },
   ];
+
+  console.log(notes)
 
   return (
     <div className="space-y-6 p-6 bg-white rounded-lg shadow">
@@ -210,19 +221,12 @@ export default function MedicalRecords() {
 
         <Tabs.TabPane tab="Medical Records" key="2">
           <Table
-            dataSource={filteredPatients.flatMap((p) =>
-              (p.medicalHistory || []).map((h, i) => ({
-                ...h,
-                patientName: `${p.firstName} ${p.lastName}`,
-                patientId: p.patientId,
-                key: `${p.id}-${i}`,
-              }))
-            )}
+            dataSource={filteredPatients}
             columns={[
-              { title: "Patient ID", dataIndex: "patientId", key: "patientId" },
+              { title: "Patient ID", dataIndex: "id", key: "patientId" },
               {
                 title: "Patient Name",
-                dataIndex: "patientName",
+                dataIndex: "name",
                 key: "patientName",
               },
               { title: "Condition", dataIndex: "condition", key: "condition" },
@@ -235,56 +239,16 @@ export default function MedicalRecords() {
 
       {/* Add Record Modal */}
       <Modal
-        title={`Add Medical Record for ${
-          selectedPatient ? selectedPatient.firstName : ""
-        }`}
+        title={`Add Medical Record for ${selectedPatient ? selectedPatient.firstName : ""
+          }`}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
-        footer={null}
+        destroyOnHidden
+        destroyOnClose
+        onOk={handleAddRecord}
       >
-        <Form form={form} layout="vertical" onFinish={handleAddRecord}>
-          {/* Diseases field with filtering */}
-          <Form.Item
-            label="Diseases"
-            name="diseases"
-            rules={[
-              { required: true, message: "Please select at least one disease" },
-            ]}
-          >
-            <Select
-              mode="multiple"
-              placeholder="Select disease(s)"
-              options={diseaseSuggestions
-                .filter(
-                  (d) =>
-                    !selectedPatient?.medicalHistory?.some(
-                      (mh) => mh.condition === d
-                    )
-                )
-                .map((d) => ({
-                  value: d,
-                  label: d,
-                }))}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Notes"
-            name="notes"
-            rules={[{ required: true, message: "Enter notes" }]}
-          >
-            <Input.TextArea rows={3} />
-          </Form.Item>
-
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                Save
-              </Button>
-              <Button onClick={() => setIsModalVisible(false)}>Cancel</Button>
-            </Space>
-          </Form.Item>
-        </Form>
+        Notes
+        <Input.TextArea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
       </Modal>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Popconfirm, Select } from "antd";
+import { Table, Popconfirm, Select, Checkbox } from "antd";
 import { useNavigate } from "react-router-dom";
 import { Patient } from "@/types/patient";
 import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
@@ -8,7 +8,6 @@ import { Label } from "../ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "../ui/checkbox";
 
 const { Option } = Select;
 
@@ -162,12 +161,12 @@ export default function UserFieldsList() {
             render: (_: any, record: Patient) => (
                 <>
                     <Button size="sm" className="mr-2" onClick={() => handleOpenModal(record)}>Edit</Button>
-                    <Popconfirm
+                    {/* <Popconfirm
                         title="Are you sure you want to delete?"
                         onConfirm={() => deleteUserField(record.id)}
                     >
                         <Button size="sm" variant="destructive">Delete</Button>
-                    </Popconfirm>
+                    </Popconfirm> */}
                 </>
             ),
         },
@@ -213,11 +212,11 @@ export default function UserFieldsList() {
                                     value={form.user_type}
                                     optionFilterProp="children"
                                     onChange={(e) => setForm({ ...form, user_type: e })}
-                                    // onChange={(value) => {
-                                        //     const doctor = userTypes.find(d => d.name === value);
-                                        
-                                        // }}
-                                        >
+                                // onChange={(value) => {
+                                //     const doctor = userTypes.find(d => d.name === value);
+
+                                // }}
+                                >
                                     {userTypes.map(d => <Option key={d.id} value={d.id}>{d.type}</Option>)}
                                 </Select>
                             </div>
@@ -239,8 +238,10 @@ export default function UserFieldsList() {
                                 <Label htmlFor="name">Mandatory *</Label>
                                 <Checkbox
                                     id="name"
-                                    value={form.description}
-                                    onChange={(e) => setForm({ ...form, is_mandatory: e })}
+                                    checked={form.is_mandatory}
+                                    onChange={(e) => {
+                                        setForm({ ...form, is_mandatory: e.target.checked })
+                                    }}
                                 />
                             </div>
 

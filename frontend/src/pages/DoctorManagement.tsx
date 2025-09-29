@@ -6,15 +6,28 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { InputNumber, Select } from "antd";
 import { countries } from "@/components/Patients/AddPatient";
+import { getApi, PostApi, PutApi } from "@/ApiService";
+import { DepartmentInterface } from "@/components/Departments/Departments";
 
 const { Option } = Select;
 
 interface Doctor {
-  id: number;
-  name: string;
-  specialization: string;
-  email: string;
-  phone_no: string;
+  id?: number,
+  name?: string,
+  address: {
+    street: string,
+    city: string,
+    state: string,
+    country: string,
+    zip_code: string,
+  },
+  user_type_id?: number,
+  department_id: string,
+  date_of_birth: string,
+  gender: string,
+  email: string,
+  phone_no: string,
+  extra_fields: any;
 }
 
 // Key to store doctors in localStorage
@@ -35,37 +48,70 @@ const SPECIALIZATIONS = [
 export default function DoctorManagement() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    street: "",
-    city: "",
-    state: "",
-    country: "",
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      country: "",
+      zip_code: "",
+    },
+    department_id: "",
     date_of_birth: "",
     gender: "",
-    zip_code: "",
-    experience: 0,
-    specialization: "",
+    extra_fields: {
+      first_name: "",
+      last_name: "",
+      experience: 0,
+      specialization: "",
+    },
     email: "",
     phone_no: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+
+  function loadDepartments() {
+    getApi('/departments')
+      .then((data) => {
+        if (!data.error) {
+          setDepartments(data);
+        }
+        else {
+          toast.error(data.error);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching doctors:", error);
+        toast.error("Failed to fetch doctors");
+      })
+  }
+
+  function loadData() {
+    setLoading(true)
+    getApi('/users?user_type_id=1')
+      .then((data) => {
+        if (!data.error) {
+          setDoctors(data);
+        }
+        else {
+          toast.error(data.error);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching doctors:", error);
+        toast.error("Failed to fetch doctors");
+      }).finally(() => setLoading(false));
+  }
 
   // Load doctors from localStorage on mount
   useEffect(() => {
-    const storedDoctors = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (storedDoctors) {
-      setDoctors(JSON.parse(storedDoctors));
-    }
+    loadData()
+    loadDepartments()
   }, []);
-
-  // Save doctors to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(doctors));
-  }, [doctors]);
 
   const simulateLoading = () => {
     setIsLoading(true);
@@ -74,41 +120,53 @@ export default function DoctorManagement() {
 
   const handleOpenModal = (doctor = null) => {
     if (doctor) {
+      const date = new Date(doctor.dateOfBirth);
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+      const dd = String(date.getDate()).padStart(2, '0');
+
+      const formattedDate = `${yyyy}-${mm}-${dd}`;
+
       setSelectedDoctor(doctor);
       setForm({
-        first_name: "",
-        last_name: "",
-        street: "",
-        city: "",
-        state: "",
-        country: "",
-        zip_code: "",
-        date_of_birth: "",
-        gender: "",
-        experience: 0,
-        specialization: "",
-        email: "",
-        phone_no: "",
-        // name: doctor.name,
-        // experience: doctor.experience || 0,
-        // specialization: doctor.specialization,
-        // email: doctor.email,
-        // phone_no: doctor.phone_no,
+        address: {
+          street: doctor.address.street,
+          city: doctor.address.city,
+          state: doctor.address.state,
+          country: doctor.address.country,
+          zip_code: doctor.address.zip_code,
+        },
+        department_id: doctor.department_id,
+        date_of_birth: formattedDate,
+        gender: doctor.gender,
+        extra_fields: {
+          first_name: doctor.extra_fields.fields_data.first_name,
+          last_name: doctor.extra_fields.fields_data.last_name,
+          experience: doctor.extra_fields?.experience || 0,
+          specialization: doctor.extra_fields?.specialization || "",
+        },
+        email: doctor.email,
+        phone_no: doctor.phone_no,
       });
     } else {
       setSelectedDoctor(null);
       setForm({
-        first_name: "",
-        last_name: "",
-        street: "",
-        city: "",
-        state: "",
-        country: "",
+        address: {
+          street: "",
+          city: "",
+          state: "",
+          country: "",
+          zip_code: "",
+        },
         date_of_birth: "",
+        department_id: "",
         gender: "",
-        zip_code: "",
-        experience: 0,
-        specialization: "",
+        extra_fields: {
+          first_name: "",
+          last_name: "",
+          experience: 0,
+          specialization: "",
+        },
         email: "",
         phone_no: "",
       });
@@ -119,50 +177,71 @@ export default function DoctorManagement() {
   const handleSubmit = () => {
     simulateLoading();
 
-    if (!form.first_name || !form.last_name || !form.gender || !form.date_of_birth || !form.city || !form.state || !form.state || !form.zip_code || !form.country || !form.specialization || !form.email || !form.phone_no) {
+    if (!form.extra_fields.first_name || !form.extra_fields.last_name || !form.gender || !form.date_of_birth || !form.address.city || !form.address.state || !form.address.zip_code || !form.address.country || !form.extra_fields.specialization || !form.extra_fields.experience || !form.email || !form.phone_no) {
       toast.error("Please fill in all fields");
       setIsLoading(false);
       return;
     }
 
-    setTimeout(() => {
-      if (selectedDoctor) {
-        // Update existing doctor
-        setDoctors((prev) =>
-          prev.map((d) =>
-            d.id === selectedDoctor.id ? { ...d, ...form } : d
-          )
-        );
-        toast.success("Doctor updated successfully!");
-      } else {
-        // Add new doctor
-        const newDoctor = {
-          id: doctors.length > 0 ? Math.max(...doctors.map(d => d.id)) + 1 : 1,
-          ...form,
-        };
-        // setDoctors((prev) => [...prev, newDoctor]);
-        toast.success("Doctor added successfully!");
-      }
+    if (selectedDoctor) {
+      PutApi(`/users`, { ...form, id: selectedDoctor.id, user_type_id: selectedDoctor.user_type_id })
+        .then((data) => {
+          if (!data?.error) {
+            toast.success("Doctor updated successfully!");
+            loadData()
+          }
+          else {
+            toast.error(data.error);
+            console.error("Error updating doctor:", data.error);
+          }
+        }).catch((error) => {
+          toast.error("Error updating doctor");
+          console.error("Error updating doctor:", error);
+        }).finally(() => {
+          setIsLoading(false);
+        })
+    } else {
+      PostApi(`/users`, { ...form, user_type_id: 1, name: form.extra_fields.first_name + " " + form.extra_fields.last_name, age: Math.floor((new Date().getTime() - new Date(form.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)), username: form.email })
+        .then((data) => {
+          if (!data?.error) {
+            toast.success("Doctor created successfully!");
+            loadData()
+          }
+          else {
+            toast.error(data.error);
+            console.error("Error creating doctor:", data.error);
+          }
+        }).catch((error) => {
+          toast.error("Error creating doctor");
+          console.error("Error creating doctor:", error);
+        }).finally(() => {
+          setIsLoading(false);
+        })
+    }
 
-      setIsModalOpen(false);
-      setSelectedDoctor(null);
-      setForm({
-        first_name: "",
-        last_name: "",
+    setIsModalOpen(false);
+    setSelectedDoctor(null);
+    setForm({
+      address: {
         street: "",
         city: "",
-        date_of_birth: "",
-        gender: "",
         state: "",
         country: "",
         zip_code: "",
+      },
+      department_id: "",
+      date_of_birth: "",
+      gender: "",
+      extra_fields: {
+        first_name: "",
+        last_name: "",
         experience: 0,
         specialization: "",
-        email: "",
-        phone_no: "",
-      });
-      setIsLoading(false);
-    }, 500);
+      },
+      email: "",
+      phone_no: "",
+    });
+    setIsLoading(false);
   };
 
   const handleDelete = (id: number) => {
@@ -178,10 +257,12 @@ export default function DoctorManagement() {
 
   // Filter doctors by search
   const filteredDoctors = doctors.filter((d) =>
-    d.name.toLowerCase().includes(search.toLowerCase()) ||
-    d.specialization.toLowerCase().includes(search.toLowerCase()) ||
-    d.email.toLowerCase().includes(search.toLowerCase())
+    d.name.toLowerCase().includes(search.toLowerCase())
+    // d.specialization.toLowerCase().includes(search.toLowerCase()) ||
+    // d.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  console.log(form);
 
   return (
     <div className="p-6 space-y-6">
@@ -213,7 +294,7 @@ export default function DoctorManagement() {
                 <div key={doctor.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="space-y-1">
                     <h3 className="font-semibold">{doctor.name}</h3>
-                    <p className="text-sm text-gray-600">{doctor.specialization}</p>
+                    <p className="text-sm text-gray-600">{doctor.extra_fields.specialization}</p>
                     <p className="text-sm text-gray-600">{doctor.email}</p>
                     <p className="text-sm text-gray-600">{doctor.phone_no}</p>
                   </div>
@@ -240,8 +321,8 @@ export default function DoctorManagement() {
                 <Label htmlFor="name">First Name *</Label>
                 <Input
                   id="first_name"
-                  value={form.first_name}
-                  onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                  value={form.extra_fields.first_name}
+                  onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, first_name: e.target.value } })}
                   placeholder="Doctor name"
                 />
               </div>
@@ -250,9 +331,20 @@ export default function DoctorManagement() {
                 <Label htmlFor="name">Last Name *</Label>
                 <Input
                   id="last_name"
-                  value={form.last_name}
-                  onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                  value={form.extra_fields.last_name}
+                  onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, last_name: e.target.value } })}
                   placeholder="Doctor name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="name">Department *</Label>
+                <Select
+                  id="department_id"
+                  options={departments.map((d) => ({ value: d.id, label: d.name, key: d.id }))}
+                  value={form.department_id}
+                  onChange={(value) => setForm({ ...form, department_id: value })}
+                  placeholder="Select department"
                 />
               </div>
 
@@ -306,37 +398,37 @@ export default function DoctorManagement() {
               <div className="space-y-2">
                 <Label htmlFor="specialization">Street *</Label>
                 <Input
-                  value={form.street || undefined}
-                  onChange={(e) => setForm({ ...form, street: e.target.value })}
+                  value={form.address.street || undefined}
+                  onChange={(e) => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="specialization">City *</Label>
                 <Input
-                  value={form.city || undefined}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  value={form.address.city || undefined}
+                  onChange={(e) => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="specialization">State *</Label>
                 <Input
-                  value={form.state || undefined}
-                  onChange={(e) => setForm({ ...form, state: e.target.value })}
+                  value={form.address.state || undefined}
+                  onChange={(e) => setForm({ ...form, address: { ...form.address, state: e.target.value } })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="specialization">ZIP Code *</Label>
                 <Input
-                  value={form.zip_code || undefined}
-                  onChange={(e) => setForm({ ...form, zip_code: e.target.value })}
+                  value={form.address.zip_code || undefined}
+                  onChange={(e) => setForm({ ...form, address: { ...form.address, zip_code: e.target.value } })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="specialization">Country *</Label>
                 <Select
                   placeholder="Select country"
-                  value={form.country || undefined}
-                  onChange={(value) => setForm({ ...form, country: value })}
+                  value={form.address.country || undefined}
+                  onChange={(value) => setForm({ ...form, address: { ...form.address, country: value } })}
                   showSearch
                   options={countries.map((c) => ({ value: c, label: c }))}
                 />
@@ -348,8 +440,8 @@ export default function DoctorManagement() {
                   showSearch
                   placeholder="Select specialization"
                   optionFilterProp="children"
-                  value={form.specialization || undefined}
-                  onChange={(value) => setForm({ ...form, specialization: value })}
+                  value={form.extra_fields.specialization || undefined}
+                  onChange={(value) => setForm({ ...form, extra_fields: { ...form.extra_fields, specialization: value } })}
                   filterOption={(input, option) =>
                     (option?.children as unknown as string)
                       .toLowerCase()
@@ -368,8 +460,8 @@ export default function DoctorManagement() {
                 <InputNumber
                   id="experience"
                   min={0}
-                  value={(form as any).experience || 0}
-                  onChange={(value) => setForm({ ...form, experience: value || 0 })}
+                  value={(form as any).extra_fields.experience || 0}
+                  onChange={(value) => setForm({ ...form, extra_fields: { ...form.extra_fields, experience: value || 0 } })}
                 />
               </div>
 

@@ -40,7 +40,7 @@ export default function TestResults() {
   const loginData = JSON.parse(localStorage.getItem("loginData") || "{}");
 
   async function loadPatients() {
-    await getApi("/users?user_type_id=3")
+    await getApi("/users?user_type_id=2")
       .then((data) => {
         if (!data?.error) {
           setPatients(data);
@@ -166,7 +166,6 @@ export default function TestResults() {
     const newPatient: any = {
       patient_id: values.patient_id,
       test_id: values.test_id,
-      requested_by: 8,
       status: "PENDING",
     };
 
@@ -189,7 +188,7 @@ export default function TestResults() {
 
   const inProgressLabRequest = async (values: any) => {
     Promise.all([
-      PutApi(`/lab-requests`, { id: values.id, test_id: values.test_id, patient_id: values.patient_id, reported_by: values.reported_by, status: "IN_PROGRESS" })
+      PutApi(`/lab-requests`, { id: values.id, test_id: values.test_id, patient_id: values.patient_id, status: "IN_PROGRESS" })
     ]).then(([data]) => {
       if (!data?.error) {
         setIsAddReportModalOpen(false);
@@ -207,7 +206,6 @@ export default function TestResults() {
     const newPatient: any = {
       request_id: selectedResult.id,
       report_data: { data: values.report_data },
-      reported_by: 8,
     };
 
     Promise.all([

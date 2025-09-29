@@ -71,12 +71,12 @@ export default function UserTypesList() {
             render: (_: any, record: Patient) => (
                 <>
                     <Button size="sm" className="mr-2" onClick={() => handleOpenModal(record)}>Edit</Button>
-                    <Popconfirm
+                    {/* <Popconfirm
                         title="Are you sure you want to delete?"
                         onConfirm={() => deleteUserType(record.id)}
                     >
                         <Button size="sm" variant="destructive">Delete</Button>
-                    </Popconfirm>
+                    </Popconfirm> */}
                 </>
             ),
         },

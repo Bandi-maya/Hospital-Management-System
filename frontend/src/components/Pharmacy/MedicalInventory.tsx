@@ -6,14 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { DeleteApi, getApi, PostApi } from "@/ApiService";
+import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 
 interface InventoryItem {
   id: string;
   name: string;
   category: string;
   quantity: number;
-  expiryDate: string;
+  expiry_date: string;
   price: number;
   status: "Pending" | "Delivered";
 }
@@ -32,7 +32,7 @@ export default function MedicalInventory() {
     manufacturer: "",
     description: "",
     batch_no: "",
-    expiryDate: "",
+    expiry_date: "",
     price: 0,
     // status: "Pending",
   });
@@ -63,7 +63,7 @@ export default function MedicalInventory() {
   }, [inventory]);
 
   async function handleAddOrUpdate() {
-    if (!form.name || !form.manufacturer || !form.quantity || !form.expiryDate || !form.price) {
+    if (!form.name || !form.manufacturer || !form.quantity || !form.expiry_date || !form.price) {
       toast.error("All fields are required");
       return;
     }
@@ -79,7 +79,7 @@ export default function MedicalInventory() {
     }
 
     const today = new Date();
-    const expiry = new Date(form.expiryDate);
+    const expiry = new Date(form.expiry_date);
     if (expiry < today) {
       toast.error("Expiry date cannot be in the past");
       return;
@@ -87,11 +87,42 @@ export default function MedicalInventory() {
 
     // Add new category if not exists
     if (selectedItemId) {
+      const newItem = {
+        name: form.name!,
+        manufacturer: form.manufacturer!,
+        description: form.description!,
+      };
       // Update item
-      setInventory(prev =>
-        prev.map(item => (item.id === selectedItemId ? { ...item, ...form } as InventoryItem : item))
-      );
-      toast.success("Inventory updated successfully!");
+      await PutApi('/medicines', { ...newItem, id: form?.['medicine_id'] })
+        .then(async (data) => {
+          if (!data?.error) {
+            await PutApi('/medicine-stock', {
+              id: form?.["id"],
+              medicine_id: data.id,
+              quantity: form.quantity,
+              price: form.price,
+              expiry_date: form.expiry_date,
+              batch_no: form.batch_no
+            }).then((res) => {
+              if (!res?.error) {
+                loadData()
+                toast.success("Inventory added successfully!");
+              }
+              else {
+                toast.error("Error when creating the Inventory:" + res.error)
+              }
+            }).catch((err) => {
+              console.error(err);
+              toast.error("Failed to add inventory stock");
+            });
+          }
+          else {
+            toast.error("Error when creating the Inventory:" + data.error)
+          }
+        }).catch((err) => {
+          console.error(err);
+          toast.error("Failed to add inventory");
+        });
     } else {
       const newItem = {
         name: form.name!,
@@ -106,16 +137,23 @@ export default function MedicalInventory() {
               medicine_id: data.id,
               quantity: form.quantity,
               price: form.price,
-              expiry_date: form.expiryDate,
+              expiry_date: form.expiry_date,
               batch_no: form.batch_no
             }).then((res) => {
               if (!res?.error) {
+                loadData()
                 toast.success("Inventory added successfully!");
+              }
+              else {
+                toast.error("Error when creating the Inventory:" + res.error)
               }
             }).catch((err) => {
               console.error(err);
               toast.error("Failed to add inventory stock");
             });
+          }
+          else {
+            toast.error("Error when creating the Inventory:" + data.error)
           }
         }).catch((err) => {
           console.error(err);
@@ -129,7 +167,7 @@ export default function MedicalInventory() {
       description: "",
       name: "",
       quantity: 0,
-      expiryDate: "",
+      expiry_date: "",
       price: 0
     });
     setSelectedItemId(null);
@@ -137,7 +175,7 @@ export default function MedicalInventory() {
   };
 
   const handleEdit = (item) => {
-    setForm({ ...item });
+    setForm({ ...item, manufacturer: item.medicine.manufacturer, description: item.medicine.description, name: item.medicine.name });
     setSelectedItemId(item.id);
     setIsDialogOpen(true);
   };
@@ -289,12 +327,12 @@ export default function MedicalInventory() {
                 </div>
 
                 <div>
-                  <Label htmlFor="expiryDate">Expiry Date</Label>
+                  <Label htmlFor="expiry_date">Expiry Date</Label>
                   <Input
-                    id="expiryDate"
+                    id="expiry_date"
                     type="date"
-                    value={form.expiryDate}
-                    onChange={e => setForm({ ...form, expiryDate: e.target.value })}
+                    value={form.expiry_date}
+                    onChange={e => setForm({ ...form, expiry_date: e.target.value })}
                   />
                 </div>
 
@@ -379,7 +417,7 @@ export default function MedicalInventory() {
               <p><strong>Category:</strong> {selectedItem.category}</p>
               <p><strong>Quantity:</strong> {selectedItem.quantity}</p>
               <p><strong>Price:</strong> ₹{selectedItem.price}</p>
-              <p><strong>Expiry Date:</strong> {selectedItem.expiryDate}</p>
+              <p><strong>Expiry Date:</strong> {selectedItem.expiry_date}</p>
               <p><strong>Status:</strong> {selectedItem.status}</p>
             </div>
           ) : (
