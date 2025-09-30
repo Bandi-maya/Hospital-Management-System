@@ -16,7 +16,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'  # or your project's node version
+          node-version: '18'  # or your project's node version
 
       - name: Install and build frontend
         working-directory: ./frontend
