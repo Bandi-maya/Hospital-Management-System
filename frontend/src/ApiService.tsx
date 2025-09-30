@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://91.108.104.49:5000';
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://91.108.104.49:5000';
 
 export function getApi(urlEndPoint, options: any = {}) {
     return fetch(baseUrl + urlEndPoint, {
