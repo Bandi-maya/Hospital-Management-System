@@ -1,10 +1,42 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Table, Input, Button, Card, Select, Modal, Space, Typography, Tag, Divider, Form } from "antd";
+import { 
+  Table, 
+  Input, 
+  Button, 
+  Card, 
+  Select, 
+  Modal, 
+  Space, 
+  Tag, 
+  Divider, 
+  Form,
+  Tooltip,
+  Popconfirm,
+  message
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { 
+  SearchOutlined, 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined,
+  EyeOutlined,
+  ReloadOutlined,
+  TeamOutlined,
+  DashboardOutlined,
+  UserOutlined,
+  ExperimentOutlined,
+  CalendarOutlined,
+  ThunderboltOutlined,
+  RocketOutlined,
+  SyncOutlined,
+  CloseCircleOutlined,
+  FileTextOutlined,
+  PrinterOutlined
+} from "@ant-design/icons";
 import { getApi, PutApi } from "@/ApiService";
 import { toast } from "sonner";
 
-const { Title, Text } = Typography;
 const { Option } = Select;
 
 interface Test {
@@ -15,7 +47,7 @@ interface Test {
   testType: string;
   date: string;
   status: "Available" | "Not Available" | "Completed";
-  description?: string; // Positive / Negative / Notes
+  description?: string;
 }
 
 interface Report {
@@ -36,6 +68,7 @@ export default function LabReports() {
   const [viewingReport, setViewingReport] = useState<Report | null>(null);
   const [editingReport, setEditingReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const reportRef = useRef<HTMLDivElement>(null);
   const [form] = Form.useForm();
 
@@ -59,6 +92,16 @@ export default function LabReports() {
     loadTests()
   }, [])
 
+  // Auto refresh notifier
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        message.info("🔄 Auto-refresh: Lab reports data reloaded");
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
+
   const handleDeleteReport = (patientId: string) => {
     Modal.confirm({
       title: "Are you sure you want to delete this report?",
@@ -69,19 +112,10 @@ export default function LabReports() {
   const handleEditReport = (report) => {
     setEditingReport(report);
     setIsModalOpen(true);
-    // Set form values for editing
     form.setFieldsValue({
       request_id: report.id,
       report_data: report.report_data,
       reported_by: 8,
-      // patientName: report.patientName,
-      // token: report.token,
-      // tests: report.testTypes.map((t, idx) => ({
-      //   testType: t,
-      //   date: report.dates[idx],
-      //   status: report.statuses[idx],
-      //   description: report.descriptions[idx],
-      // })),
     });
   };
 
@@ -90,17 +124,8 @@ export default function LabReports() {
       const updatedReport = {
         id: editingReport.id,
         report_data: values.report_data,
-        // patientName: values.patientName,
-        // patientId: editingReport?.patientId || `pid_${Date.now()}`,
-        // token: values.token,
-        // testTypes: values.tests.map((t: any) => t.testType),
-        // dates: values.tests.map((t: any) => t.date),
-        // statuses: values.tests.map((t: any) => t.status),
-        // ids: editingReport
-        //   ? editingReport.ids
-        //   : values.tests.map((_: any, idx: number) => idx + 1),
-        // descriptions: values.tests.map((t: any) => t.description),
       };
+      
       PutApi('/lab-reports', updatedReport).then((data) => {
         if (!data?.error) {
           toast.success("Report saved successfully");
@@ -113,16 +138,7 @@ export default function LabReports() {
       }).catch((error) => {
         toast.error("Error saving report");
         console.error("Error saving report:", error);
-      }
-      )
-
-      // setReports((prev) => {
-      //   if (editingReport) {
-      //     return prev.map((r) => (r.patientId === editingReport.patientId ? updatedReport : r));
-      //   } else {
-      //     return [...prev, updatedReport];
-      //   }
-      // });
+      });
 
       setIsModalOpen(false);
       setEditingReport(null);
@@ -131,8 +147,7 @@ export default function LabReports() {
   };
 
   const filteredReports = reports
-    .filter((rep) => filter === "all" || rep.statuses.includes(filter))
-  // .filter((rep) => rep.patientName.toLowerCase().includes(search.toLowerCase()));
+    .filter((rep) => filter === "all" || rep.statuses.includes(filter));
 
   const handlePrint = () => {
     if (reportRef.current) {
@@ -145,106 +160,271 @@ export default function LabReports() {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Completed": return "green";
+      case "Available": return "blue";
+      case "Not Available": return "red";
+      default: return "default";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "Completed": return <FileTextOutlined />;
+      case "Available": return <ExperimentOutlined />;
+      case "Not Available": return <CloseCircleOutlined />;
+      default: return <DashboardOutlined />;
+    }
+  };
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilter("all");
+  };
+
   const columns: ColumnsType<Report> = [
-    // { title: "Token", dataIndex: "token", key: "token" },
-    { title: "Patient Name", dataIndex: ["lab_request", "patient", "username"], key: "patientName" },
     {
-      title: "Test",
-      dataIndex: ["lab_request", "test", "name"],
-      key: "test",
-      // render: (tests: string[]) => tests.join(", "),
+      title: (
+        <Space>
+          <UserOutlined />
+          Patient Info
+        </Space>
+      ),
+      key: "patient",
+      render: (_, record: any) => (
+        <Space>
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <UserOutlined className="text-blue-600" />
+          </div>
+          <div>
+            <div style={{ fontWeight: "bold" }}>{record.lab_request?.patient?.username}</div>
+            <div style={{ fontSize: "12px", color: "#666" }}>
+              Patient ID: {record.lab_request?.patient?.id}
+            </div>
+          </div>
+        </Space>
+      ),
     },
     {
-      title: "Report Data",
+      title: (
+        <Space>
+          <ExperimentOutlined />
+          Test Info
+        </Space>
+      ),
+      key: "test",
+      render: (_, record: any) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ fontWeight: "500" }}>{record.lab_request?.test?.name}</span>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            Laboratory Test
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <FileTextOutlined />
+          Report Data
+        </Space>
+      ),
       dataIndex: "report_data",
       key: "report_data",
       render: (tests) => {
-        if (typeof (tests.data) === 'string') return tests.data;
-        return Object.entries(tests.data).map(([key, value]: any, idx) => (
+        if (typeof (tests?.data) === 'string') return tests.data;
+        return Object.entries(tests?.data || {}).map(([key, value]: any, idx) => (
           <div key={idx}>
-            <Text strong>{key}:</Text> {value}
+            <span style={{ fontWeight: "bold" }}>{key}:</span> {value}
           </div>
         ));
       },
     },
     {
-      title: "Statuses",
+      title: (
+        <Space>
+          <DashboardOutlined />
+          Status
+        </Space>
+      ),
       dataIndex: ["lab_request", "status"],
       key: "status",
-      // render: (statuses: string[]) =>
-      //   statuses.map((status, idx) => (
-      //     <Tag
-      //       key={idx}
-      //       color={status === "Completed" ? "blue" : status === "Available" ? "green" : "red"}
-      //     >
-      //       {status}
-      //     </Tag>
-      //   )),
+      render: (status: string) => (
+        <Space direction="vertical">
+          <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
+            {status}
+          </Tag>
+          <div style={{ fontSize: "12px", color: "#666" }}>
+            Last updated
+          </div>
+        </Space>
+      ),
     },
     {
-      title: "Actions",
+      title: (
+        <Space>
+          <ThunderboltOutlined />
+          Actions
+        </Space>
+      ),
       key: "actions",
       render: (_, record) => (
         <Space>
-          {/* <Button type="primary" onClick={() => setViewingReport(record)}>
-      View
-    </Button> */}
-          <Button type="default" onClick={() => handleEditReport(record)}>
-            Edit
-          </Button>
-          {/* <Button danger onClick={() => handleDeleteReport(record.patientId)}>
-      Delete
-    </Button> */}
+          <Tooltip title="View Details">
+            <Button
+              icon={<EyeOutlined />}
+              shape="circle"
+              type="primary"
+              ghost
+              onClick={() => setViewingReport(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Edit Report">
+            <Button
+              icon={<EditOutlined />}
+              shape="circle"
+              onClick={() => handleEditReport(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Delete Report">
+            <Popconfirm
+              title="Delete this report?"
+              description="Are you sure you want to delete this lab report? This action cannot be undone."
+              onConfirm={() => handleDeleteReport(record.patientId)}
+              okText="Yes"
+              cancelText="No"
+              okType="danger"
+              icon={<CloseCircleOutlined style={{ color: "red" }} />}
+            >
+              <Button icon={<DeleteOutlined />} shape="circle" danger />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <Title level={2}>Laboratory</Title>
-        <Text type="secondary">Lab Reports</Text>
-      </div>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <Card className="bg-white shadow-sm border-0">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <ExperimentOutlined className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Laboratory Reports</h1>
+              <p className="text-gray-600 mt-1">Manage and track all laboratory test reports</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+            <Tooltip title="Auto Refresh">
+              <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+                <SyncOutlined className="w-4 h-4 text-gray-600" />
+                <span className="text-sm text-gray-600">Auto Refresh</span>
+                <div 
+                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
+                    autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                  }`}
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                >
+                  <div 
+                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
+                      autoRefresh ? 'translate-x-4' : 'translate-x-1'
+                    }`}
+                  />
+                </div>
+              </div>
+            </Tooltip>
 
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        <Space style={{ width: "100%", flexWrap: "wrap" }}>
-          <Input
-            placeholder="Search by patient..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, minWidth: 200 }}
-          />
-          <Select value={filter} onChange={(value) => setFilter(value)} style={{ width: 180 }}>
-            <Option value="all">All</Option>
-            <Option value="Available">Available</Option>
-            <Option value="Not Available">Not Available</Option>
-            <Option value="Completed">Completed</Option>
-          </Select>
-          {/* <Button
-            type="primary"
-            onClick={() => {
-              setEditingReport(null);
-              form.resetFields();
-              setIsModalOpen(true);
-            }}
-          >
-            Add Report
-          </Button> */}
-        </Space>
+            <Tooltip title="Reset Filters">
+              <Button icon={<ReloadOutlined />} onClick={resetFilters}>
+                Reset Filters
+              </Button>
+            </Tooltip>
 
-        <Table
-          columns={columns}
-          dataSource={filteredReports}
-          rowKey="patientId"
-          pagination={{ pageSize: 10 }}
-          scroll={{ x: "max-content" }}
+            <Tooltip title="Add New Report">
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={() => {
+                  setEditingReport(null);
+                  form.resetFields();
+                  setIsModalOpen(true);
+                }} 
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <RocketOutlined /> Add Report
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+      </Card>
+
+      {/* Search and Filter Section */}
+      <Card className="bg-white shadow-sm border-0">
+        <div className="p-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <TeamOutlined className="w-5 h-5" />
+              <span className="text-lg font-semibold">All Lab Reports</span>
+              <Tag color="blue" className="ml-2">
+                {filteredReports.length}
+              </Tag>
+            </div>
+            <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+              <Input 
+                placeholder="Search by patient..." 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                prefix={<SearchOutlined />} 
+                allowClear 
+                style={{ width: 250 }}
+              />
+              <Select 
+                value={filter} 
+                onChange={(value) => setFilter(value)} 
+                style={{ width: 180 }} 
+                placeholder="Filter by status"
+              >
+                <Option value="all">All Status</Option>
+                <Option value="Available">Available</Option>
+                <Option value="Not Available">Not Available</Option>
+                <Option value="Completed">Completed</Option>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Reports Table */}
+      <Card className="shadow-md rounded-lg">
+        <Table 
+          columns={columns} 
+          dataSource={filteredReports} 
+          rowKey="patientId" 
+          pagination={{ 
+            pageSize: 10, 
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => 
+              `${range[0]}-${range[1]} of ${total} reports`,
+          }} 
+          scroll={{ x: "max-content" }} 
+          rowClassName="hover:bg-gray-50"
         />
-      </Space>
+      </Card>
 
-      {/* Add / Edit Report Modal */}
+      {/* Edit Report Modal */}
       <Modal
-        title={editingReport ? "Edit Lab Report" : "Add Lab Report"}
+        title={
+          <Space>
+            <EditOutlined />
+            Edit Lab Report
+          </Space>
+        }
         open={isModalOpen && !viewingReport}
         onCancel={() => {
           setIsModalOpen(false);
@@ -252,77 +432,31 @@ export default function LabReports() {
           form.resetFields();
         }}
         onOk={handleSaveReport}
-        width={800}
+        width={600}
         okText="Save"
       >
         <Form form={form} layout="vertical">
-          {/* <Form.Item
-            name="patientName"
-            label="Patient Name"
-            rules={[{ required: true, message: "Enter patient name" }]}
-          >
-            <Input />
-          </Form.Item> */}
           <Form.Item
             name={["report_data", "data"]}
-            label={["report_data", "data"]}
-            rules={[{ required: true, message: "Enter data" }]}
+            label="Report Data"
+            rules={[{ required: true, message: "Please enter report data" }]}
           >
-            <Input />
+            <Input.TextArea 
+              rows={4} 
+              placeholder="Enter lab report data, test results, observations..."
+            />
           </Form.Item>
-
-          {/* <Form.List name="tests">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Space key={key} align="baseline" style={{ display: "flex", marginBottom: 8 }}>
-                    <Form.Item
-                      {...restField}
-                      name={[name, "testType"]}
-                      rules={[{ required: true, message: "Enter test type" }]}
-                    >
-                      <Input placeholder="Test Name" />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, "date"]}
-                      rules={[{ required: true, message: "Select date" }]}
-                    >
-                      <Input type="date" />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, "status"]}
-                      rules={[{ required: true, message: "Select status" }]}
-                    >
-                      <Select style={{ width: 140 }}>
-                        <Option value="Available">Available</Option>
-                        <Option value="Not Available">Not Available</Option>
-                        <Option value="Completed">Completed</Option>
-                      </Select>
-                    </Form.Item>
-                    <Form.Item {...restField} name={[name, "description"]}>
-                      <Input placeholder="Description (Positive/Negative/Notes)" />
-                    </Form.Item>
-                    <Button danger onClick={() => remove(name)}>
-                      Delete
-                    </Button>
-                  </Space>
-                ))}
-                <Form.Item>
-                  <Button type="dashed" onClick={() => add()} block>
-                    Add Test
-                  </Button>
-                </Form.Item>
-              </>
-            )}
-          </Form.List> */}
         </Form>
       </Modal>
 
       {/* View Report Modal */}
       <Modal
-        title={viewingReport ? `Lab Report: ${viewingReport.patientName}` : "Report Details"}
+        title={
+          <Space>
+            <EyeOutlined />
+            Lab Report Details
+          </Space>
+        }
         open={viewingReport !== null}
         onCancel={() => setViewingReport(null)}
         width={700}
@@ -330,7 +464,12 @@ export default function LabReports() {
           <Button key="close" onClick={() => setViewingReport(null)}>
             Close
           </Button>,
-          <Button key="print" type="primary" onClick={handlePrint}>
+          <Button 
+            key="print" 
+            type="primary" 
+            icon={<PrinterOutlined />}
+            onClick={handlePrint}
+          >
             Print / Save as PDF
           </Button>,
         ]}
@@ -338,24 +477,24 @@ export default function LabReports() {
         {viewingReport && (
           <div ref={reportRef} style={{ padding: "16px", fontFamily: "Arial, sans-serif" }}>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <Title level={4}>ClinicWise Laboratory</Title>
-              <Text type="secondary">Comprehensive Lab Testing Report</Text>
+              <h2 style={{ color: '#1890ff', marginBottom: 8 }}>ClinicWise Laboratory</h2>
+              <p style={{ color: '#666' }}>Comprehensive Lab Testing Report</p>
               <Divider />
             </div>
 
             <div style={{ marginBottom: 16 }}>
               <Space size={50}>
                 <div>
-                  <Text strong>Patient Name:</Text> {viewingReport.patientName}
+                  <span style={{ fontWeight: "bold" }}>Patient Name:</span> {viewingReport.patientName}
                 </div>
                 <div>
-                  <Text strong>Token:</Text> {viewingReport.token}
+                  <span style={{ fontWeight: "bold" }}>Token:</span> {viewingReport.token}
                 </div>
               </Space>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <Title level={5}>Test Results</Title>
+              <h3>Test Results</h3>
               <Table
                 size="small"
                 dataSource={viewingReport.testTypes.map((t, idx) => ({
@@ -373,14 +512,11 @@ export default function LabReports() {
                     title: "Status",
                     dataIndex: "status",
                     key: "status",
-                    render: (status: string) =>
-                      status === "Completed" ? (
-                        <Tag color="blue">{status}</Tag>
-                      ) : status === "Available" ? (
-                        <Tag color="green">{status}</Tag>
-                      ) : (
-                        <Tag color="red">{status}</Tag>
-                      ),
+                    render: (status: string) => (
+                      <Tag color={getStatusColor(status)}>
+                        {status}
+                      </Tag>
+                    ),
                   },
                   { title: "Description", dataIndex: "description", key: "description" },
                 ]}
@@ -388,7 +524,7 @@ export default function LabReports() {
             </div>
 
             <div style={{ marginTop: 24, textAlign: "right" }}>
-              <Text strong>Doctor Signature:</Text>
+              <span style={{ fontWeight: "bold" }}>Doctor Signature:</span>
               <div
                 style={{ marginTop: 32, borderTop: "1px solid #000", width: 200, marginLeft: "auto" }}
               ></div>

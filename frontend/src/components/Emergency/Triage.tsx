@@ -27,6 +27,9 @@ import {
   Divider,
   Switch,
   Collapse,
+  // New imports for better organization
+  Typography,
+  Flex
 } from "antd";
 import {
   EyeOutlined,
@@ -61,12 +64,13 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import TabPane from "antd/es/tabs/TabPane";
 
 dayjs.extend(relativeTime);
 
 const { Option } = Select;
 const { TextArea } = Input;
+const { Title, Text } = Typography;
+const { Panel } = Collapse;
 
 // Interfaces
 interface TriagePatient {
@@ -341,14 +345,14 @@ export default function Triage() {
       title: <Space><UserOutlined /> Patient Information</Space>,
       key: 'patient',
       render: (_, record) => (
-        <Space>
+        <Flex align="center" gap="middle">
           <Avatar size="large" icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
           <div>
             <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{record.patientName}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>{record.age}y • {record.gender} • {record.bloodGroup}</div>
             <div style={{ fontSize: '12px', color: '#999' }}><PhoneOutlined /> {record.contactNumber}</div>
           </div>
-        </Space>
+        </Flex>
       ),
     },
     {
@@ -408,7 +412,14 @@ export default function Triage() {
           <Tooltip title="View Details"><Button icon={<EyeOutlined />} shape="circle" type="primary" ghost onClick={() => openViewModal(record)} /></Tooltip>
           <Tooltip title="Edit Patient"><Button icon={<EditOutlined />} shape="circle" onClick={() => openEditAddModal(record)} /></Tooltip>
           <Tooltip title="Delete Patient">
-            <Popconfirm title="Remove patient from triage?" description="This action cannot be undone." onConfirm={() => handleDelete(record.id)} okText="Yes" cancelText="No" icon={<WarningOutlined style={{ color: 'red' }} />}>
+            <Popconfirm 
+              title="Remove patient from triage?" 
+              description="This action cannot be undone." 
+              onConfirm={() => handleDelete(record.id)} 
+              okText="Yes" 
+              cancelText="No" 
+              icon={<WarningOutlined style={{ color: 'red' }} />}
+            >
               <Button icon={<DeleteOutlined />} shape="circle" danger />
             </Popconfirm>
           </Tooltip>
@@ -421,40 +432,83 @@ export default function Triage() {
     <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <Card style={{ background: 'linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)', color: 'white' }}>
-        <div className="flex justify-between items-center">
+        <Flex justify="space-between" align="center">
           <div>
             <Space size="large">
-              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '10px' }}><ExperimentOutlined style={{ fontSize: '36px' }} /></div>
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '10px' }}>
+                <ExperimentOutlined style={{ fontSize: '36px' }} />
+              </div>
               <div>
-                <h1 className="text-3xl font-bold" style={{ color: 'white', margin: 0 }}>🚨 Emergency Triage</h1>
-                <p className="text-gray-200" style={{ margin: 0 }}><DashboardOutlined /> Real-time patient prioritization and assessment</p>
+                <Title level={2} style={{ color: 'white', margin: 0 }}>🚨 Emergency Triage</Title>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', margin: 0 }}><DashboardOutlined /> Real-time patient prioritization and assessment</Text>
               </div>
             </Space>
           </div>
           <Space>
-            <Tooltip title="Auto Refresh"><Switch checkedChildren={<SyncOutlined />} unCheckedChildren={<CloseCircleOutlined />} checked={autoRefresh} onChange={setAutoRefresh} /></Tooltip>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditAddModal()} size="large" style={{ background: '#fff', color: '#1890ff', border: 'none', fontWeight: 'bold' }}><RocketOutlined /> New Triage Patient</Button>
+            <Tooltip title="Auto Refresh">
+              <Switch 
+                checkedChildren={<SyncOutlined />} 
+                unCheckedChildren={<CloseCircleOutlined />} 
+                checked={autoRefresh} 
+                onChange={setAutoRefresh} 
+              />
+            </Tooltip>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={() => openEditAddModal()} 
+              size="large" 
+              style={{ background: '#fff', color: '#1890ff', border: 'none', fontWeight: 'bold' }}
+            >
+              <RocketOutlined /> New Triage Patient
+            </Button>
           </Space>
-        </div>
+        </Flex>
       </Card>
 
       {/* Statistics Cards */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><TeamOutlined /> Total Patients</Space>} value={stats.total} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><FireOutlined /> Critical</Space>} value={stats.critical} valueStyle={{ color: '#f5222d' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><CheckCircleOutlined /> Stable</Space>} value={stats.stable} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><ClockCircleOutlined /> Observation</Space>} value={stats.observation} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><ThunderboltOutlined /> Immediate</Space>} value={stats.immediatePriority} valueStyle={{ color: '#cf1322' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><ClockCircleOutlined /> Avg Wait</Space>} value={Math.round(stats.averageWaitTime)} suffix="min" valueStyle={{ color: '#722ed1' }} /></Card></Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card><Statistic title={<Space><TeamOutlined /> Total Patients</Space>} value={stats.total} valueStyle={{ color: '#1890ff' }} /></Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card><Statistic title={<Space><FireOutlined /> Critical</Space>} value={stats.critical} valueStyle={{ color: '#f5222d' }} /></Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card><Statistic title={<Space><CheckCircleOutlined /> Stable</Space>} value={stats.stable} valueStyle={{ color: '#52c41a' }} /></Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card><Statistic title={<Space><ClockCircleOutlined /> Observation</Space>} value={stats.observation} valueStyle={{ color: '#fa8c16' }} /></Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card><Statistic title={<Space><ThunderboltOutlined /> Immediate</Space>} value={stats.immediatePriority} valueStyle={{ color: '#cf1322' }} /></Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card><Statistic title={<Space><ClockCircleOutlined /> Avg Wait</Space>} value={Math.round(stats.averageWaitTime)} suffix="min" valueStyle={{ color: '#722ed1' }} /></Card>
+        </Col>
       </Row>
 
       {/* Tabs for Different Views */}
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane key="triage" tab={<Space><TeamOutlined /> Triage Patients <Badge count={filteredPatients.length} overflowCount={99} /></Space>}>
+        <Tabs.TabPane 
+          key="triage" 
+          tab={
+            <Space>
+              <TeamOutlined /> Triage Patients <Badge count={filteredPatients.length} overflowCount={99} />
+            </Space>
+          }
+        >
           <div className="space-y-6">
             <Card>
-              <div className="flex flex-wrap gap-4 items-center mb-4">
-                <Input placeholder="🔍 Search patients, conditions, nurses..." prefix={<SearchOutlined />} value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ width: 300 }} size="large" />
+              <Flex wrap="wrap" gap="middle" align="center" style={{ marginBottom: '16px' }}>
+                <Input 
+                  placeholder="🔍 Search patients, conditions, nurses..." 
+                  prefix={<SearchOutlined />} 
+                  value={searchText} 
+                  onChange={(e) => setSearchText(e.target.value)} 
+                  style={{ width: 300 }} 
+                  size="large" 
+                />
                 <Select value={statusFilter} onChange={setStatusFilter} placeholder="Filter by Status" style={{ width: 150 }} size="large">
                   <Option value="all">All Status</Option>
                   <Option value="Critical">Critical</Option>
@@ -473,30 +527,79 @@ export default function Triage() {
                   <Button icon={<ReloadOutlined />} onClick={() => { setSearchText(''); setStatusFilter('all'); setPriorityFilter('all'); }}>Reset</Button>
                   <Button icon={<ExportOutlined />}>Export</Button>
                 </Space>
-              </div>
-              <Alert message="Triage Department Status" description={`${stats.critical} critical, ${stats.stable} stable, and ${stats.observation} observation patients. ${stats.immediatePriority} require immediate attention.`} type={stats.critical > 0 ? "warning" : "info"} showIcon closable />
+              </Flex>
+              <Alert 
+                message="Triage Department Status" 
+                description={`${stats.critical} critical, ${stats.stable} stable, and ${stats.observation} observation patients. ${stats.immediatePriority} require immediate attention.`} 
+                type={stats.critical > 0 ? "warning" : "info"} 
+                showIcon 
+                closable 
+              />
             </Card>
 
-            <Card title={<Space><TableOutlined /> Triage Patient List ({filteredPatients.length})</Space>} extra={<Space><Tag color="red">{stats.critical} Critical</Tag><Tag color="green">{stats.stable} Stable</Tag><Tag color="orange">{stats.observation} Observation</Tag></Space>}>
-              <Table columns={columns} dataSource={filteredPatients} rowKey="id" loading={loading} scroll={{ x: 1300 }} />
+            <Card 
+              title={
+                <Space>
+                  <TableOutlined /> Triage Patient List ({filteredPatients.length})
+                </Space>
+              } 
+              extra={
+                <Space>
+                  <Tag color="red">{stats.critical} Critical</Tag>
+                  <Tag color="green">{stats.stable} Stable</Tag>
+                  <Tag color="orange">{stats.observation} Observation</Tag>
+                </Space>
+              }
+            >
+              <Table 
+                columns={columns} 
+                dataSource={filteredPatients} 
+                rowKey="id" 
+                loading={loading} 
+                scroll={{ x: 1300 }} 
+              />
             </Card>
           </div>
-        </TabPane>
-        <TabPane key="dashboard" tab={<Space><DashboardOutlined /> Triage Dashboard</Space>}>
+        </Tabs.TabPane>
+        
+        <Tabs.TabPane key="dashboard" tab={<Space><DashboardOutlined /> Triage Dashboard</Space>}>
           <Row gutter={[16, 16]}>
             <Col span={12}>
               <Card title="Patient Distribution by Status">
-                <div style={{ textAlign: 'center', padding: '20px' }}><PieChartOutlined style={{ fontSize: '48px', color: '#1890ff' }} /><div style={{ marginTop: '16px' }}><Progress type="circle" percent={Math.round((stats.critical / (stats.total || 1)) * 100)} strokeColor="#f5222d" /><div style={{ marginTop: '16px' }}><Tag color="red">Critical: {stats.critical}</Tag><Tag color="green">Stable: {stats.stable}</Tag><Tag color="orange">Observation: {stats.observation}</Tag></div></div></div>
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <PieChartOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+                  <div style={{ marginTop: '16px' }}>
+                    <Progress 
+                      type="circle" 
+                      percent={Math.round((stats.critical / (stats.total || 1)) * 100)} 
+                      strokeColor="#f5222d" 
+                    />
+                    <div style={{ marginTop: '16px' }}>
+                      <Tag color="red">Critical: {stats.critical}</Tag>
+                      <Tag color="green">Stable: {stats.stable}</Tag>
+                      <Tag color="orange">Observation: {stats.observation}</Tag>
+                    </div>
+                  </div>
+                </div>
               </Card>
             </Col>
             <Col span={12}>
               <Card title="Recent Triage Activity">
                 <Timeline>
                   {patients.slice(0, 5).map(patient => (
-                    <Timeline.Item key={patient.id} color={getStatusColor(patient.status)} dot={getStatusIcon(patient.status)}>
+                    <Timeline.Item 
+                      key={patient.id} 
+                      color={getStatusColor(patient.status)} 
+                      dot={getStatusIcon(patient.status)}
+                    >
                       <Space direction="vertical" size={0}>
                         <div style={{ fontWeight: 'bold' }}>{patient.patientName} - {patient.condition}</div>
-                        <div style={{ color: '#666', fontSize: '12px' }}>{dayjs(patient.arrivalTime).fromNow()} • Priority: <Tag color={getPriorityColor(patient.priority)} style={{ marginLeft: '8px' }}>{patient.priority}</Tag></div>
+                        <div style={{ color: '#666', fontSize: '12px' }}>
+                          {dayjs(patient.arrivalTime).fromNow()} • Priority: {' '}
+                          <Tag color={getPriorityColor(patient.priority)} style={{ marginLeft: '8px' }}>
+                            {patient.priority}
+                          </Tag>
+                        </div>
                       </Space>
                     </Timeline.Item>
                   ))}
@@ -504,40 +607,134 @@ export default function Triage() {
               </Card>
             </Col>
           </Row>
-        </TabPane>
+        </Tabs.TabPane>
       </Tabs>
 
       {/* Add/Edit Patient Modal */}
-      <Modal title={<Space>{editingPatient ? <EditOutlined /> : <PlusOutlined />}{editingPatient ? "Edit Triage Patient" : "Add Triage Patient"}</Space>} open={isEditAddModalOpen} onCancel={handleCloseModals} onOk={() => form.submit()} okText={editingPatient ? "Update Patient" : "Add Patient"} width={800} destroyOnClose>
+      <Modal 
+        title={
+          <Space>
+            {editingPatient ? <EditOutlined /> : <PlusOutlined />}
+            {editingPatient ? "Edit Triage Patient" : "Add Triage Patient"}
+          </Space>
+        } 
+        open={isEditAddModalOpen} 
+        onCancel={handleCloseModals} 
+        onOk={() => form.submit()} 
+        okText={editingPatient ? "Update Patient" : "Add Patient"} 
+        width={800} 
+        destroyOnClose
+      >
         <Form form={form} layout="vertical" onFinish={handleAddEditPatient}>
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="patientName" label="Patient Name" rules={[{ required: true }]}><Input prefix={<UserOutlined />} placeholder="Full patient name" /></Form.Item></Col>
-            <Col span={6}><Form.Item name="age" label="Age" rules={[{ required: true }]}><InputNumber min={0} max={120} style={{ width: '100%' }} placeholder="Age" /></Form.Item></Col>
-            <Col span={6}><Form.Item name="gender" label="Gender" rules={[{ required: true }]}><Select placeholder="Select gender"><Option value="Male">Male</Option><Option value="Female">Female</Option><Option value="Other">Other</Option></Select></Form.Item></Col>
+            <Col span={12}>
+              <Form.Item name="patientName" label="Patient Name" rules={[{ required: true }]}>
+                <Input prefix={<UserOutlined />} placeholder="Full patient name" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="age" label="Age" rules={[{ required: true }]}>
+                <InputNumber min={0} max={120} style={{ width: '100%' }} placeholder="Age" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="gender" label="Gender" rules={[{ required: true }]}>
+                <Select placeholder="Select gender">
+                  <Option value="Male">Male</Option>
+                  <Option value="Female">Female</Option>
+                  <Option value="Other">Other</Option>
+                </Select>
+              </Form.Item>
+            </Col>
           </Row>
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="condition" label="Medical Condition" rules={[{ required: true }]}><Input prefix={<MedicineBoxOutlined />} placeholder="Primary condition" /></Form.Item></Col>
-            <Col span={6}><Form.Item name="status" label="Status" rules={[{ required: true }]}><Select placeholder="Select status"><Option value="Critical">Critical</Option><Option value="Stable">Stable</Option><Option value="Observation">Observation</Option></Select></Form.Item></Col>
-            <Col span={6}><Form.Item name="priority" label="Priority" rules={[{ required: true }]}><Select placeholder="Select priority"><Option value="Immediate">Immediate</Option><Option value="Emergency">Emergency</Option><Option value="Urgent">Urgent</Option><Option value="Semi-Urgent">Semi-Urgent</Option><Option value="Non-Urgent">Non-Urgent</Option></Select></Form.Item></Col>
+            <Col span={12}>
+              <Form.Item name="condition" label="Medical Condition" rules={[{ required: true }]}>
+                <Input prefix={<MedicineBoxOutlined />} placeholder="Primary condition" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+                <Select placeholder="Select status">
+                  <Option value="Critical">Critical</Option>
+                  <Option value="Stable">Stable</Option>
+                  <Option value="Observation">Observation</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="priority" label="Priority" rules={[{ required: true }]}>
+                <Select placeholder="Select priority">
+                  <Option value="Immediate">Immediate</Option>
+                  <Option value="Emergency">Emergency</Option>
+                  <Option value="Urgent">Urgent</Option>
+                  <Option value="Semi-Urgent">Semi-Urgent</Option>
+                  <Option value="Non-Urgent">Non-Urgent</Option>
+                </Select>
+              </Form.Item>
+            </Col>
           </Row>
           <Divider orientation="left">Vital Signs</Divider>
           <Row gutter={16}>
-            <Col span={6}><Form.Item name={["vitalSigns", "heartRate"]} label="Heart Rate" rules={[{ required: true }]}><InputNumber min={0} max={300} style={{ width: '100%' }} placeholder="bpm" /></Form.Item></Col>
-            <Col span={6}><Form.Item name={["vitalSigns", "bloodPressure"]} label="Blood Pressure" rules={[{ required: true }]}><Input placeholder="e.g., 120/80" /></Form.Item></Col>
-            <Col span={6}><Form.Item name={["vitalSigns", "temperature"]} label="Temperature" rules={[{ required: true }]}><InputNumber min={30} max={45} step={0.1} style={{ width: '100%' }} placeholder="°C" /></Form.Item></Col>
-            <Col span={6}><Form.Item name={["vitalSigns", "oxygenSaturation"]} label="SpO₂" rules={[{ required: true }]}><InputNumber min={0} max={100} style={{ width: '100%' }} placeholder="%" /></Form.Item></Col>
+            <Col span={6}>
+              <Form.Item name={["vitalSigns", "heartRate"]} label="Heart Rate" rules={[{ required: true }]}>
+                <InputNumber min={0} max={300} style={{ width: '100%' }} placeholder="bpm" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name={["vitalSigns", "bloodPressure"]} label="Blood Pressure" rules={[{ required: true }]}>
+                <Input placeholder="e.g., 120/80" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name={["vitalSigns", "temperature"]} label="Temperature" rules={[{ required: true }]}>
+                <InputNumber min={30} max={45} step={0.1} style={{ width: '100%' }} placeholder="°C" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name={["vitalSigns", "oxygenSaturation"]} label="SpO₂" rules={[{ required: true }]}>
+                <InputNumber min={0} max={100} style={{ width: '100%' }} placeholder="%" />
+              </Form.Item>
+            </Col>
           </Row>
-          <Form.Item name="symptoms" label="Symptoms"><Select mode="tags" placeholder="Add symptoms"><Option value="Pain">Pain</Option><Option value="Fever">Fever</Option><Option value="Bleeding">Bleeding</Option><Option value="Nausea">Nausea</Option><Option value="Shortness of breath">Shortness of breath</Option></Select></Form.Item>
-          <Form.Item name="allergies" label="Allergies"><Select mode="tags" placeholder="Known allergies"><Option value="None">None</Option><Option value="Penicillin">Penicillin</Option><Option value="Aspirin">Aspirin</Option><Option value="Latex">Latex</Option><Option value="Shellfish">Shellfish</Option></Select></Form.Item>
-          <Form.Item name="triageNotes" label="Triage Notes"><TextArea rows={3} placeholder="Clinical observations and assessment notes" /></Form.Item>
+          <Form.Item name="symptoms" label="Symptoms">
+            <Select mode="tags" placeholder="Add symptoms">
+              <Option value="Pain">Pain</Option>
+              <Option value="Fever">Fever</Option>
+              <Option value="Bleeding">Bleeding</Option>
+              <Option value="Nausea">Nausea</Option>
+              <Option value="Shortness of breath">Shortness of breath</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="allergies" label="Allergies">
+            <Select mode="tags" placeholder="Known allergies">
+              <Option value="None">None</Option>
+              <Option value="Penicillin">Penicillin</Option>
+              <Option value="Aspirin">Aspirin</Option>
+              <Option value="Latex">Latex</Option>
+              <Option value="Shellfish">Shellfish</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="triageNotes" label="Triage Notes">
+            <TextArea rows={3} placeholder="Clinical observations and assessment notes" />
+          </Form.Item>
         </Form>
       </Modal>
 
       {/* View Patient Modal */}
-      <Modal title={<Space><EyeOutlined /> Triage Patient Details: {viewingPatient?.patientName}</Space>} open={isViewModalOpen} onCancel={handleCloseModals} footer={[
-        <Button key="close" onClick={handleCloseModals}>Close</Button>,
-        //  <Button key="edit" type="primary" onClick={() => { handleCloseModals(); setTimeout(() => openEditAddModal(viewingPatient!), 300); }}><EditOutlined /> Edit Patient</Button>
-         ]} width={800}>
+      <Modal 
+        title={
+          <Space>
+            <EyeOutlined /> Triage Patient Details: {viewingPatient?.patientName}
+          </Space>
+        } 
+        open={isViewModalOpen} 
+        onCancel={handleCloseModals} 
+        footer={[
+          <Button key="close" onClick={handleCloseModals}>Close</Button>,
+        ]} 
+        width={800}
+      >
         {viewingPatient && (
           <Descriptions bordered column={2} size="middle">
             <Descriptions.Item label="Patient Information" span={2}>
@@ -559,11 +756,11 @@ export default function Triage() {
             </Descriptions.Item>
             <Descriptions.Item label="Vital Signs" span={2}>
               <Space wrap>
-                  <Tag color="magenta">❤️ <strong>HR:</strong> {viewingPatient.vitalSigns.heartRate} bpm</Tag>
-                  <Tag color="purple">🩸 <strong>BP:</strong> {viewingPatient.vitalSigns.bloodPressure}</Tag>
-                  <Tag color="orange">🌡️ <strong>Temp:</strong> {viewingPatient.vitalSigns.temperature}°C</Tag>
-                  <Tag color="blue">💨 <strong>SpO₂:</strong> {viewingPatient.vitalSigns.oxygenSaturation}%</Tag>
-                  <Tag color="cyan">🫁 <strong>RR:</strong> {viewingPatient.vitalSigns.respiratoryRate}</Tag>
+                <Tag color="magenta">❤️ <strong>HR:</strong> {viewingPatient.vitalSigns.heartRate} bpm</Tag>
+                <Tag color="purple">🩸 <strong>BP:</strong> {viewingPatient.vitalSigns.bloodPressure}</Tag>
+                <Tag color="orange">🌡️ <strong>Temp:</strong> {viewingPatient.vitalSigns.temperature}°C</Tag>
+                <Tag color="blue">💨 <strong>SpO₂:</strong> {viewingPatient.vitalSigns.oxygenSaturation}%</Tag>
+                <Tag color="cyan">🫁 <strong>RR:</strong> {viewingPatient.vitalSigns.respiratoryRate}</Tag>
               </Space>
             </Descriptions.Item>
             <Descriptions.Item label="Triage Information" span={2}>
@@ -584,4 +781,4 @@ export default function Triage() {
       </Modal>
     </div>
   );
-}   
+}
