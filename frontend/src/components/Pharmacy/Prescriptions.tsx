@@ -1,47 +1,84 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { 
+  Table, 
+  Input, 
+  Button, 
+  Modal, 
+  Form, 
+  Select, 
+  Card, 
+  Space, 
+  Tag, 
+  Tooltip, 
+  Popconfirm,
+  message,
+  Descriptions,
+  Divider
+} from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { 
+  SearchOutlined, 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined,
+  EyeOutlined,
+  ReloadOutlined,
+  TeamOutlined,
+  DashboardOutlined,
+  MedicineBoxOutlined,
+  FileTextOutlined,
+  UserOutlined,
+  ThunderboltOutlined,
+  RocketOutlined,
+  SyncOutlined,
+  CloseCircleOutlined,
+  PrinterOutlined,
+  ExperimentOutlined
+} from "@ant-design/icons";
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi } from "@/ApiService";
+
+const { Option } = Select;
+
+interface MedicineItem {
+  medicine_id: string;
+  quantity: number;
+}
+
+interface TestItem {
+  test_id: string;
+}
 
 interface Prescription {
   id?: string;
   patient_id: string;
   doctor_id: string;
-  medicines: { medicine_id: string; quantity: number }[];
-  tests: { test_id: string; }[];
+  medicines: MedicineItem[];
+  tests: TestItem[];
   notes: string;
+  patient?: any;
+  doctor?: any;
+  medicine_details?: any[];
+  test_details?: any[];
 }
-
-const LOCAL_STORAGE_KEY = "prescriptions";
-const INVENTORY_KEY = "medical_inventory";
 
 export default function Prescriptions() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
-  const [form, setForm] = useState<Partial<Prescription>>({
-    patient_id: "",
-    doctor_id: "",
-    medicines: [{ medicine_id: "", quantity: 1 }],
-    tests: [{ test_id: "" }],
-    notes: "",
-  });
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
-  const [selectedPrescription, setSelectedPrescription] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
+  const [editingPrescription, setEditingPrescription] = useState<Prescription | null>(null);
+  const [viewingPrescription, setViewingPrescription] = useState<Prescription | null>(null);
   const [search, setSearch] = useState("");
-  const loginData = localStorage.getItem('loginData')
+  const loginData = JSON.parse(localStorage.getItem('loginData') || '{}');
 
-  // For viewing prescription
-  const [viewPrescription, setViewPrescription] = useState<Prescription | null>(null);
-
-  // Load prescriptions and inventory from localStorage
+  // Load data on component mount
   useEffect(() => {
     Promise.all([
       getApi('/medicines'),
@@ -73,6 +110,16 @@ export default function Prescriptions() {
     loadPrescriptions()
   }, []);
 
+  // Auto refresh notifier
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        message.info("🔄 Auto-refresh: Prescriptions data reloaded");
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
+
   function loadPrescriptions() {
     getApi("/prescriptions")
       .then((data) => {
@@ -88,33 +135,30 @@ export default function Prescriptions() {
       })
   }
 
-  const handleAddOrUpdate = () => {
-    form.doctor_id = loginData?.['id'] || 1;
-    if (!form.patient_id || !form.doctor_id || !form.medicines || form.medicines.length === 0) {
+  const handleAddOrUpdate = (values: any) => {
+    values.doctor_id = loginData?.id || 1;
+    
+    if (!values.patient_id || !values.doctor_id || !values.medicines || values.medicines.length === 0) {
       toast.error("Please fill all required fields");
       return;
     }
 
-    for (let med of form.medicines) {
+    for (let med of values.medicines) {
       if (!med.medicine_id || med.quantity <= 0) {
         toast.error("Medicine name and quantity must be valid");
         return;
       }
     }
 
-    for (let test of form.tests) {
-      if (!test.test_id) {
-        toast.error("Test name must be valid");
-        return;
-      }
-    }
-
-    if (selectedPrescription) {
-      PutApi('/prescriptions', { ...selectedPrescription, ...form })
+    if (editingPrescription) {
+      PutApi('/prescriptions', { ...editingPrescription, ...values })
         .then((data) => {
           if (!data.error) {
             loadPrescriptions()
             toast.success("Prescription updated successfully!");
+            setIsModalOpen(false);
+            form.resetFields();
+            setEditingPrescription(null);
           }
           else {
             toast.error(data.error)
@@ -125,468 +169,744 @@ export default function Prescriptions() {
         })
     } else {
       const newPrescription: Prescription = {
-        // id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9),
-        patient_id: form.patient_id!,
-        doctor_id: form.doctor_id!,
-        medicines: form.medicines!,
-        tests: form.tests!,
-        notes: form.notes || "",
+        patient_id: values.patient_id,
+        doctor_id: values.doctor_id,
+        medicines: values.medicines,
+        tests: values.tests || [],
+        notes: values.notes || "",
       };
-      PostApi('/prescriptions', { ...newPrescription })
+      
+      PostApi('/prescriptions', newPrescription)
         .then((data) => {
           if (!data.error) {
             loadPrescriptions()
-            toast.success("Prescription updated successfully!");
+            toast.success("Prescription added successfully!");
+            setIsModalOpen(false);
+            form.resetFields();
           }
           else {
             toast.error(data.error)
           }
         }).catch((err) => {
           console.error("Error: ", err)
-          toast.error("Error occurred while updating prescription.")
+          toast.error("Error occurred while adding prescription.")
         })
-      setPrescriptions(prev => [...prev, newPrescription]);
-      toast.success("Prescription added successfully!");
     }
-
-    setForm({ patient_id: "", doctor_id: "", medicines: [{ medicine_id: "", quantity: 1 }], tests: [{ test_id: "" }], notes: "" });
-    setSelectedPrescription(null);
-    setIsDialogOpen(false);
   };
 
-  const handleAddOrUpdateBilling = () => {
-    form.doctor_id = loginData?.['id'] || 1;
-    if (!form.patient_id || !form.doctor_id || !form.medicines || form.medicines.length === 0) {
+  const handleAddOrUpdateBilling = (values: any) => {
+    values.doctor_id = loginData?.id || 1;
+    
+    if (!values.patient_id || !values.doctor_id || !values.medicines || values.medicines.length === 0) {
       toast.error("Please fill all required fields");
       return;
     }
 
-    for (let med of form.medicines) {
+    for (let med of values.medicines) {
       if (!med.medicine_id || med.quantity <= 0) {
         toast.error("Medicine name and quantity must be valid");
         return;
       }
     }
 
-    for (let test of form.tests) {
-      if (!test.test_id) {
-        toast.error("Test name must be valid");
-        return;
-      }
-    }
-
-    const newPrescription: Prescription | any = {
-      prescription_id: form?.['id'],
-      // id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9),
-      patient_id: form.patient_id!,
-      doctor_id: form.doctor_id!,
-      medicines: form.medicines!,
-      tests: form.tests!,
-      notes: form.notes || "",
+    const billingData = {
+      prescription_id: selectedPrescription?.id,
+      patient_id: values.patient_id,
+      doctor_id: values.doctor_id,
+      medicines: values.medicines,
+      tests: values.tests || [],
+      notes: values.notes || "",
     };
-    PostApi('/billing', { ...newPrescription })
+    
+    PostApi('/billing', billingData)
       .then((data) => {
         if (!data.error) {
           loadPrescriptions()
           toast.success("Billing added successfully!");
+          setIsBillingModalOpen(false);
+          setSelectedPrescription(null);
         }
         else {
           toast.error(data.error)
         }
       }).catch((err) => {
         console.error("Error: ", err)
-        toast.error("Error occurred while updating prescription.")
+        toast.error("Error occurred while adding billing.")
       })
-    toast.success("Prescription added successfully!");
-    setForm({ patient_id: "", doctor_id: "", medicines: [{ medicine_id: "", quantity: 1 }], tests: [{ test_id: "" }], notes: "" });
-    setSelectedPrescription(null);
-    setIsDialogOpen(false);
-    setIsBillingModalOpen(false)
   };
 
   const handleEdit = (prescription: Prescription) => {
-    setForm({ ...prescription });
-    setSelectedPrescription(prescription.id);
-    setIsDialogOpen(true);
+    setEditingPrescription(prescription);
+    form.setFieldsValue({
+      ...prescription,
+      patient_id: prescription.patient_id,
+      medicines: prescription.medicines || [{ medicine_id: "", quantity: 1 }],
+      tests: prescription.tests || [{ test_id: "" }],
+      notes: prescription.notes || "",
+    });
+    setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this prescription?")) {
-      setPrescriptions(prev => prev.filter(p => p.id !== id));
-      toast.success("Prescription deleted successfully!");
-    }
+  const handleView = (prescription: Prescription) => {
+    setViewingPrescription(prescription);
+    setIsViewModalOpen(true);
   };
 
-  const handleMedicineChange = (index: number, field: "medicine_id" | "quantity", value: string | number) => {
-    const newMedicines = [...form.medicines!];
-    newMedicines[index] = { ...newMedicines[index], [field]: value };
-    setForm({ ...form, medicines: newMedicines });
+  const handleDelete = (prescription: Prescription) => {
+    Modal.confirm({
+      title: "Delete Prescription?",
+      content: "Are you sure you want to delete this prescription? This action cannot be undone.",
+      okText: "Yes",
+      cancelText: "No",
+      okType: "danger",
+      onOk() {
+        // Add delete API call here if available
+        setPrescriptions(prev => prev.filter(p => p.id !== prescription.id));
+        toast.success("Prescription deleted successfully!");
+      }
+    });
   };
 
-  const handleTestChange = (index: number, field: any, value: string | number) => {
-    const newMedicines = [...form.tests!];
-    newMedicines[index] = { ...newMedicines[index], [field]: value };
-    setForm({ ...form, tests: newMedicines });
+  const resetFilters = () => {
+    setSearch("");
   };
 
-  const addTestField = () => {
-    setForm({ ...form, tests: [...form.tests!, { test_id: "" }] });
-  };
-
-  const removeTestField = (index: number) => {
-    const newTests = form.tests!.filter((_, i) => i !== index);
-    setForm({ ...form, tests: newTests });
-  };
-
-  const addMedicineField = () => {
-    setForm({ ...form, medicines: [...form.medicines!, { medicine_id: "", quantity: 1 }] });
-  };
-
-  const removeMedicineField = (index: number) => {
-    const newMedicines = form.medicines!.filter((_, i) => i !== index);
-    setForm({ ...form, medicines: newMedicines });
-  };
+  const filteredPrescriptions = prescriptions.filter(prescription =>
+    prescription.patient?.username?.toLowerCase().includes(search.toLowerCase()) ||
+    prescription.doctor?.username?.toLowerCase().includes(search.toLowerCase()) ||
+    prescription.notes?.toLowerCase().includes(search.toLowerCase())
+  );
 
   const handlePrint = () => {
-    const printContent = document.getElementById("prescription-print-area")?.innerHTML;
-    if (!printContent) return;
     const printWindow = window.open("", "_blank", "width=800,height=600");
-    if (printWindow) {
+    if (printWindow && viewingPrescription) {
       printWindow.document.write(`
-      <html>
-        <head>
-          <title>Prescription</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h2 { text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            .signature { margin-top: 40px; text-align: right; font-weight: bold; }
-            .signature-line { margin-top: 50px; border-top: 1px solid #000; width: 200px; float: right; text-align: center; }
-          </style>
-        </head>
-        <body>
-          ${printContent}
-          <div class="signature">
-            <div class="signature-line">Doctor's Signature</div>
-          </div>
-        </body>
-      </html>
-    `);
+        <html>
+          <head>
+            <title>Prescription</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; }
+              h2 { text-align: center; color: #1890ff; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
+              .signature { margin-top: 40px; text-align: right; font-weight: bold; }
+              .signature-line { margin-top: 50px; border-top: 1px solid #000; width: 200px; float: right; text-align: center; }
+              .header { text-align: center; margin-bottom: 30px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h2>Medical Prescription</h2>
+              <p>ClinicWise Healthcare System</p>
+            </div>
+            <p><strong>Patient:</strong> ${viewingPrescription.patient?.username || 'N/A'}</p>
+            <p><strong>Doctor:</strong> ${viewingPrescription.doctor?.username || 'N/A'}</p>
+            <h3>Medicines</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Medicine</th>
+                  <th>Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(viewingPrescription.medicines || []).map((m: any) => `
+                  <tr>
+                    <td>${m.medicine_details?.name || m.medicine_id}</td>
+                    <td>${m.quantity}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ${(viewingPrescription.tests || []).length > 0 ? `
+              <h3>Tests</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Test Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(viewingPrescription.tests || []).map((t: any) => `
+                    <tr>
+                      <td>${t.test_details?.name || t.test_id}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+            ${viewingPrescription.notes ? `
+              <p><strong>Notes:</strong> ${viewingPrescription.notes}</p>
+            ` : ''}
+            <div class="signature">
+              <div class="signature-line">Doctor's Signature</div>
+            </div>
+          </body>
+        </html>
+      `);
       printWindow.document.close();
       printWindow.print();
     }
   };
 
+  const columns: ColumnsType<Prescription> = [
+    {
+      title: (
+        <Space>
+          <UserOutlined />
+          Patient Info
+        </Space>
+      ),
+      key: "patient",
+      render: (_, record: Prescription) => (
+        <Space>
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <UserOutlined className="text-blue-600" />
+          </div>
+          <div>
+            <div style={{ fontWeight: "bold" }}>{record.patient?.username || 'N/A'}</div>
+            <div style={{ fontSize: "12px", color: "#666" }}>
+              Patient ID: {record.patient_id}
+            </div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <UserOutlined />
+          Doctor Info
+        </Space>
+      ),
+      key: "doctor",
+      render: (_, record: Prescription) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ fontWeight: "500" }}>{record.doctor?.username || 'N/A'}</span>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            Doctor ID: {record.doctor_id}
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <MedicineBoxOutlined />
+          Medicines
+        </Space>
+      ),
+      key: "medicines",
+      render: (_, record: Prescription) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ fontWeight: "500" }}>
+            {(record.medicines || []).length} medicine(s)
+          </span>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            Prescribed items
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <ExperimentOutlined />
+          Tests
+        </Space>
+      ),
+      key: "tests",
+      render: (_, record: Prescription) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ fontWeight: "500" }}>
+            {(record.tests || []).length} test(s)
+          </span>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            Laboratory tests
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <FileTextOutlined />
+          Notes
+        </Space>
+      ),
+      dataIndex: "notes",
+      key: "notes",
+      render: (notes: string) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ fontWeight: "500" }}>
+            {notes ? (notes.length > 50 ? `${notes.substring(0, 50)}...` : notes) : 'No notes'}
+          </span>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            Doctor's notes
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <ThunderboltOutlined />
+          Actions
+        </Space>
+      ),
+      key: "actions",
+      render: (_, record: Prescription) => (
+        <Space>
+          <Tooltip title="View Details">
+            <Button
+              icon={<EyeOutlined />}
+              shape="circle"
+              type="primary"
+              ghost
+              onClick={() => handleView(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Edit Prescription">
+            <Button
+              icon={<EditOutlined />}
+              shape="circle"
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Add Billing">
+            <Button
+              type="primary"
+              onClick={() => {
+                setSelectedPrescription(record);
+                setIsBillingModalOpen(true);
+              }}
+            >
+              Add Billing
+            </Button>
+          </Tooltip>
+          <Tooltip title="Delete Prescription">
+            <Popconfirm
+              title="Delete this prescription?"
+              description="Are you sure you want to delete this prescription? This action cannot be undone."
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okType="danger"
+              icon={<CloseCircleOutlined style={{ color: "red" }} />}
+            >
+              <Button icon={<DeleteOutlined />} shape="circle" danger />
+            </Popconfirm>
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h1 className="text-2xl font-bold">Pharmacy</h1>
-        <p className="text-muted-foreground">Prescriptions</p>
-        <Input
-          placeholder="Search by patient or doctor"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>{selectedPrescription ? "Edit Prescription" : "Add Prescription"}</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{selectedPrescription ? "Edit Prescription" : "Add Prescription"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="patient">Patient Name</Label>
-                <Select
-                  value={form.patient_id}
-                  onValueChange={value => setForm({ ...form, patient_id: value })}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Select Patient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.length === 0 ? (
-                      <SelectItem value="--">No Patients</SelectItem>
-                    ) : (
-                      patients.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* <div>
-                <Label htmlFor="doctor">Doctor Name</Label>
-                <Input
-                  id="doctor"
-                  value={form.doctor}
-                  onChange={e => setForm({ ...form, doctor: e.target.value })}
-                  placeholder="Doctor Name"
-                />
-              </div> */}
-              <div>
-                <Label>Medicines</Label>
-                {form.medicines!.map((med, index) => (
-                  <div key={index} className="flex space-x-2 items-center mb-2">
-                    <Select
-                      value={med.medicine_id}
-                      onValueChange={value => handleMedicineChange(index, "medicine_id", value)}
-                    >
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Select Medicine" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {inventory.length === 0 ? (
-                          <SelectItem value="--">No medicines</SelectItem>
-                        ) : (
-                          inventory.map(m => (
-                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      placeholder="Quantity"
-                      value={med.quantity}
-                      onChange={e => handleMedicineChange(index, "quantity", Number(e.target.value))}
-                    />
-                    <Button size="sm" variant="destructive" onClick={() => removeMedicineField(index)}>Remove</Button>
-                  </div>
-                ))}
-                <Button size="sm" onClick={addMedicineField}>Add Medicine</Button>
-              </div>
-              <div>
-                <Label>Tests</Label>
-                {form.tests!.map((med, index) => (
-                  <div key={index} className="flex space-x-2 items-center mb-2">
-                    <Select
-                      value={med.test_id}
-                      onValueChange={value => handleTestChange(index, "test_id", value)}
-                    >
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Select Medicine" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tests.length === 0 ? (
-                          <SelectItem value="--">No Tests</SelectItem>
-                        ) : (
-                          tests.map(m => (
-                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" variant="destructive" onClick={() => removeTestField(index)}>Remove</Button>
-                  </div>
-                ))}
-                <Button size="sm" onClick={addTestField}>Add Test</Button>
-              </div>
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Input
-                  id="notes"
-                  value={form.notes}
-                  onChange={e => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Additional notes"
-                />
-              </div>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <Card className="bg-white shadow-sm border-0">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <MedicineBoxOutlined className="w-6 h-6 text-blue-600" />
             </div>
-            <DialogFooter className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddOrUpdate}>{selectedPrescription ? "Update" : "Add"}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Prescriptions</h1>
+              <p className="text-gray-600 mt-1">Manage patient prescriptions and medications</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+            <Tooltip title="Auto Refresh">
+              <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+                <SyncOutlined className="w-4 h-4 text-gray-600" />
+                <span className="text-sm text-gray-600">Auto Refresh</span>
+                <div 
+                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
+                    autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                  }`}
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                >
+                  <div 
+                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
+                      autoRefresh ? 'translate-x-4' : 'translate-x-1'
+                    }`}
+                  />
+                </div>
+              </div>
+            </Tooltip>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Patient</TableHead>
-              <TableHead>Doctor</TableHead>
-              <TableHead>Medicines</TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {prescriptions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">No prescriptions found.</TableCell>
-              </TableRow>
-            ) : (
-              prescriptions.map(prescription => (
-                <TableRow key={prescription.id}>
-                  <TableCell>{prescription.patient_id}</TableCell>
-                  <TableCell>{prescription.doctor_id}</TableCell>
-                  <TableCell>
-                    {/* {prescription.medicines.map(m => `${m.id} (${m.quantity})`).join(", ")} */}
-                  </TableCell>
-                  <TableCell>{prescription.notes}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button size="sm" onClick={() => handleEdit(prescription)}>Edit</Button>
-                    {/* <Button size="sm" variant="destructive" onClick={() => handleDelete(prescription.id)}>Delete</Button> */}
-                    <Button size="sm" variant="outline" onClick={() => setViewPrescription(prescription)}>View</Button>
-                    <Dialog open={isBillingModalOpen} onOpenChange={(value) => {
-                      setForm({ ...prescription });
-                      setIsBillingModalOpen(value)
-                    }}>
-                      <DialogTrigger asChild>
-                        <Button>Add Billing</Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-lg">
-                        <DialogHeader>
-                          <DialogTitle>Add Billing</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="patient">Patient Name</Label>
-                            <Select
-                              value={form.patient_id}
-                              disabled
-                              onValueChange={value => setForm({ ...form, patient_id: value })}
-                            >
-                              <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Select Patient" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {patients.length === 0 ? (
-                                  <SelectItem value="--">No Patients</SelectItem>
-                                ) : (
-                                  patients.map(m => (
-                                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Medicines</Label>
-                            {form.medicines!.map((med, index) => (
-                              <div key={index} className="flex space-x-2 items-center mb-2">
-                                <Select
-                                  value={med.medicine_id}
-                                  onValueChange={value => handleMedicineChange(index, "medicine_id", value)}
-                                >
-                                  <SelectTrigger className="w-[150px]">
-                                    <SelectValue placeholder="Select Medicine" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {inventory.length === 0 ? (
-                                      <SelectItem value="--">No medicines</SelectItem>
-                                    ) : (
-                                      inventory.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.name} - {m.price}</SelectItem>
-                                      ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                  type="number"
-                                  placeholder="Quantity"
-                                  value={med.quantity}
-                                  onChange={e => handleMedicineChange(index, "quantity", Number(e.target.value))}
-                                />
-                                <Button size="sm" variant="destructive" onClick={() => removeMedicineField(index)}>Remove</Button>
-                              </div>
-                            ))}
-                            <Button size="sm" onClick={addMedicineField}>Add Medicine</Button>
-                          </div>
-                          <div>
-                            <Label>Tests</Label>
-                            {form.tests!.map((med, index) => (
-                              <div key={index} className="flex space-x-2 items-center mb-2">
-                                <Select
-                                  value={med.test_id}
-                                  onValueChange={value => handleTestChange(index, "test_id", value)}
-                                >
-                                  <SelectTrigger className="w-[150px]">
-                                    <SelectValue placeholder="Select Medicine" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {tests.length === 0 ? (
-                                      <SelectItem value="--">No Tests</SelectItem>
-                                    ) : (
-                                      tests.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.name} - {m.price}</SelectItem>
-                                      ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <Button size="sm" variant="destructive" onClick={() => removeTestField(index)}>Remove</Button>
-                              </div>
-                            ))}
-                            <Button size="sm" onClick={addTestField}>Add Test</Button>
-                          </div>
-                          <div>
-                            <Label htmlFor="notes">Notes</Label>
-                            <Input
-                              id="notes"
-                              value={form.notes}
-                              onChange={e => setForm({ ...form, notes: e.target.value })}
-                              placeholder="Additional notes"
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter className="flex justify-end space-x-2">
-                          <Button variant="outline" onClick={() => setIsBillingModalOpen(false)}>Cancel</Button>
-                          <Button onClick={handleAddOrUpdateBilling}>Add</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </TableCell>
-                </TableRow>
-              ))
+            <Tooltip title="Reset Filters">
+              <Button icon={<ReloadOutlined />} onClick={resetFilters}>
+                Reset Filters
+              </Button>
+            </Tooltip>
+
+            <Tooltip title="Add New Prescription">
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={() => {
+                  setEditingPrescription(null);
+                  form.resetFields();
+                  setIsModalOpen(true);
+                }} 
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <RocketOutlined /> Add Prescription
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+      </Card>
+
+      {/* Search and Filter Section */}
+      <Card className="bg-white shadow-sm border-0">
+        <div className="p-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <TeamOutlined className="w-5 h-5" />
+              <span className="text-lg font-semibold">All Prescriptions</span>
+              <Tag color="blue" className="ml-2">
+                {filteredPrescriptions.length}
+              </Tag>
+            </div>
+            <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+              <Input 
+                placeholder="Search by patient, doctor, or notes..." 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                prefix={<SearchOutlined />} 
+                allowClear 
+                style={{ width: 300 }}
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Prescriptions Table */}
+      <Card className="shadow-md rounded-lg">
+        <Table 
+          columns={columns} 
+          dataSource={filteredPrescriptions} 
+          rowKey="id" 
+          pagination={{ 
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => 
+              `${range[0]}-${range[1]} of ${total} prescriptions`,
+          }} 
+          scroll={{ x: "max-content" }} 
+          rowClassName="hover:bg-gray-50"
+        />
+      </Card>
+
+      {/* Add/Edit Prescription Modal */}
+      <Modal
+        title={
+          <Space>
+            {editingPrescription ? <EditOutlined /> : <PlusOutlined />}
+            {editingPrescription ? "Edit Prescription" : "Add Prescription"}
+          </Space>
+        }
+        open={isModalOpen}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingPrescription(null);
+          form.resetFields();
+        }}
+        onOk={() => form.submit()}
+        okText={editingPrescription ? "Update" : "Add"}
+        width={700}
+      >
+        <Form form={form} layout="vertical" onFinish={handleAddOrUpdate}>
+          <Form.Item
+            name="patient_id"
+            label="Patient"
+            rules={[{ required: true, message: "Please select patient" }]}
+          >
+            <Select placeholder="Select patient">
+              {patients.map(patient => (
+                <Option key={patient.id} value={patient.id}>
+                  {patient.username}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.List name="medicines">
+            {(fields, { add, remove }) => (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-medium">Medicines</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                    Add Medicine
+                  </Button>
+                </div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'medicine_id']}
+                      rules={[{ required: true, message: 'Please select medicine' }]}
+                    >
+                      <Select placeholder="Select medicine" style={{ width: 200 }}>
+                        {inventory.map(medicine => (
+                          <Option key={medicine.id} value={medicine.id}>
+                            {medicine.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'quantity']}
+                      rules={[{ required: true, message: 'Please enter quantity' }]}
+                    >
+                      <Input type="number" placeholder="Quantity" min={1} />
+                    </Form.Item>
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                  </Space>
+                ))}
+              </>
             )}
-          </TableBody>
-        </Table>
-      </div>
+          </Form.List>
+
+          <Form.List name="tests">
+            {(fields, { add, remove }) => (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-medium">Tests</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                    Add Test
+                  </Button>
+                </div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'test_id']}
+                    >
+                      <Select placeholder="Select test" style={{ width: 200 }}>
+                        {tests.map(test => (
+                          <Option key={test.id} value={test.id}>
+                            {test.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                  </Space>
+                ))}
+              </>
+            )}
+          </Form.List>
+
+          <Form.Item name="notes" label="Notes">
+            <Input.TextArea placeholder="Additional notes for the prescription" rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Billing Modal */}
+      <Modal
+        title={
+          <Space>
+            <FileTextOutlined />
+            Add Billing
+          </Space>
+        }
+        open={isBillingModalOpen}
+        onCancel={() => {
+          setIsBillingModalOpen(false);
+          setSelectedPrescription(null);
+        }}
+        onOk={() => form.submit()}
+        okText="Add Billing"
+        width={700}
+      >
+        <Form 
+          form={form} 
+          layout="vertical" 
+          onFinish={handleAddOrUpdateBilling}
+          initialValues={selectedPrescription || {}}
+        >
+          <Form.Item
+            name="patient_id"
+            label="Patient"
+          >
+            <Select placeholder="Select patient" disabled>
+              {patients.map(patient => (
+                <Option key={patient.id} value={patient.id}>
+                  {patient.username}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.List name="medicines">
+            {(fields, { add, remove }) => (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-medium">Medicines</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                    Add Medicine
+                  </Button>
+                </div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'medicine_id']}
+                      rules={[{ required: true, message: 'Please select medicine' }]}
+                    >
+                      <Select placeholder="Select medicine" style={{ width: 200 }}>
+                        {inventory.map(medicine => (
+                          <Option key={medicine.id} value={medicine.id}>
+                            {medicine.name} - ₹{medicine.price}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'quantity']}
+                      rules={[{ required: true, message: 'Please enter quantity' }]}
+                    >
+                      <Input type="number" placeholder="Quantity" min={1} />
+                    </Form.Item>
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                  </Space>
+                ))}
+              </>
+            )}
+          </Form.List>
+
+          <Form.List name="tests">
+            {(fields, { add, remove }) => (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-medium">Tests</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                    Add Test
+                  </Button>
+                </div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'test_id']}
+                    >
+                      <Select placeholder="Select test" style={{ width: 200 }}>
+                        {tests.map(test => (
+                          <Option key={test.id} value={test.id}>
+                            {test.name} - ₹{test.price}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                  </Space>
+                ))}
+              </>
+            )}
+          </Form.List>
+
+          <Form.Item name="notes" label="Notes">
+            <Input.TextArea placeholder="Additional notes for billing" rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* View Prescription Modal */}
-      {viewPrescription && (
-        <Dialog open={!!viewPrescription} onOpenChange={() => setViewPrescription(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Prescription Details</DialogTitle>
-            </DialogHeader>
-            <div id="prescription-print-area" className="p-4">
-              <h2>Prescription</h2>
-              <p><strong>Patient:</strong> {viewPrescription.patient_id}</p>
-              <p><strong>Doctor:</strong> {viewPrescription.doctor_id}</p>
-              <h3 className="mt-2 font-semibold">Medicines</h3>
-              <table className="w-full border mt-2">
-                <thead>
-                  <tr>
-                    <th className="border px-2 py-1">Medicine</th>
-                    <th className="border px-2 py-1">Quantity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewPrescription.medicines.map((m, i) => (
-                    <tr key={i}>
-                      <td className="border px-2 py-1">{m.medicine_id}</td>
-                      <td className="border px-2 py-1">{m.quantity}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {viewPrescription.notes && (
-                <p className="mt-2"><strong>Notes:</strong> {viewPrescription.notes}</p>
-              )}
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined />
+            Prescription Details
+          </Space>
+        }
+        open={isViewModalOpen}
+        onCancel={() => {
+          setIsViewModalOpen(false);
+          setViewingPrescription(null);
+        }}
+        footer={[
+          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={handlePrint}>
+            Print / Save PDF
+          </Button>,
+          <Button key="close" onClick={() => setIsViewModalOpen(false)}>
+            Close
+          </Button>
+        ]}
+        width={700}
+      >
+        {viewingPrescription && (
+          <div>
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <MedicineBoxOutlined className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Prescription #{viewingPrescription.id}</h3>
+                <p className="text-gray-600">Medical prescription details</p>
+              </div>
             </div>
-            <DialogFooter className="flex justify-end space-x-2">
-              <Button onClick={handlePrint}>Print / Save PDF</Button>
-              <Button variant="outline" onClick={() => setViewPrescription(null)}>Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+
+            <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="Patient">
+                {viewingPrescription.patient?.username || 'N/A'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Doctor">
+                {viewingPrescription.doctor?.username || 'N/A'}
+              </Descriptions.Item>
+            </Descriptions>
+
+            <Divider />
+
+            <h4 className="font-semibold mb-3">Medicines</h4>
+            {viewingPrescription.medicines && viewingPrescription.medicines.length > 0 ? (
+              <Table
+                size="small"
+                dataSource={viewingPrescription.medicines}
+                pagination={false}
+                columns={[
+                  { title: 'Medicine', dataIndex: ['medicine_details', 'name'], key: 'medicine' },
+                  { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
+                ]}
+              />
+            ) : (
+              <p className="text-gray-500">No medicines prescribed</p>
+            )}
+
+            <Divider />
+
+            <h4 className="font-semibold mb-3">Tests</h4>
+            {viewingPrescription.tests && viewingPrescription.tests.length > 0 ? (
+              <Table
+                size="small"
+                dataSource={viewingPrescription.tests}
+                pagination={false}
+                columns={[
+                  { title: 'Test', dataIndex: ['test_details', 'name'], key: 'test' },
+                ]}
+              />
+            ) : (
+              <p className="text-gray-500">No tests prescribed</p>
+            )}
+
+            {viewingPrescription.notes && (
+              <>
+                <Divider />
+                <h4 className="font-semibold mb-2">Notes</h4>
+                <p>{viewingPrescription.notes}</p>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

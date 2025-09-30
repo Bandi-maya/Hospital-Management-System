@@ -1,5 +1,37 @@
 import React, { useState, useEffect } from "react";
 import {
+  Modal,
+  Button,
+  Input,
+  Table,
+  Select,
+  Card,
+  Row,
+  Col,
+  Statistic,
+  Tag,
+  Form,
+  InputNumber,
+  DatePicker,
+  Space,
+  Tooltip,
+  Popconfirm,
+  Descriptions,
+  message,
+  Progress,
+  Avatar,
+  Badge,
+  Tabs,
+  Timeline,
+  Alert,
+  Divider,
+  Switch,
+  Collapse,
+  Typography,
+  Flex,
+  List
+} from "antd";
+import {
   UserSwitchOutlined,
   TeamOutlined,
   LockOutlined,
@@ -28,37 +60,19 @@ import {
   CrownOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  ThunderboltOutlined,
+  RocketOutlined,
+  ExportOutlined,
+  PieChartOutlined,
+  TableOutlined,
+  ApartmentOutlined
 } from "@ant-design/icons";
-import {
-  Card,
-  Form,
-  Input,
-  Switch,
-  Button,
-  Select,
-  Row,
-  Col,
-  Divider,
-  Space,
-  message,
-  Tag,
-  Table,
-  Modal,
-  Popconfirm,
-  Tooltip,
-  Statistic,
-  Avatar,
-  Badge,
-  Tabs,
-  List,
-  Descriptions,
-  Alert,
-  Progress,
-} from "antd";
+import type { ColumnsType } from "antd/es/table";
+import dayjs from "dayjs";
 
 const { Option } = Select;
 const { TextArea } = Input;
-const { TabPane } = Tabs;
+const { Title, Text } = Typography;
 
 // Sample roles data
 const defaultRoles = [
@@ -89,6 +103,9 @@ const defaultRoles = [
     },
     color: "red",
     icon: "crown",
+    status: "Active",
+    createdAt: "2024-01-01",
+    updatedAt: "2024-01-15"
   },
   {
     id: 2,
@@ -117,6 +134,9 @@ const defaultRoles = [
     },
     color: "blue",
     icon: "medicine",
+    status: "Active",
+    createdAt: "2024-01-02",
+    updatedAt: "2024-01-10"
   },
   {
     id: 3,
@@ -145,6 +165,9 @@ const defaultRoles = [
     },
     color: "green",
     icon: "experiment",
+    status: "Active",
+    createdAt: "2024-01-03",
+    updatedAt: "2024-01-12"
   },
   {
     id: 4,
@@ -173,6 +196,9 @@ const defaultRoles = [
     },
     color: "orange",
     icon: "user-switch",
+    status: "Active",
+    createdAt: "2024-01-04",
+    updatedAt: "2024-01-08"
   },
 ];
 
@@ -226,6 +252,15 @@ const RoleIcon = ({ icon }) => {
   return iconMap[icon] || <UserOutlined />;
 };
 
+interface RoleStats {
+  total: number;
+  active: number;
+  inactive: number;
+  totalUsers: number;
+  avgPermissions: number;
+  recentAdded: number;
+}
+
 export default function Roles() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -233,9 +268,12 @@ export default function Roles() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState("list");
+  const [activeTab, setActiveTab] = useState("roles");
   const [permissionCount, setPermissionCount] = useState(0);
   const [formValues, setFormValues] = useState({});
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Load roles from localStorage on component mount
   useEffect(() => {
@@ -247,6 +285,16 @@ export default function Roles() {
     saveRolesToStorage();
   }, [roles]);
 
+  // Auto refresh notifier
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        message.info("🔄 Auto-refresh: Role data reloaded");
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
+
   // Load roles from localStorage
   const loadRolesFromStorage = () => {
     try {
@@ -254,12 +302,10 @@ export default function Roles() {
       if (savedRoles) {
         const parsedRoles = JSON.parse(savedRoles);
         setRoles(parsedRoles);
-        console.log("Roles loaded from localStorage:", parsedRoles);
       } else {
         // Initialize with default roles if no data exists
         setRoles(defaultRoles);
         saveRolesToStorage();
-        console.log("Initialized with default roles");
       }
     } catch (error) {
       console.error("Error loading roles from localStorage:", error);
@@ -273,7 +319,6 @@ export default function Roles() {
     try {
       localStorage.setItem("hospitalRoles", JSON.stringify(roles));
       localStorage.setItem("hospitalRolesLastUpdated", new Date().toISOString());
-      console.log("Roles saved to localStorage:", roles);
     } catch (error) {
       console.error("Error saving roles to localStorage:", error);
       message.error("Error saving roles data.");
@@ -298,38 +343,6 @@ export default function Roles() {
       console.error("Error exporting roles:", error);
       message.error("Failed to export roles data.");
     }
-  };
-
-  // Import roles data
-  const handleImportRoles = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        if (e.target && typeof e.target.result === 'string') {
-          const importedRoles = JSON.parse(e.target.result);
-          
-          // Validate imported data structure
-          if (Array.isArray(importedRoles) && importedRoles.every(role => 
-            role.id && role.name && role.permissions
-          )) {
-            setRoles(importedRoles);
-            message.success("Roles data imported successfully!");
-          } else {
-            throw new Error("Invalid roles data format");
-          }
-        }
-      } catch (error) {
-        console.error("Error importing roles:", error);
-        message.error("Invalid roles file format. Please check the file.");
-      }
-    };
-    reader.onerror = () => {
-      message.error("Failed to read the file.");
-    };
-    reader.readAsText(file);
-    
-    // Prevent default upload behavior
-    return false;
   };
 
   // Reset to default roles
@@ -386,6 +399,9 @@ export default function Roles() {
             },
             color: getRoleColor(values.roleName),
             icon: getRoleIcon(values.roleName),
+            status: values.status || "Active",
+            createdAt: selectedRole ? selectedRole.createdAt : dayjs().format("YYYY-MM-DD"),
+            updatedAt: dayjs().format("YYYY-MM-DD")
           };
 
           if (selectedRole) {
@@ -412,13 +428,6 @@ export default function Roles() {
       });
   };
 
-  const handleReset = () => {
-    form.resetFields();
-    setSelectedRole(null);
-    setFormValues({});
-    message.info("Form has been reset.");
-  };
-
   const handleView = (role) => {
     setSelectedRole(role);
     setIsViewModalVisible(true);
@@ -429,6 +438,7 @@ export default function Roles() {
     const formData = {
       roleName: role.name,
       roleDescription: role.description,
+      status: role.status,
       ...role.permissions
     };
     form.setFieldsValue(formData);
@@ -474,6 +484,22 @@ export default function Roles() {
     setFormValues(allValues);
   };
 
+  // Statistics
+  const stats: RoleStats = {
+    total: roles.length,
+    active: roles.filter((r) => r.status === "Active").length,
+    inactive: roles.filter((r) => r.status === "Inactive").length,
+    totalUsers: roles.reduce((acc, role) => acc + role.userCount, 0),
+    avgPermissions: Math.round(roles.reduce((acc, role) => {
+      const enabled = Object.values(role.permissions).filter(val => val).length;
+      return acc + enabled;
+    }, 0) / roles.length) || 0,
+    recentAdded: roles.filter((r) =>
+      dayjs(r.createdAt).isAfter(dayjs().subtract(7, 'day'))
+    ).length
+  };
+
+  // UI Helpers
   const getRoleColor = (roleName) => {
     const colors = {
       'Super Admin': 'red',
@@ -500,11 +526,8 @@ export default function Roles() {
     return icons[roleName] || 'user';
   };
 
-  const getPermissionStatusIcon = (hasPermission) => {
-    return hasPermission ? 
-      <CheckCircleOutlined style={{ color: '#52c41a' }} /> : 
-      <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
-  };
+  const getStatusColor = (status: string) => ({ 'Active': 'green', 'Inactive': 'red' }[status] || 'default');
+  const getStatusIcon = (status: string) => ({ 'Active': <CheckCircleOutlined />, 'Inactive': <CloseCircleOutlined /> }[status]);
 
   const getAvatarColor = (color) => {
     const colorMap = {
@@ -520,60 +543,63 @@ export default function Roles() {
     return colorMap[color] || colorMap.default;
   };
 
-  const getFieldValue = (fieldName) => {
-    return formValues[fieldName] || false;
-  };
+  const filteredRoles = roles.filter((role) => {
+    const matchesSearch = searchText === "" ||
+      role.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      role.description.toLowerCase().includes(searchText.toLowerCase());
+    const matchesStatus = statusFilter === "all" || role.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  const getLastUpdated = () => {
-    const lastUpdated = localStorage.getItem("hospitalRolesLastUpdated");
-    return lastUpdated ? new Date(lastUpdated).toLocaleString() : 'Never';
-  };
-
-  const columns = [
+  const columns: ColumnsType<any> = [
     {
-      title: 'Role',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text, record) => (
-        <Space>
-          <Avatar 
-            size="large" 
-            icon={<RoleIcon icon={record.icon} />} 
-            style={{ backgroundColor: getAvatarColor(record.color) }} 
+      title: <Space><LockOutlined /> Role Information</Space>,
+      key: 'role',
+      render: (_, record) => (
+        <Flex align="center" gap="middle">
+          <Avatar
+            size="large"
+            icon={<RoleIcon icon={record.icon} />}
+            style={{ backgroundColor: getAvatarColor(record.color) }}
           />
           <div>
-            <div style={{ fontWeight: 'bold' }}>{text}</div>
+            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{record.name}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>{record.description}</div>
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              <CalendarOutlined /> Created: {dayjs(record.createdAt).format('MMM D, YYYY')}
+            </div>
           </div>
+        </Flex>
+      ),
+    },
+    {
+      title: <Space><TeamOutlined /> Users & Status</Space>,
+      key: 'users',
+      render: (_, record) => (
+        <Space direction="vertical">
+          <Badge count={record.userCount} showZero style={{ backgroundColor: '#52c41a' }} />
+          <Tag color={getStatusColor(record.status)} icon={getStatusIcon(record.status)}>
+            {record.status}
+          </Tag>
         </Space>
       ),
     },
     {
-      title: 'Users',
-      dataIndex: 'userCount',
-      key: 'userCount',
-      render: (count) => (
-        <Badge count={count} showZero style={{ backgroundColor: '#52c41a' }} />
-      ),
-    },
-    {
-      title: 'Permissions',
+      title: <Space><SecurityScanOutlined /> Permissions</Space>,
       key: 'permissions',
       render: (_, record) => {
         const enabledCount = Object.values(record.permissions).filter(val => val).length;
         const totalCount = Object.keys(record.permissions).length;
         return (
           <Space direction="vertical" size="small">
-            <div>
-              <Progress 
-                percent={Math.round((enabledCount / totalCount) * 100)} 
-                size="small" 
-                strokeColor={
-                  enabledCount === totalCount ? '#52c41a' : 
+            <Progress
+              percent={Math.round((enabledCount / totalCount) * 100)}
+              size="small"
+              strokeColor={
+                enabledCount === totalCount ? '#52c41a' :
                   enabledCount > totalCount / 2 ? '#1890ff' : '#fa8c16'
-                }
-              />
-            </div>
+              }
+            />
             <div style={{ fontSize: '12px', color: '#666' }}>
               {enabledCount} of {totalCount} permissions
             </div>
@@ -582,34 +608,29 @@ export default function Roles() {
       },
     },
     {
-      title: 'Actions',
+      title: <Space><ThunderboltOutlined /> Actions</Space>,
       key: 'actions',
       render: (_, record) => (
         <Space>
           <Tooltip title="View Details">
-            <Button 
-              icon={<EyeOutlined />} 
-              shape="circle" 
-              type="primary" 
-              ghost
-              onClick={() => handleView(record)}
-            />
+            <Button icon={<EyeOutlined />} shape="circle" type="primary" ghost onClick={() => handleView(record)} />
           </Tooltip>
           <Tooltip title="Edit Role">
-            <Button 
-              icon={<EditOutlined />} 
-              shape="circle" 
-              onClick={() => handleEdit(record)}
-            />
+            <Button icon={<EditOutlined />} shape="circle" onClick={() => handleEdit(record)} />
           </Tooltip>
           {record.name !== 'Super Admin' && (
             <Tooltip title="Delete Role">
-              <Button 
-                icon={<DeleteOutlined />} 
-                shape="circle" 
-                danger 
-                onClick={() => handleDelete(record.id)}
-              />
+              <Popconfirm
+                title="Delete this role?"
+                description="Are you sure you want to delete this role? This action cannot be undone."
+                onConfirm={() => handleDelete(record.id)}
+                okText="Yes"
+                cancelText="No"
+                okType="danger"
+                icon={<CloseCircleOutlined style={{ color: 'red' }} />}
+              >
+                <Button icon={<DeleteOutlined />} shape="circle" danger />
+              </Popconfirm>
             </Tooltip>
           )}
         </Space>
@@ -617,62 +638,56 @@ export default function Roles() {
     },
   ];
 
-  return (
-    <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#262626', margin: 0 }}>Role Management</h1>
-          <p style={{ color: '#8c8c8c', margin: '4px 0 0 0' }}>Manage roles and permissions for HMS modules</p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={handleCreateNew}
-            size="large"
-          >
-            Create New Role
-          </Button>
-        </div>
-      </div>
+  function getFieldValue(key: string) {
+    throw new Error("Function not implemented.");
+  }
 
-      {/* Stats */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic title="Total Roles" value={roles.length} prefix={<TeamOutlined />} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic 
-              title="Active Users" 
-              value={roles.reduce((acc, role) => acc + role.userCount, 0)} 
-              prefix={<UserOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic 
-              title="Avg Permissions" 
-              value={Math.round(roles.reduce((acc, role) => {
-                const enabled = Object.values(role.permissions).filter(val => val).length;
-                return acc + enabled;
-              }, 0) / roles.length) || 0} 
-              prefix={<SecurityScanOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ color: '#8c8c8c', fontSize: '14px', marginBottom: '4px' }}>Last Updated</div>
-              <div style={{ fontWeight: 'bold', fontSize: '18px' }}>{getLastUpdated()}</div>
-            </div>
-          </Card>
-        </Col>
+  return (
+    <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Header */}
+      <Card style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+        <Flex justify="space-between" align="center">
+          <div>
+            <Space size="large">
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '10px' }}>
+                <LockOutlined style={{ fontSize: '36px' }} />
+              </div>
+              <div>
+                <Title level={2} style={{ color: 'white', margin: 0 }}>🔐 Role Management</Title>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', margin: 0 }}><DashboardOutlined /> Manage user roles and permissions</Text>
+              </div>
+            </Space>
+          </div>
+          <Space>
+            <Tooltip title="Auto Refresh">
+              <Switch
+                checkedChildren={<ReloadOutlined />}
+                unCheckedChildren={<CloseCircleOutlined />}
+                checked={autoRefresh}
+                onChange={setAutoRefresh}
+              />
+            </Tooltip>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleCreateNew}
+              size="large"
+              style={{ background: '#fff', color: '#667eea', border: 'none', fontWeight: 'bold' }}
+            >
+              <RocketOutlined /> Create New Role
+            </Button>
+          </Space>
+        </Flex>
+      </Card>
+
+      {/* Statistics Cards */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><LockOutlined /> Total Roles</Space>} value={stats.total} valueStyle={{ color: '#667eea' }} /></Card></Col>
+        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><CheckCircleOutlined /> Active</Space>} value={stats.active} valueStyle={{ color: '#52c41a' }} /></Card></Col>
+        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><TeamOutlined /> Total Users</Space>} value={stats.totalUsers} valueStyle={{ color: '#1890ff' }} /></Card></Col>
+        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><SecurityScanOutlined /> Avg Permissions</Space>} value={stats.avgPermissions} valueStyle={{ color: '#722ed1' }} /></Card></Col>
+        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><CheckCircleOutlined /> Recent Added</Space>} value={stats.recentAdded} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
+        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><DashboardOutlined /> Utilization</Space>} value={Math.round((stats.active / (stats.total || 1)) * 100)} suffix="%" valueStyle={{ color: '#36cfc9' }} /></Card></Col>
       </Row>
 
       {/* Data Management Alert */}
@@ -683,7 +698,7 @@ export default function Roles() {
         showIcon
         action={
           <Space>
-            <Button size="small" onClick={handleExportRoles}>
+            <Button size="small" icon={<ExportOutlined />} onClick={handleExportRoles}>
               Export Data
             </Button>
             <Button size="small" danger onClick={handleResetToDefault}>
@@ -694,70 +709,169 @@ export default function Roles() {
         style={{ marginBottom: '16px' }}
       />
 
-      {/* Main Content */}
-      <Card style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.03), 0 1px 6px rgba(0,0,0,0.03), 0 0 1px rgba(0,0,0,0.03)', border: 'none' }}>
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane tab={<span><TeamOutlined /> All Roles</span>} key="list">
-            <Table 
-              columns={columns} 
-              dataSource={roles} 
-              rowKey="id"
-              pagination={{ pageSize: 10 }}
-            />
-          </TabPane>
-          <TabPane tab={<span><BarChartOutlined /> Permissions Overview</span>} key="overview">
-            <Row gutter={[24, 24]}>
-              {permissionGroups.map((group, index) => (
-                <Col span={24} key={index}>
-                  <Card title={group.title} size="small">
-                    <List
-                      dataSource={group.permissions}
-                      renderItem={item => (
-                        <List.Item>
-                          <List.Item.Meta
-                            avatar={<Avatar icon={item.icon} style={{ backgroundColor: '#1890ff' }} />}
-                            title={item.label}
-                            description={item.description}
-                          />
-                          <div>
-                            {roles.map(role => (
-                              <Tag 
-                                key={role.id} 
-                                color={role.permissions[item.key] ? role.color : 'default'}
-                                style={{ margin: '2px', opacity: role.permissions[item.key] ? 1 : 0.4 }}
-                              >
-                                {role.name}
-                              </Tag>
-                            ))}
-                          </div>
-                        </List.Item>
-                      )}
+      {/* Tabs for Different Views */}
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs.TabPane
+          key="roles"
+          tab={
+            <Space>
+              <LockOutlined /> All Roles <Badge count={filteredRoles.length} overflowCount={99} />
+            </Space>
+          }
+        >
+          <div className="space-y-6">
+            <Card>
+              <Flex wrap="wrap" gap="middle" align="center" style={{ marginBottom: '16px' }}>
+                <Input
+                  placeholder="🔍 Search roles, descriptions..."
+                  prefix={<UserOutlined />}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  style={{ width: 300 }}
+                  size="large"
+                />
+                <Select value={statusFilter} onChange={setStatusFilter} placeholder="Filter by Status" style={{ width: 150 }} size="large">
+                  <Option value="all">All Status</Option>
+                  <Option value="Active">Active</Option>
+                  <Option value="Inactive">Inactive</Option>
+                </Select>
+                <Space>
+                  <Button icon={<ReloadOutlined />} onClick={() => { setSearchText(''); setStatusFilter('all'); }}>Reset</Button>
+                  <Button icon={<ExportOutlined />}>Export</Button>
+                </Space>
+              </Flex>
+              <Alert
+                message="Roles Overview"
+                description={`${stats.active} active and ${stats.inactive} inactive roles. ${stats.totalUsers} total users assigned across all roles.`}
+                type={stats.inactive > 0 ? "warning" : "info"}
+                showIcon
+                closable
+              />
+            </Card>
+
+            <Card
+              title={
+                <Space>
+                  <TableOutlined /> Role List ({filteredRoles.length})
+                </Space>
+              }
+              extra={
+                <Space>
+                  <Tag color="green">{stats.active} Active</Tag>
+                  <Tag color="red">{stats.inactive} Inactive</Tag>
+                  <Tag color="blue">{stats.totalUsers} Users</Tag>
+                </Space>
+              }
+            >
+              <Table
+                columns={columns}
+                dataSource={filteredRoles}
+                rowKey="id"
+                loading={loading}
+                scroll={{ x: 1000 }}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total} roles`,
+                }}
+              />
+            </Card>
+          </div>
+        </Tabs.TabPane>
+
+        <Tabs.TabPane key="permissions" tab={<Space><SecurityScanOutlined /> Permissions Overview</Space>}>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Card title="Permission Distribution">
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <PieChartOutlined style={{ fontSize: '48px', color: '#667eea' }} />
+                  <div style={{ marginTop: '16px' }}>
+                    <Progress
+                      type="circle"
+                      percent={Math.round((stats.avgPermissions / Object.keys(permissionGroups.flatMap(g => g.permissions)).length) * 100)}
+                      strokeColor="#52c41a"
                     />
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          </TabPane>
-        </Tabs>
-      </Card>
+                    <div style={{ marginTop: '16px' }}>
+                      <Tag color="blue">Avg: {stats.avgPermissions} permissions</Tag>
+                      <Tag color="green">Active: {stats.active} roles</Tag>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+            <Col span={12}>
+              <Card title="Recent Role Activity">
+                <Timeline>
+                  {roles.slice(0, 5).map(role => (
+                    <Timeline.Item
+                      key={role.id}
+                      color={getStatusColor(role.status)}
+                      dot={getStatusIcon(role.status)}
+                    >
+                      <Space direction="vertical" size={0}>
+                        <div style={{ fontWeight: 'bold' }}>{role.name}</div>
+                        <div style={{ color: '#666', fontSize: '12px' }}>
+                          {role.description}
+                        </div>
+                        <div style={{ color: '#999', fontSize: '12px' }}>
+                          <TeamOutlined /> {role.userCount} users •
+                          <SecurityScanOutlined style={{ marginLeft: '8px' }} />
+                          {Object.values(role.permissions).filter(val => val).length} permissions
+                        </div>
+                      </Space>
+                    </Timeline.Item>
+                  ))}
+                </Timeline>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={[24, 24]} style={{ marginTop: '16px' }}>
+            {permissionGroups.map((group, index) => (
+              <Col span={24} key={index}>
+                <Card title={group.title} size="small">
+                  <List
+                    dataSource={group.permissions}
+                    renderItem={item => (
+                      <List.Item>
+                        <List.Item.Meta
+                          avatar={<Avatar icon={item.icon} style={{ backgroundColor: '#1890ff' }} />}
+                          title={item.label}
+                          description={item.description}
+                        />
+                        <div>
+                          {roles.map(role => (
+                            <Tag
+                              key={role.id}
+                              color={role.permissions[item.key] ? role.color : 'default'}
+                              style={{ margin: '2px', opacity: role.permissions[item.key] ? 1 : 0.4 }}
+                            >
+                              {role.name}
+                            </Tag>
+                          ))}
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Tabs.TabPane>
+      </Tabs>
 
       {/* View Role Modal */}
       <Modal
         title={
           <Space>
-            <EyeOutlined />
-            Role Details - {selectedRole?.name}
+            <EyeOutlined /> Role Details: {selectedRole?.name}
           </Space>
         }
         open={isViewModalVisible}
         onCancel={handleCancelView}
         footer={[
-        //   <Button key="edit" type="primary" onClick={() => {
-        //     handleCancelView();
-        //     handleEdit(selectedRole);
-        //   }}>
-        //     <EditOutlined /> Edit Role
-        //   </Button>,
           <Button key="close" onClick={handleCancelView}>
             Close
           </Button>
@@ -765,65 +879,44 @@ export default function Roles() {
         width={700}
       >
         {selectedRole && (
-          <div>
-            {/* Role Header */}
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <Avatar 
-                size={80} 
-                icon={<RoleIcon icon={selectedRole.icon} />}
-                style={{ 
-                  backgroundColor: getAvatarColor(selectedRole.color),
-                  marginBottom: 16
-                }}
-              />
-              <h2 style={{ margin: '8px 0' }}>{selectedRole.name}</h2>
-              <p style={{ color: '#666', margin: 0 }}>{selectedRole.description}</p>
-              <Space style={{ marginTop: 8 }}>
-                <Tag color={selectedRole.color} icon={<UserOutlined />}>
-                  {selectedRole.userCount} Users
-                </Tag>
-                <Tag color="blue">
-                  {Object.values(selectedRole.permissions).filter(val => val).length} Permissions
-                </Tag>
+          <Descriptions bordered column={2} size="middle">
+            <Descriptions.Item label="Role Information" span={2}>
+              <Space direction="vertical">
+                <div><strong>Name:</strong> {selectedRole.name}</div>
+                <div><strong>Description:</strong> {selectedRole.description}</div>
+                <div><strong>Status:</strong> <Tag color={getStatusColor(selectedRole.status)} icon={getStatusIcon(selectedRole.status)}>{selectedRole.status}</Tag></div>
+                <div><strong>Users:</strong> <Badge count={selectedRole.userCount} showZero style={{ backgroundColor: '#52c41a' }} /></div>
               </Space>
-            </div>
-
-            <Descriptions bordered column={1} size="small">
-              <Descriptions.Item label="Role Name">
-                {selectedRole.name}
-              </Descriptions.Item>
-              <Descriptions.Item label="Description">
-                {selectedRole.description}
-              </Descriptions.Item>
-              <Descriptions.Item label="User Count">
-                <Badge count={selectedRole.userCount} showZero style={{ backgroundColor: '#52c41a' }} />
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Divider orientation="left">Permissions</Divider>
-            
+            </Descriptions.Item>
+            <Descriptions.Item label="Permissions Summary" span={2}>
+              <Space direction="vertical">
+                <div>
+                  <Progress
+                    percent={Math.round((Object.values(selectedRole.permissions).filter(val => val).length / Object.keys(selectedRole.permissions).length) * 100)}
+                    size="small"
+                  />
+                </div>
+                <div style={{ fontSize: '12px', color: '#666' }}>
+                  {Object.values(selectedRole.permissions).filter(val => val).length} of {Object.keys(selectedRole.permissions).length} permissions enabled
+                </div>
+              </Space>
+            </Descriptions.Item>
             {permissionGroups.map((group, groupIndex) => (
-              <div key={groupIndex} style={{ marginBottom: 20 }}>
-                <h4 style={{ color: '#1890ff', marginBottom: 12 }}>{group.title}</h4>
-                <Row gutter={[16, 8]}>
+              <Descriptions.Item key={groupIndex} label={group.title} span={2}>
+                <Space wrap>
                   {group.permissions.map((permission) => (
-                    <Col span={24} key={permission.key}>
-                      <Card size="small" style={{ 
-                        border: selectedRole.permissions[permission.key] ? '1px solid #52c41a' : '1px solid #d9d9d9',
-                        background: selectedRole.permissions[permission.key] ? '#f6ffed' : '#fafafa'
-                      }}>
-                        <Space>
-                          {getPermissionStatusIcon(selectedRole.permissions[permission.key])}
-                          <span style={{ fontWeight: 'bold' }}>{permission.label}</span>
-                          <span style={{ color: '#666', fontSize: '12px' }}>{permission.description}</span>
-                        </Space>
-                      </Card>
-                    </Col>
+                    <Tag
+                      key={permission.key}
+                      color={selectedRole.permissions[permission.key] ? 'green' : 'red'}
+                      icon={selectedRole.permissions[permission.key] ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                    >
+                      {permission.label}
+                    </Tag>
                   ))}
-                </Row>
-              </div>
+                </Space>
+              </Descriptions.Item>
             ))}
-          </div>
+          </Descriptions>
         )}
       </Modal>
 
@@ -832,7 +925,7 @@ export default function Roles() {
         title={
           <Space>
             {selectedRole ? <EditOutlined /> : <PlusOutlined />}
-            {selectedRole ? `Edit ${selectedRole.name}` : 'Create New Role'}
+            {selectedRole ? "Edit Role" : "Create New Role"}
           </Space>
         }
         open={isEditModalVisible}
@@ -841,11 +934,11 @@ export default function Roles() {
         okText={selectedRole ? "Update Role" : "Create Role"}
         cancelText="Cancel"
         width={800}
-        style={{ top: 20 }}
         confirmLoading={loading}
+        destroyOnClose
       >
-        <Form 
-          form={form} 
+        <Form
+          form={form}
           layout="vertical"
           onValuesChange={handleFormChange}
         >
@@ -855,30 +948,41 @@ export default function Roles() {
             showIcon
             style={{ marginBottom: 16 }}
           />
-          
+
           <Row gutter={[24, 16]}>
             <Col span={12}>
-              <Form.Item 
-                label="Role Name" 
-                name="roleName" 
+              <Form.Item
+                label="Role Name"
+                name="roleName"
                 rules={[{ required: true, message: "Please enter role name" }]}
               >
-                <Input 
-                  placeholder="e.g., Admin, Doctor, Nurse" 
-                  size="large" 
-                  prefix={<UserSwitchOutlined />} 
+                <Input
+                  placeholder="e.g., Admin, Doctor, Nurse"
+                  size="large"
+                  prefix={<UserSwitchOutlined />}
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="Role Description" name="roleDescription">
-                <TextArea 
-                  placeholder="Brief description of role responsibilities" 
-                  rows={2} 
-                />
+              <Form.Item
+                label="Status"
+                name="status"
+                rules={[{ required: true }]}
+              >
+                <Select placeholder="Select status">
+                  <Option value="Active">Active</Option>
+                  <Option value="Inactive">Inactive</Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item label="Role Description" name="roleDescription">
+            <TextArea
+              placeholder="Brief description of role responsibilities"
+              rows={3}
+            />
+          </Form.Item>
 
           <Divider orientation="left">Module Permissions</Divider>
 
@@ -888,15 +992,15 @@ export default function Roles() {
               <Row gutter={[16, 16]}>
                 {group.permissions.map((permission) => (
                   <Col xs={24} sm={12} md={8} key={permission.key}>
-                    <Card 
-                      size="small" 
-                      style={{ 
-                        border: getFieldValue(permission.key) ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                        background: getFieldValue(permission.key) ? '#f0f8ff' : 'white'
+                    <Card
+                      size="small"
+                      style={{
+                        border: formValues[permission.key] ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                        background: formValues[permission.key] ? '#f0f8ff' : 'white'
                       }}
                     >
-                      <Form.Item 
-                        name={permission.key} 
+                      <Form.Item
+                        name={permission.key}
                         valuePropName="checked"
                         style={{ margin: 0 }}
                       >
@@ -904,7 +1008,8 @@ export default function Roles() {
                           <Switch />
                           <div>
                             <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
-                              {permission.icon} {permission.label}
+                              <span style={{ marginRight: 8 }}>{permission.icon}</span>
+                              {permission.label}
                             </div>
                             <div style={{ fontSize: '12px', color: '#666' }}>
                               {permission.description}

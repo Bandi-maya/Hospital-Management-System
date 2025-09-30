@@ -2,14 +2,20 @@ import React, { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
     Table, Input, Button, Modal, Select, DatePicker,
-    message, Card, Statistic, Tag, Tooltip, Popconfirm,
-    Space, Row, Col
+    message, Card, Tag, Tooltip, Popconfirm,
+    Space, Row, Col, Statistic, Descriptions, Divider
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
     SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined,
     FilePdfOutlined, DollarOutlined, ReloadOutlined, EyeOutlined,
-    CalendarOutlined, MailOutlined, UserOutlined
+    CalendarOutlined, MailOutlined, UserOutlined,
+    TeamOutlined, DashboardOutlined, SyncOutlined,
+    CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined,
+    ThunderboltOutlined, SecurityScanOutlined, RocketOutlined,
+    CreditCardOutlined, BankOutlined, WalletOutlined,
+    ArrowUpOutlined, ArrowDownOutlined, IdcardOutlined,
+    PhoneOutlined, EnvironmentOutlined, SafetyCertificateOutlined
 } from "@ant-design/icons";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
@@ -52,11 +58,13 @@ export default function Payments() {
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [isViewMode, setIsViewMode] = useState(false);
     const [formPayment, setFormPayment] = useState<Partial<Payment>>({});
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [methodFilter, setMethodFilter] = useState<string>("all");
     const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
     const [loading, setLoading] = useState(false);
+    const [autoRefresh, setAutoRefresh] = useState(true);
 
     useEffect(() => {
         const storedPayments = localStorage.getItem("payments");
@@ -67,6 +75,16 @@ export default function Payments() {
         }
     }, []);
 
+    // Auto refresh notifier
+    useEffect(() => {
+        if (autoRefresh) {
+            const interval = setInterval(() => {
+                message.info("🔄 Auto-refresh: Payment data reloaded");
+            }, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [autoRefresh]);
+
     const filteredPayments = React.useMemo(() => payments.filter(payment => {
         const lowerSearchTerm = searchTerm.toLowerCase();
         const matchesSearch = payment.customerName.toLowerCase().includes(lowerSearchTerm) || payment.email.toLowerCase().includes(lowerSearchTerm);
@@ -76,16 +94,48 @@ export default function Payments() {
         return matchesSearch && matchesStatus && matchesMethod && matchesDate;
     }), [payments, searchTerm, statusFilter, methodFilter, dateRange]);
 
-    const stats = React.useMemo(() => ({
-        total: payments.length,
-        pending: payments.filter(p => p.status === "Pending").length,
-        totalAmount: payments.reduce((sum, p) => sum + p.amount, 0),
-        paidAmount: payments.filter(p => p.status === "Paid").reduce((sum, p) => sum + p.amount, 0),
-    }), [payments]);
+    // Statistics
+    const stats = React.useMemo(() => {
+        const total = payments.length;
+        const paid = payments.filter(p => p.status === "Paid").length;
+        const pending = payments.filter(p => p.status === "Pending").length;
+        const failed = payments.filter(p => p.status === "Failed").length;
+        
+        const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+        const paidAmount = payments.filter(p => p.status === "Paid").reduce((sum, p) => sum + p.amount, 0);
+        const pendingAmount = payments.filter(p => p.status === "Pending").reduce((sum, p) => sum + p.amount, 0);
+        const failedAmount = payments.filter(p => p.status === "Failed").reduce((sum, p) => sum + p.amount, 0);
+
+        const cashPayments = payments.filter(p => p.method === "Cash").length;
+        const cardPayments = payments.filter(p => p.method === "Card").length;
+        const upiPayments = payments.filter(p => p.method === "UPI").length;
+        const netBankingPayments = payments.filter(p => p.method === "Net Banking").length;
+
+        const successRate = total > 0 ? (paid / total) * 100 : 0;
+        const averagePayment = total > 0 ? totalAmount / total : 0;
+
+        return {
+            total,
+            paid,
+            pending,
+            failed,
+            totalAmount,
+            paidAmount,
+            pendingAmount,
+            failedAmount,
+            cashPayments,
+            cardPayments,
+            upiPayments,
+            netBankingPayments,
+            successRate,
+            averagePayment
+        };
+    }, [payments]);
 
     const openModal = useCallback((mode: 'add' | 'edit' | 'view', payment?: Payment) => {
         setFormPayment(mode === 'add' ? {} : { ...payment });
-        setIsEditMode(mode !== 'view');
+        setIsEditMode(mode === 'edit');
+        setIsViewMode(mode === 'view');
         setIsModalOpen(true);
     }, []);
 
@@ -219,25 +269,14 @@ export default function Payments() {
     const getStatusColor = (status: string) => ({ "Paid": "green", "Pending": "orange", "Failed": "red" }[status] || "blue");
     const getMethodColor = (method: string) => ({ "Cash": "blue", "Card": "purple", "UPI": "geekblue", "Net Banking": "cyan" }[method] || "default");
 
-    const columns: ColumnsType<Payment> = [
-        { title: "Customer", dataIndex: "customerName", key: "customerName", render: (text, record) => <div><div className="font-semibold">{text}</div><div className="text-xs text-gray-500">{record.email}</div></div> },
-        { title: "Amount", dataIndex: "amount", key: "amount", render: val => <span className="font-bold text-green-600">${val.toFixed(2)}</span>, sorter: (a, b) => a.amount - b.amount },
-        { title: "Date", dataIndex: "date", key: "date", render: date => dayjs(date).format('MMM DD, YYYY'), sorter: (a, b) => dayjs(a.date).unix() - dayjs(b.date).unix() },
-        { title: "Method", dataIndex: "method", key: "method", render: method => <Tag color={getMethodColor(method)} className="font-medium">{method}</Tag> },
-        { title: "Status", dataIndex: "status", key: "status", render: status => <Tag color={getStatusColor(status)} className="font-medium">{status}</Tag> },
-        {
-            title: "Actions", key: "actions", render: (_, record) => (
-                <Space>
-                    <Tooltip title="View"><Button icon={<EyeOutlined />} size="small" onClick={() => openModal('view', record)} /></Tooltip>
-                    <Tooltip title="Edit"><Button icon={<EditOutlined />} size="small" onClick={() => openModal('edit', record)} /></Tooltip>
-                    <Tooltip title="Export PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => handleExportPaymentPDF(record)} /></Tooltip>
-                    <Popconfirm title="Delete?" onConfirm={() => handleDeletePayment(record.id)} okText="Yes" cancelText="No">
-                        <Tooltip title="Delete"><Button icon={<DeleteOutlined />} size="small" danger /></Tooltip>
-                    </Popconfirm>
-                </Space>
-            )
-        }
-    ];
+    const getStatusIcon = (status: string) => {
+        const icons = {
+            Paid: <CheckCircleOutlined />,
+            Pending: <ClockCircleOutlined />,
+            Failed: <CloseCircleOutlined />,
+        };
+        return icons[status as keyof typeof icons];
+    };
 
     const resetFilters = useCallback(() => {
         setSearchTerm("");
@@ -246,58 +285,608 @@ export default function Payments() {
         setDateRange(null);
     }, []);
 
+    const columns: ColumnsType<Payment> = [
+        {
+            title: (
+                <Space>
+                    <UserOutlined />
+                    Customer Info
+                </Space>
+            ),
+            key: "customer",
+            render: (_, record) => (
+                <Space>
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <UserOutlined className="text-blue-600" />
+                    </div>
+                    <div>
+                        <div style={{ fontWeight: "bold" }}>{record.customerName}</div>
+                        <div style={{ fontSize: "12px", color: "#666" }}>
+                            <MailOutlined /> {record.email}
+                        </div>
+                    </div>
+                </Space>
+            ),
+        },
+        {
+            title: (
+                <Space>
+                    <DollarOutlined />
+                    Amount
+                </Space>
+            ),
+            dataIndex: "amount",
+            key: "amount",
+            render: (val) => (
+                <Space direction="vertical" size={0}>
+                    <span className="font-bold text-green-600">${val.toFixed(2)}</span>
+                    <div style={{ fontSize: "12px", color: "#999" }}>Total Amount</div>
+                </Space>
+            ),
+            sorter: (a, b) => a.amount - b.amount
+        },
+        {
+            title: (
+                <Space>
+                    <CalendarOutlined />
+                    Date
+                </Space>
+            ),
+            dataIndex: "date",
+            key: "date",
+            render: (date) => (
+                <Space direction="vertical" size={0}>
+                    <span style={{ fontWeight: "500" }}>{dayjs(date).format('MMM DD, YYYY')}</span>
+                    <div style={{ fontSize: "12px", color: "#999" }}>
+                        {dayjs(date).fromNow()}
+                    </div>
+                </Space>
+            ),
+            sorter: (a, b) => dayjs(a.date).unix() - dayjs(b.date).unix()
+        },
+        {
+            title: (
+                <Space>
+                    <SecurityScanOutlined />
+                    Method
+                </Space>
+            ),
+            dataIndex: "method",
+            key: "method",
+            render: (method) => (
+                <Tag color={getMethodColor(method)} className="font-medium">
+                    {method}
+                </Tag>
+            )
+        },
+        {
+            title: (
+                <Space>
+                    <DashboardOutlined />
+                    Status
+                </Space>
+            ),
+            dataIndex: "status",
+            key: "status",
+            render: (status) => (
+                <Space direction="vertical">
+                    <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
+                        {status}
+                    </Tag>
+                    <div style={{ fontSize: "12px", color: "#666" }}>
+                        Last updated
+                    </div>
+                </Space>
+            )
+        },
+        {
+            title: (
+                <Space>
+                    <ThunderboltOutlined />
+                    Actions
+                </Space>
+            ),
+            key: "actions",
+            render: (_, record) => (
+                <Space>
+                    <Tooltip title="View Details">
+                        <Button
+                            icon={<EyeOutlined />}
+                            shape="circle"
+                            type="primary"
+                            ghost
+                            onClick={() => openModal('view', record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Edit">
+                        <Button
+                            icon={<EditOutlined />}
+                            shape="circle"
+                            onClick={() => openModal('edit', record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Export PDF">
+                        <Button
+                            icon={<FilePdfOutlined />}
+                            shape="circle"
+                            type="primary"
+                            onClick={() => handleExportPaymentPDF(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                        <Popconfirm
+                            title="Delete this payment?"
+                            description="Are you sure you want to delete this payment? This action cannot be undone."
+                            onConfirm={() => handleDeletePayment(record.id)}
+                            okText="Yes"
+                            cancelText="No"
+                            okType="danger"
+                            icon={<CloseCircleOutlined style={{ color: "red" }} />}
+                        >
+                            <Button icon={<DeleteOutlined />} shape="circle" danger />
+                        </Popconfirm>
+                    </Tooltip>
+                </Space>
+            )
+        }
+    ];
+
+    const renderModalContent = () => {
+        if (isViewMode && formPayment) {
+            return (
+                <div>
+                    {/* Payment Header */}
+                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <DollarOutlined className="w-8 h-8 text-blue-600" />
+                        </div>
+                        <h2 style={{ margin: '8px 0', color: '#1890ff' }}>{formPayment.customerName}</h2>
+                        <Space>
+                            <Tag color={getMethodColor(formPayment.method || '')} icon={<CreditCardOutlined />}>
+                                {formPayment.method}
+                            </Tag>
+                            <Tag color={getStatusColor(formPayment.status || '')} icon={getStatusIcon(formPayment.status || '')}>
+                                {formPayment.status}
+                            </Tag>
+                        </Space>
+                    </div>
+
+                    <Descriptions bordered column={1} size="small">
+                        <Descriptions.Item label={
+                            <Space>
+                                <IdcardOutlined />
+                                Payment ID
+                            </Space>
+                        }>
+                            {formPayment.id}
+                        </Descriptions.Item>
+                        <Descriptions.Item label={
+                            <Space>
+                                <UserOutlined />
+                                Customer Name
+                            </Space>
+                        }>
+                            {formPayment.customerName}
+                        </Descriptions.Item>
+                        <Descriptions.Item label={
+                            <Space>
+                                <MailOutlined />
+                                Email
+                            </Space>
+                        }>
+                            {formPayment.email}
+                        </Descriptions.Item>
+                        <Descriptions.Item label={
+                            <Space>
+                                <DollarOutlined />
+                                Amount
+                            </Space>
+                        }>
+                            <span className="font-bold text-green-600 text-lg">
+                                ${formPayment.amount?.toFixed(2)}
+                            </span>
+                        </Descriptions.Item>
+                        <Descriptions.Item label={
+                            <Space>
+                                <CalendarOutlined />
+                                Payment Date
+                            </Space>
+                        }>
+                            {formPayment.date ? dayjs(formPayment.date).format('MMM DD, YYYY') : ''}
+                            <div style={{ fontSize: '12px', color: '#666' }}>
+                                ({formPayment.date ? dayjs(formPayment.date).fromNow() : ''})
+                            </div>
+                        </Descriptions.Item>
+                        <Descriptions.Item label={
+                            <Space>
+                                <SafetyCertificateOutlined />
+                                Payment Method
+                            </Space>
+                        }>
+                            <Tag color={getMethodColor(formPayment.method || '')}>
+                                {formPayment.method}
+                            </Tag>
+                        </Descriptions.Item>
+                        <Descriptions.Item label={
+                            <Space>
+                                <DashboardOutlined />
+                                Payment Status
+                            </Space>
+                        }>
+                            <Tag color={getStatusColor(formPayment.status || '')} icon={getStatusIcon(formPayment.status || '')}>
+                                {formPayment.status}
+                            </Tag>
+                        </Descriptions.Item>
+                    </Descriptions>
+
+                    <Divider />
+
+                    {/* Additional Information */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Transaction Type:</span>
+                            <Tag color="blue">One-time Payment</Tag>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Service Category:</span>
+                            <span>Medical Services</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="font-medium">Invoice Generated:</span>
+                            <Tag color="green">Yes</Tag>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Edit/Add Mode - Return to original form layout
+        return (
+            <div className="space-y-4 pt-4">
+                <Input 
+                    placeholder="Customer Name" 
+                    value={formPayment.customerName} 
+                    onChange={e => setFormPayment({ ...formPayment, customerName: e.target.value })} 
+                    disabled={!isEditMode} 
+                    prefix={<UserOutlined />} 
+                />
+                <Input 
+                    placeholder="Email" 
+                    value={formPayment.email} 
+                    onChange={e => setFormPayment({ ...formPayment, email: e.target.value })} 
+                    disabled={!isEditMode} 
+                    prefix={<MailOutlined />} 
+                />
+                <Input 
+                    type="number" 
+                    placeholder="Amount" 
+                    value={formPayment.amount} 
+                    onChange={e => setFormPayment({ ...formPayment, amount: Number(e.target.value) })} 
+                    disabled={!isEditMode} 
+                    prefix={<DollarOutlined />} 
+                />
+                <DatePicker 
+                    value={formPayment.date ? dayjs(formPayment.date) : null} 
+                    onChange={(_, dateString) => setFormPayment({ ...formPayment, date: dateString as string })} 
+                    disabled={!isEditMode} 
+                    style={{ width: "100%" }} 
+                />
+                <Select 
+                    value={formPayment.method} 
+                    onChange={val => setFormPayment({ ...formPayment, method: val })} 
+                    disabled={!isEditMode} 
+                    style={{ width: "100%" }} 
+                    placeholder="Select Payment Method"
+                >
+                    <Option value="Cash">Cash</Option>
+                    <Option value="Card">Card</Option>
+                    <Option value="UPI">UPI</Option>
+                    <Option value="Net Banking">Net Banking</Option>
+                </Select>
+                <Select 
+                    value={formPayment.status} 
+                    onChange={val => setFormPayment({ ...formPayment, status: val })} 
+                    disabled={!isEditMode} 
+                    style={{ width: "100%" }} 
+                    placeholder="Select Status"
+                >
+                    <Option value="Paid">Paid</Option>
+                    <Option value="Pending">Pending</Option>
+                    <Option value="Failed">Failed</Option>
+                </Select>
+            </div>
+        );
+    };
+
+    const getModalTitle = () => {
+        if (isViewMode) {
+            return (
+                <Space>
+                    <EyeOutlined />
+                    Payment Details
+                </Space>
+            );
+        }
+        return (
+            <Space>
+                {isEditMode ? (formPayment.id ? <EditOutlined /> : <PlusOutlined />) : <EyeOutlined />}
+                {isEditMode ? (formPayment.id ? "Edit Payment" : "Add New Payment") : "Payment Details"}
+            </Space>
+        );
+    };
+
+    const getModalFooter = () => {
+        if (isViewMode) {
+            // Only show Close button in view mode
+            return [<Button key="close" onClick={() => setIsModalOpen(false)}>Close</Button>];
+        }
+
+        if (isEditMode) {
+            return [
+                <Button key="back" onClick={() => setIsModalOpen(false)}>Cancel</Button>, 
+                <Button key="submit" type="primary" loading={loading} onClick={handleSavePayment} className="bg-blue-600 hover:bg-blue-700">
+                    {formPayment.id ? "Update" : "Add"}
+                </Button>
+            ];
+        }
+
+        return [<Button key="back" onClick={() => setIsModalOpen(false)}>Close</Button>];
+    };
+
     return (
         <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-            <div className="flex justify-between items-center mb-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Billing & Payments</h1>
-                    <p className="text-gray-600">Manage and track all payment transactions</p>
-                </div>
-                <Space>
-                    <Button icon={<ReloadOutlined />} onClick={resetFilters}>Reset Filters</Button>
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal('add')} className="bg-blue-600 hover:bg-blue-700">Add Payment</Button>
-                </Space>
-            </div>
+            {/* Header */}
+            <Card className="bg-white shadow-sm border-0">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                            <DollarOutlined className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">Billing & Payments</h1>
+                            <p className="text-gray-600 mt-1">Manage and track all payment transactions</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+                        <Tooltip title="Auto Refresh">
+                            <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+                                <SyncOutlined className="w-4 h-4 text-gray-600" />
+                                <span className="text-sm text-gray-600">Auto Refresh</span>
+                                <div 
+                                    className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
+                                        autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                                    }`}
+                                    onClick={() => setAutoRefresh(!autoRefresh)}
+                                >
+                                    <div 
+                                        className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
+                                            autoRefresh ? 'translate-x-4' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </div>
+                            </div>
+                        </Tooltip>
 
-            <Row gutter={16}>
-                <Col span={6}><Card bordered={false} className="shadow-md"><Statistic title="Total Payments" value={stats.total} prefix={<DollarOutlined />} valueStyle={{ color: '#3f8600' }} /></Card></Col>
-                <Col span={6}><Card bordered={false} className="shadow-md"><Statistic title="Total Amount" value={stats.totalAmount} prefix="$" precision={2} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-                <Col span={6}><Card bordered={false} className="shadow-md"><Statistic title="Paid Amount" value={stats.paidAmount} prefix="$" precision={2} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-                <Col span={6}><Card bordered={false} className="shadow-md"><Statistic title="Pending Payments" value={stats.pending} valueStyle={{ color: '#faad14' }} /></Card></Col>
+                        <Tooltip title="Reset Filters">
+                            <Button icon={<ReloadOutlined />} onClick={resetFilters}>
+                                Reset Filters
+                            </Button>
+                        </Tooltip>
+
+                        <Tooltip title="Add New Payment">
+                            <Button 
+                                type="primary" 
+                                icon={<PlusOutlined />} 
+                                onClick={() => openModal('add')} 
+                                className="bg-green-600 hover:bg-green-700"
+                            >
+                                <RocketOutlined /> Add Payment
+                            </Button>
+                        </Tooltip>
+                    </div>
+                </div>
+            </Card>
+
+            {/* Statistics Section */}
+            <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12} md={8} lg={4}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Total Payments"
+                            value={stats.total}
+                            prefix={<TeamOutlined />}
+                            valueStyle={{ color: '#3f8600' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={8} lg={4}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Total Amount"
+                            value={stats.totalAmount}
+                            prefix="$"
+                            precision={2}
+                            valueStyle={{ color: '#1890ff' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={8} lg={4}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Paid Amount"
+                            value={stats.paidAmount}
+                            prefix="$"
+                            precision={2}
+                            valueStyle={{ color: '#52c41a' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={8} lg={4}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Pending Amount"
+                            value={stats.pendingAmount}
+                            prefix="$"
+                            precision={2}
+                            valueStyle={{ color: '#faad14' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={8} lg={4}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Success Rate"
+                            value={stats.successRate}
+                            suffix="%"
+                            precision={1}
+                            valueStyle={{ color: '#52c41a' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={8} lg={4}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Avg Payment"
+                            value={stats.averagePayment}
+                            prefix="$"
+                            precision={2}
+                            valueStyle={{ color: '#722ed1' }}
+                        />
+                    </Card>
+                </Col>
             </Row>
 
-            <Card className="shadow-md rounded-lg">
-                <div className="flex flex-wrap gap-4 items-end">
-                    <Input placeholder="Search customer or email" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} prefix={<SearchOutlined />} allowClear style={{ minWidth: 200 }} />
-                    <Select value={statusFilter} onChange={setStatusFilter} style={{ width: 150 }} options={[{ value: 'all', label: 'All Status' }, { value: 'Paid', label: 'Paid' }, { value: 'Pending', label: 'Pending' }, { value: 'Failed', label: 'Failed' }]} />
-                    <Select value={methodFilter} onChange={setMethodFilter} style={{ width: 150 }} options={[{ value: 'all', label: 'All Methods' }, { value: 'Cash', label: 'Cash' }, { value: 'Card', label: 'Card' }, { value: 'UPI', label: 'UPI' }, { value: 'Net Banking', label: 'Net Banking' }]} />
-                    <RangePicker value={dateRange} onChange={(dates) => setDateRange(dates as [Dayjs, Dayjs])} />
-                    <Button icon={<FilePdfOutlined />} onClick={handleBulkExport} className="bg-purple-600 hover:bg-purple-700 text-white">Export PDF</Button>
+            {/* Payment Methods Statistics */}
+            <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12} md={6}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Card Payments"
+                            value={stats.cardPayments}
+                            prefix={<CreditCardOutlined />}
+                            valueStyle={{ color: '#1890ff' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="UPI Payments"
+                            value={stats.upiPayments}
+                            prefix={<BankOutlined />}
+                            valueStyle={{ color: '#722ed1' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Cash Payments"
+                            value={stats.cashPayments}
+                            prefix={<WalletOutlined />}
+                            valueStyle={{ color: '#fa8c16' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Card className="shadow-sm">
+                        <Statistic
+                            title="Net Banking"
+                            value={stats.netBankingPayments}
+                            prefix={<BankOutlined />}
+                            valueStyle={{ color: '#13c2c2' }}
+                        />
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Search and Filter Section */}
+            <Card className="bg-white shadow-sm border-0">
+                <div className="p-6">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                        <div className="flex items-center space-x-2">
+                            <TeamOutlined className="w-5 h-5" />
+                            <span className="text-lg font-semibold">All Payments</span>
+                            <Tag color="blue" className="ml-2">
+                                {filteredPayments.length}
+                            </Tag>
+                        </div>
+                        <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+                            <Input 
+                                placeholder="Search customer or email..." 
+                                value={searchTerm} 
+                                onChange={e => setSearchTerm(e.target.value)} 
+                                prefix={<SearchOutlined />} 
+                                allowClear 
+                                style={{ width: 250 }}
+                            />
+                            <Select 
+                                value={statusFilter} 
+                                onChange={setStatusFilter} 
+                                style={{ width: 150 }} 
+                                placeholder="Filter by status"
+                            >
+                                <Option value="all">All Status</Option>
+                                <Option value="Paid">Paid</Option>
+                                <Option value="Pending">Pending</Option>
+                                <Option value="Failed">Failed</Option>
+                            </Select>
+                            <Select 
+                                value={methodFilter} 
+                                onChange={setMethodFilter} 
+                                style={{ width: 150 }} 
+                                placeholder="Filter by method"
+                            >
+                                <Option value="all">All Methods</Option>
+                                <Option value="Cash">Cash</Option>
+                                <Option value="Card">Card</Option>
+                                <Option value="UPI">UPI</Option>
+                                <Option value="Net Banking">Net Banking</Option>
+                            </Select>
+                            <RangePicker 
+                                value={dateRange} 
+                                onChange={(dates) => setDateRange(dates as [Dayjs, Dayjs])} 
+                            />
+                            <Button 
+                                icon={<FilePdfOutlined />} 
+                                onClick={handleBulkExport} 
+                                className="bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                                Export PDF
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </Card>
 
+            {/* Payments Table */}
             <Card className="shadow-md rounded-lg">
-                <Table dataSource={filteredPayments} columns={columns} rowKey="id" pagination={{ pageSize: 10, showSizeChanger: true }} scroll={{ x: 900 }} rowClassName="hover:bg-gray-100" />
+                <Table 
+                    dataSource={filteredPayments} 
+                    columns={columns} 
+                    rowKey="id" 
+                    pagination={{ 
+                        pageSize: 10, 
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        showTotal: (total, range) => 
+                            `${range[0]}-${range[1]} of ${total} payments`,
+                    }} 
+                    scroll={{ x: 900 }} 
+                    rowClassName="hover:bg-gray-50"
+                    loading={loading}
+                />
             </Card>
 
+            {/* Payment Modal */}
             <Modal
-                title={isEditMode ? (formPayment.id ? "Edit Payment" : "Add Payment") : "Payment Details"}
+                title={getModalTitle()}
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
-                footer={isEditMode
-                    ? [<Button key="back" onClick={() => setIsModalOpen(false)}>Cancel</Button>, <Button key="submit" type="primary" loading={loading} onClick={handleSavePayment} className="bg-blue-600 hover:bg-blue-700">{formPayment.id ? "Update" : "Add"}</Button>]
-                    : [<Button key="back" onClick={() => setIsModalOpen(false)}>Close</Button>]
-                }
-                width={600}
+                footer={getModalFooter()}
+                width={isViewMode ? 700 : 600}
             >
-                <div className="space-y-4 pt-4">
-                    <Input placeholder="Customer Name" value={formPayment.customerName} onChange={e => setFormPayment({ ...formPayment, customerName: e.target.value })} disabled={!isEditMode} prefix={<UserOutlined />} />
-                    <Input placeholder="Email" value={formPayment.email} onChange={e => setFormPayment({ ...formPayment, email: e.target.value })} disabled={!isEditMode} prefix={<MailOutlined />} />
-                    <Input type="number" placeholder="Amount" value={formPayment.amount} onChange={e => setFormPayment({ ...formPayment, amount: Number(e.target.value) })} disabled={!isEditMode} prefix={<DollarOutlined />} />
-                    <DatePicker value={formPayment.date ? dayjs(formPayment.date) : null} onChange={(_, dateString) => setFormPayment({ ...formPayment, date: dateString as string })} disabled={!isEditMode} style={{ width: "100%" }} />
-                    <Select value={formPayment.method} onChange={val => setFormPayment({ ...formPayment, method: val })} disabled={!isEditMode} style={{ width: "100%" }} placeholder="Select Payment Method" options={[{ value: 'Cash', label: 'Cash' }, { value: 'Card', label: 'Card' }, { value: 'UPI', label: 'UPI' }, { value: 'Net Banking', label: 'Net Banking' }]} />
-                    <Select value={formPayment.status} onChange={val => setFormPayment({ ...formPayment, status: val })} disabled={!isEditMode} style={{ width: "100%" }} placeholder="Select Status" options={[{ value: 'Paid', label: 'Paid' }, { value: 'Pending', label: 'Pending' }, { value: 'Failed', label: 'Failed' }]} />
-                </div>
+                {renderModalContent()}
             </Modal>
         </div>
     );

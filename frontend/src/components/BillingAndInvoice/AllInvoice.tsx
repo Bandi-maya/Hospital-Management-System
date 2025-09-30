@@ -14,7 +14,32 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, Plus, Download, FileText, Eye, Edit, Trash2, Building, Mail, Calendar, DollarSign, Filter } from "lucide-react";
+import { 
+    Search, 
+    Plus, 
+    Download, 
+    FileText, 
+    Eye, 
+    Edit, 
+    Trash2, 
+    Building, 
+    Mail, 
+    Calendar, 
+    DollarSign, 
+    Filter,
+    Users,
+    RefreshCw,
+    X,
+    CheckCircle,
+    Clock,
+    AlertCircle,
+    Crown,
+    Shield,
+    Key,
+    Phone,
+    MapPin,
+    FileSearch
+} from "lucide-react";
 import { getApi, PutApi } from "@/ApiService";
 import { toast } from "sonner";
 
@@ -45,6 +70,7 @@ export default function AllInvoices() {
     const [isAddMode, setIsAddMode] = useState(false);
     const [formInvoice, setFormInvoice] = useState<Partial<Invoice>>({});
     const [isLoading, setIsLoading] = useState(false);
+    const [autoRefresh, setAutoRefresh] = useState(true);
 
     const loadInvoices = () => {
         setIsLoading(true);
@@ -67,30 +93,22 @@ export default function AllInvoices() {
             setIsLoading(false);
         }
     };
-    useEffect(() => {
 
+    useEffect(() => {
         loadInvoices();
     }, []);
 
-    // Enhanced filtering with status filter
-    const filteredInvoices = invoices
-    // .filter((inv) => {
-    //     const matchesSearch =
-    //         inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    //         inv.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    //         inv.status.toLowerCase().includes(searchTerm.toLowerCase());
+    // Auto refresh notifier
+    useEffect(() => {
+        if (autoRefresh) {
+            const interval = setInterval(() => {
+                loadInvoices();
+            }, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [autoRefresh]);
 
-    //     const matchesStatus = statusFilter === "All" || inv.status === statusFilter;
-
-    //     return matchesSearch && matchesStatus;
-    // });
-
-    // Calculate statistics
-    const totalInvoices = invoices.length;
-    const totalRevenue = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
-    const paidInvoices = invoices.filter(inv => inv.status === "Paid").length;
-    const pendingInvoices = invoices.filter(inv => inv.status === "Pending").length;
-    const overdueInvoices = invoices.filter(inv => inv.status === "Overdue").length;
+    const filteredInvoices = invoices;
 
     const handleViewInvoice = (invoice: Invoice) => {
         setSelectedInvoice(invoice);
@@ -111,7 +129,7 @@ export default function AllInvoices() {
     const handleAddInvoice = () => {
         setSelectedInvoice(null);
         setFormInvoice({
-            date: new Date().toISOString().split('T')[0], // Pre-fill with current date
+            date: new Date().toISOString().split('T')[0],
             status: "Pending"
         });
         setIsEditMode(true);
@@ -128,7 +146,6 @@ export default function AllInvoices() {
     };
 
     const handleSaveInvoice = () => {
-        // Enhanced validation
         if (!formInvoice.customerName?.trim()) {
             alert("Customer name is required!");
             return;
@@ -190,290 +207,21 @@ export default function AllInvoices() {
         }
     };
 
-    // Enhanced PDF generation with better error handling
-    const generateSimplePDF = async (invoice: Invoice) => {
-        if (isLoading) return;
+    const getStatusColor = (status: string) =>
+        ({
+            Paid: "green",
+            Pending: "orange",
+            Overdue: "red",
+        }[status] || "default");
 
-        setIsLoading(true);
-        try {
-            const { jsPDF } = await import('jspdf');
-            const doc = new jsPDF();
-
-            // Set margins and starting position
-            let yPosition = 20;
-            const lineHeight = 7;
-            const margin = 20;
-            const pageWidth = 210;
-            const contentWidth = pageWidth - (margin * 2);
-
-            // Company Header with background
-            doc.setFillColor(59, 130, 246);
-            doc.rect(0, 0, pageWidth, 50, 'F');
-
-            // Company Name (White text on blue background)
-            doc.setFontSize(20);
-            doc.setTextColor(255, 255, 255);
-            doc.setFont(undefined, 'bold');
-            doc.text("MEDICARE HMS", margin, 25);
-
-            // Tagline
-            doc.setFontSize(10);
-            doc.text("Healthcare Management System", margin, 32);
-
-            // Reset yPosition after header
-            yPosition = 60;
-
-            // Invoice title
-            doc.setFontSize(18);
-            doc.setTextColor(40, 40, 40);
-            doc.text("INVOICE", margin, yPosition);
-            yPosition += 10;
-
-            // Invoice details section
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-
-            // Left column - Invoice details
-            doc.text(`Invoice ID: ${invoice.id.slice(0, 8)}`, margin, yPosition);
-            doc.text(`Issue Date: ${invoice.date}`, margin, yPosition + lineHeight);
-            doc.text(`Due Date: ${invoice.date}`, margin, yPosition + (lineHeight * 2));
-
-            // Right column - Customer details
-            const rightColumn = margin + 100;
-            doc.text(`Bill To: ${invoice.customerName}`, rightColumn, yPosition);
-            doc.text(`${invoice.email}`, rightColumn, yPosition + lineHeight);
-
-            yPosition += (lineHeight * 3) + 10;
-
-            // Line separator
-            doc.setDrawColor(200, 200, 200);
-            doc.line(margin, yPosition, pageWidth - margin, yPosition);
-            yPosition += 10;
-
-            // Service details header
-            doc.setFontSize(12);
-            doc.setTextColor(59, 130, 246);
-            doc.text("SERVICE DETAILS", margin, yPosition);
-            yPosition += 8;
-
-            // Service table header
-            doc.setFillColor(240, 240, 240);
-            doc.setTextColor(80, 80, 80);
-            doc.rect(margin, yPosition, contentWidth, 8, 'F');
-
-            doc.text("Description", margin + 2, yPosition + 6);
-            doc.text("Quantity", margin + 100, yPosition + 6);
-            doc.text("Unit Price", margin + 130, yPosition + 6);
-            doc.text("Amount", margin + 160, yPosition + 6);
-
-            yPosition += 10;
-
-            // Service row
-            doc.setFillColor(250, 250, 250);
-            doc.rect(margin, yPosition, contentWidth, 8, 'F');
-            doc.text("Medical Consultation Service", margin + 2, yPosition + 6);
-            doc.text("1", margin + 100, yPosition + 6);
-            doc.text(`$${invoice.amount.toFixed(2)}`, margin + 130, yPosition + 6);
-            doc.text(`$${invoice.amount.toFixed(2)}`, margin + 160, yPosition + 6);
-
-            yPosition += 15;
-
-            // Total section
-            const totalStartY = yPosition;
-            const labelX = margin + 120;
-            const valueX = margin + 160;
-
-            // Subtotal
-            doc.setFontSize(12);
-            doc.setTextColor(100, 100, 100);
-            doc.text("Subtotal:", labelX, yPosition + 7);
-            doc.setTextColor(40, 40, 40);
-            doc.text(`$${invoice.amount.toFixed(2)}`, valueX, yPosition + 7);
-            yPosition += 8;
-
-            // Tax
-            doc.setTextColor(100, 100, 100);
-            doc.text("Tax (0%):", labelX, yPosition + 7);
-            doc.setTextColor(40, 40, 40);
-            doc.text("$0.00", valueX, yPosition + 7);
-            yPosition += 8;
-
-            // Separator line
-            doc.setDrawColor(200, 200, 200);
-            doc.line(labelX - 5, yPosition + 3, valueX + 30, yPosition + 3);
-            yPosition += 8;
-
-            // Total
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(59, 130, 246);
-            doc.text("TOTAL:", labelX, yPosition + 8);
-            doc.text(`$${invoice.amount.toFixed(2)}`, valueX, yPosition + 8);
-
-            yPosition += 20;
-
-            // Status section
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(100, 100, 100);
-            doc.text("Payment Status:", margin, yPosition);
-
-            const statusColor = invoice.status === "Paid" ? [34, 197, 94] :
-                invoice.status === "Pending" ? [234, 179, 8] : [239, 68, 68];
-            doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-            doc.setFont(undefined, 'bold');
-            doc.text(invoice.status.toUpperCase(), margin + 30, yPosition);
-
-            // Add paid stamp watermark if invoice is paid
-            if (invoice.status === "Paid") {
-                doc.saveGraphicsState();
-                const centerX = 105;
-                const centerY = 148;
-                const radius = 25;
-
-                doc.setFillColor(34, 197, 94);
-                doc.circle(centerX, centerY, radius, 'F');
-
-                doc.setDrawColor(255, 255, 255);
-                doc.setLineWidth(2);
-                doc.circle(centerX, centerY, radius, 'D');
-
-                doc.setFillColor(255, 255, 255);
-                doc.circle(centerX, centerY, radius - 4, 'F');
-
-                doc.setFontSize(14);
-                doc.setTextColor(34, 197, 94);
-                doc.setFont(undefined, 'bold');
-
-                const paidText1 = "PAID";
-                const paidText2 = "SUCCESSFULLY";
-                const paidWidth1 = doc.getTextWidth(paidText1);
-                const paidWidth2 = doc.getTextWidth(paidText2);
-
-                doc.text(paidText1, centerX - paidWidth1 / 2, centerY - 5);
-                doc.text(paidText2, centerX - paidWidth2 / 2, centerY + 7);
-                doc.restoreGraphicsState();
-            }
-
-            // Footer
-            doc.setFontSize(9);
-            doc.setTextColor(150, 150, 150);
-            const footerY = 270;
-            doc.text("Medicare HMS • 123 Healthcare Ave, Medical City, MC 12345", margin, footerY);
-            doc.text("Phone: (555) 123-4567 • Email: support@medicarehms.com", margin, footerY + 5);
-            doc.text("Thank you for choosing Medicare HMS for your healthcare needs", margin, footerY + 10);
-
-            // Save the PDF
-            const fileName = `Invoice_${invoice.customerName.replace(/\s+/g, '_')}_${invoice.date}.pdf`;
-            doc.save(fileName);
-        } catch (error) {
-            console.error("Error generating PDF:", error);
-            alert("Error generating PDF. Please try again.");
-        } finally {
-            setIsLoading(false);
-        }
+    const getStatusIcon = (status: string) => {
+        const icons = {
+            Paid: <CheckCircle className="w-4 h-4" />,
+            Pending: <Clock className="w-4 h-4" />,
+            Overdue: <AlertCircle className="w-4 h-4" />,
+        };
+        return icons[status as keyof typeof icons];
     };
-
-    const handleExportPDF = (invoice: Invoice) => {
-        generateSimplePDF(invoice);
-    };
-
-    const handleExportAllPaidPDFs = async () => {
-        const paidInvoices = invoices.filter(invoice => invoice.status === "Paid");
-
-        if (paidInvoices.length === 0) {
-            alert("No paid invoices found to export.");
-            return;
-        }
-
-        if (isLoading) return;
-        setIsLoading(true);
-
-        try {
-            for (let i = 0; i < paidInvoices.length; i++) {
-                await generateSimplePDF(paidInvoices[i]);
-                // Small delay between exports to avoid browser issues
-                if (i < paidInvoices.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleExportAllPaidAsSinglePDF = async () => {
-        const paidInvoices = invoices.filter(invoice => invoice.status === "Paid");
-
-        if (paidInvoices.length === 0) {
-            alert("No paid invoices found to export.");
-            return;
-        }
-
-        if (isLoading) return;
-        setIsLoading(true);
-
-        try {
-            const { jsPDF } = await import('jspdf');
-            const doc = new jsPDF();
-
-            paidInvoices.forEach((invoice, index) => {
-                if (index > 0) doc.addPage();
-
-                let yPosition = 20;
-                const margin = 20;
-                const pageWidth = 210;
-
-                // Company Header
-                doc.setFillColor(59, 130, 246);
-                doc.rect(0, 0, pageWidth, 40, 'F');
-                doc.setFontSize(16);
-                doc.setTextColor(255, 255, 255);
-                doc.text("MEDICARE HMS - PAID INVOICE REPORT", margin, 25);
-
-                yPosition = 50;
-
-                // Invoice summary
-                doc.setFontSize(12);
-                doc.setTextColor(40, 40, 40);
-                doc.text(`Invoice: ${invoice.customerName}`, margin, yPosition);
-                doc.text(`Date: ${invoice.date} • Amount: $${invoice.amount.toFixed(2)}`, margin, yPosition + 7);
-                doc.text(`ID: ${invoice.id.slice(0, 8)}`, margin, yPosition + 14);
-
-                // Add small paid stamp
-                doc.setFillColor(34, 197, 94);
-                doc.circle(180, yPosition + 5, 6, 'F');
-                doc.setFontSize(6);
-                doc.setTextColor(255, 255, 255);
-                doc.text("PAID", 177, yPosition + 7);
-            });
-
-            doc.save(`All_Paid_Invoices_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-        } catch (error) {
-            console.error("Error generating combined PDF:", error);
-            alert("Error generating combined PDF. Please try again.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    function paymentStatusChange(record, status) {
-        PutApi('/billing', {
-            ...record,
-            status: status,
-        }).then((response) => {
-            if (!response.error) {
-                toast.success("Payment status updated to Paid");
-                loadInvoices()
-            } else {
-                toast.error(response.error)
-            }
-        }).catch((error) => {
-            toast.error("Error updating payment status");
-            console.error("Error updating payment status:", error);
-        }
-        );
-    }
 
     const getStatusVariant = (status: string) => {
         switch (status) {
@@ -489,120 +237,100 @@ export default function AllInvoices() {
         setStatusFilter("All");
     };
 
+    const paymentStatusChange = (record, status) => {
+        PutApi('/billing', {
+            ...record,
+            status: status,
+        }).then((response) => {
+            if (!response.error) {
+                toast.success("Payment status updated to Paid");
+                loadInvoices()
+            } else {
+                toast.error(response.error)
+            }
+        }).catch((error) => {
+            toast.error("Error updating payment status");
+            console.error("Error updating payment status:", error);
+        });
+    };
+
     return (
         <TooltipProvider>
             <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-                {/* Header */}
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Billing & Invoices</h1>
-                        <p className="text-gray-600 mt-1">Manage and track all your invoices in one place</p>
+                {/* Header - Simplified without statistics */}
+                <Card className="bg-white shadow-sm border-0">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+                        <div className="flex items-center space-x-3">
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                                <FileText className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900">Billing & Invoices</h1>
+                                <p className="text-gray-600 mt-1">Manage and track all your invoices in one place</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+                                        <RefreshCw className="w-4 h-4 text-gray-600" />
+                                        <span className="text-sm text-gray-600">Auto Refresh</span>
+                                        <div 
+                                            className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
+                                                autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                                            }`}
+                                            onClick={() => setAutoRefresh(!autoRefresh)}
+                                        >
+                                            <div 
+                                                className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
+                                                    autoRefresh ? 'translate-x-4' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </div>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>Auto refresh every 30 seconds</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button onClick={handleAddInvoice} className="bg-green-600 hover:bg-green-700" disabled={isLoading}>
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Add Invoice
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Create a new invoice</TooltipContent>
+                            </Tooltip>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button onClick={handleAddInvoice} className="bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Add Invoice
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Create a new invoice</TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button onClick={handleExportAllPaidPDFs} variant="outline" disabled={isLoading}>
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Export Paid PDFs
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Export all paid invoices as separate PDF files</TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button onClick={handleExportAllPaidAsSinglePDF} variant="outline" disabled={isLoading}>
-                                    <FileText className="w-4 h-4 mr-2" />
-                                    Combined Report
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Export all paid invoices as a single PDF report</TooltipContent>
-                        </Tooltip>
-                    </div>
-                </div>
-
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card className="bg-white border-l-4 border-l-blue-500">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Total Invoices</p>
-                                    <p className="text-2xl font-bold text-gray-900">{totalInvoices}</p>
-                                </div>
-                                <Building className="w-8 h-8 text-blue-500" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-white border-l-4 border-l-green-500">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                                    <p className="text-2xl font-bold text-gray-900">${totalRevenue.toFixed(2)}</p>
-                                </div>
-                                <DollarSign className="w-8 h-8 text-green-500" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-white border-l-4 border-l-green-500">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Paid Invoices</p>
-                                    <p className="text-2xl font-bold text-gray-900">{paidInvoices}</p>
-                                </div>
-                                <Calendar className="w-8 h-8 text-green-500" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-white border-l-4 border-l-yellow-500">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Pending Invoices</p>
-                                    <p className="text-2xl font-bold text-gray-900">{pendingInvoices}</p>
-                                    <p className="text-xs text-red-600 mt-1">Overdue: {overdueInvoices}</p>
-                                </div>
-                                <Mail className="w-8 h-8 text-yellow-500" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                </Card>
 
                 {/* Search and Filter Section */}
-                <Card className="bg-white shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-                            <span>All Invoices ({filteredInvoices.length})</span>
+                <Card className="bg-white shadow-sm border-0">
+                    <CardHeader className="pb-4">
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                            <CardTitle className="flex items-center space-x-2">
+                                <Users className="w-5 h-5" />
+                                <span>All Invoices</span>
+                                <Badge variant="secondary" className="ml-2">
+                                    {filteredInvoices.length}
+                                </Badge>
+                            </CardTitle>
                             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                                 <div className="relative">
-                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                                     <Input
                                         placeholder="Search invoices..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-8 w-full sm:w-64"
+                                        className="pl-10 w-full sm:w-64 h-10"
                                     />
                                 </div>
                                 <div className="flex gap-2">
                                     <select
                                         value={statusFilter}
                                         onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                                        className="border rounded px-3 py-2 text-sm"
+                                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
                                         <option value="All">All Status</option>
                                         <option value="Paid">Paid</option>
@@ -610,66 +338,134 @@ export default function AllInvoices() {
                                         <option value="Overdue">Overdue</option>
                                     </select>
                                     {(searchTerm || statusFilter !== "All") && (
-                                        <Button variant="outline" onClick={clearFilters} size="sm">
-                                            Clear Filters
+                                        <Button variant="outline" onClick={clearFilters} className="h-10">
+                                            <X className="w-4 h-4 mr-2" />
+                                            Clear
                                         </Button>
                                     )}
+                                    <Button variant="outline" className="h-10">
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Export
+                                    </Button>
                                 </div>
                             </div>
-                        </CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-0">
                         {isLoading ? (
-                            <div className="text-center py-8">
+                            <div className="text-center py-12">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                                <p className="text-gray-500 mt-2">Loading...</p>
+                                <p className="text-gray-500 mt-3">Loading invoices...</p>
                             </div>
                         ) : (
                             <>
                                 <Table>
                                     <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Customer</TableHead>
-                                            <TableHead>Email</TableHead>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead className="text-right">Amount</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                        <TableRow className="bg-gray-50 hover:bg-gray-50">
+                                            <TableHead className="font-semibold text-gray-900">
+                                                <div className="flex items-center space-x-2">
+                                                    <Users className="w-4 h-4" />
+                                                    <span>Customer Info</span>
+                                                </div>
+                                            </TableHead>
+                                            <TableHead className="font-semibold text-gray-900">
+                                                <div className="flex items-center space-x-2">
+                                                    <Mail className="w-4 h-4" />
+                                                    <span>Email</span>
+                                                </div>
+                                            </TableHead>
+                                            <TableHead className="font-semibold text-gray-900">
+                                                <div className="flex items-center space-x-2">
+                                                    <Calendar className="w-4 h-4" />
+                                                    <span>Date</span>
+                                                </div>
+                                            </TableHead>
+                                            <TableHead className="font-semibold text-gray-900 text-right">
+                                                <div className="flex items-center space-x-2 justify-end">
+                                                    <DollarSign className="w-4 h-4" />
+                                                    <span>Amount</span>
+                                                </div>
+                                            </TableHead>
+                                            <TableHead className="font-semibold text-gray-900">
+                                                <div className="flex items-center space-x-2">
+                                                    <Shield className="w-4 h-4" />
+                                                    <span>Status</span>
+                                                </div>
+                                            </TableHead>
+                                            <TableHead className="font-semibold text-gray-900 text-right">
+                                                <div className="flex items-center space-x-2 justify-end">
+                                                    <FileSearch className="w-4 h-4" />
+                                                    <span>Actions</span>
+                                                </div>
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredInvoices.map((invoice: any) => (
-                                            <TableRow key={invoice.id} className="hover:bg-gray-50">
-                                                <TableCell className="font-medium">{invoice.patient.name}</TableCell>
-                                                <TableCell className="text-gray-600">{invoice.patient.username}</TableCell>
-                                                <TableCell>{invoice.updated_at}</TableCell>
-                                                <TableCell className="text-right font-semibold">
-                                                    ${invoice.total_amount}
+                                            <TableRow key={invoice.id} className="hover:bg-gray-50/50 border-b border-gray-100">
+                                                <TableCell>
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                                            <Users className="w-5 h-5 text-blue-600" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-semibold text-gray-900">{invoice.patient.name}</div>
+                                                            <div className="text-sm text-gray-500 flex items-center space-x-1">
+                                                                <Phone className="w-3 h-3" />
+                                                                <span>Contact Info</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant={getStatusVariant(invoice.status)}>
-                                                        {invoice.status}
+                                                    <div className="flex items-center space-x-2 text-gray-600">
+                                                        <Mail className="w-4 h-4" />
+                                                        <span>{invoice.patient.username}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Calendar className="w-4 h-4 text-gray-500" />
+                                                        <span className="text-gray-700">{invoice.updated_at}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="font-semibold text-gray-900 text-lg">
+                                                        ${invoice.total_amount}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">Total Amount</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge 
+                                                        variant={getStatusVariant(invoice.status)} 
+                                                        className="flex items-center space-x-1 w-fit px-3 py-1"
+                                                    >
+                                                        {getStatusIcon(invoice.status)}
+                                                        <span>{invoice.status}</span>
                                                     </Badge>
+                                                    <div className="text-xs text-gray-500 mt-1">
+                                                        Last updated
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex justify-end space-x-2">
-                                                        {
-                                                            invoice.status !== 'PAID' && <Tooltip>
+                                                    <div className="flex justify-end space-x-1">
+                                                        {invoice.status !== 'PAID' && (
+                                                            <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Button
                                                                         size="sm"
                                                                         variant="outline"
                                                                         onClick={() => paymentStatusChange(invoice, "CANCELLED")}
                                                                         disabled={isLoading}
+                                                                        className="h-8 w-8 p-0"
                                                                     >
-                                                                        Cancel
+                                                                        <X className="w-4 h-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent>Cancel</TooltipContent>
+                                                                <TooltipContent>Cancel Invoice</TooltipContent>
                                                             </Tooltip>
-                                                        }
-                                                        {
-                                                            invoice.status !== 'PAID' &&
+                                                        )}
+                                                        {invoice.status !== 'PAID' && (
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Button
@@ -677,13 +473,14 @@ export default function AllInvoices() {
                                                                         variant="outline"
                                                                         onClick={() => paymentStatusChange(invoice, "PAID")}
                                                                         disabled={isLoading}
+                                                                        className="h-8 w-8 p-0"
                                                                     >
-                                                                        Paid
+                                                                        <CheckCircle className="w-4 h-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent>Paid</TooltipContent>
+                                                                <TooltipContent>Mark as Paid</TooltipContent>
                                                             </Tooltip>
-                                                        }
+                                                        )}
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button
@@ -691,6 +488,7 @@ export default function AllInvoices() {
                                                                     variant="outline"
                                                                     onClick={() => handleViewInvoice(invoice)}
                                                                     disabled={isLoading}
+                                                                    className="h-8 w-8 p-0"
                                                                 >
                                                                     <Eye className="w-4 h-4" />
                                                                 </Button>
@@ -705,6 +503,7 @@ export default function AllInvoices() {
                                                                     variant="outline"
                                                                     onClick={() => handleEditInvoice(invoice)}
                                                                     disabled={isLoading}
+                                                                    className="h-8 w-8 p-0"
                                                                 >
                                                                     <Edit className="w-4 h-4" />
                                                                 </Button>
@@ -717,8 +516,9 @@ export default function AllInvoices() {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    onClick={() => handleExportPDF(invoice)}
+                                                                    onClick={() => {/* handleExportPDF(invoice) */}}
                                                                     disabled={isLoading}
+                                                                    className="h-8 w-8 p-0"
                                                                 >
                                                                     <Download className="w-4 h-4" />
                                                                 </Button>
@@ -733,6 +533,7 @@ export default function AllInvoices() {
                                                                     variant="destructive"
                                                                     onClick={() => handleDeleteInvoice(invoice.id)}
                                                                     disabled={isLoading}
+                                                                    className="h-8 w-8 p-0"
                                                                 >
                                                                     <Trash2 className="w-4 h-4" />
                                                                 </Button>
@@ -747,7 +548,8 @@ export default function AllInvoices() {
                                 </Table>
 
                                 {filteredInvoices.length === 0 && (
-                                    <div className="text-center py-8 text-gray-500">
+                                    <div className="text-center py-12 text-gray-500">
+                                        <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                                         {invoices.length === 0 ? (
                                             "No invoices found. Create your first invoice to get started."
                                         ) : (
@@ -762,9 +564,9 @@ export default function AllInvoices() {
 
                 {/* Invoice Modal */}
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                    <DialogContent className="max-w-md mx-auto">
+                    <DialogContent className="max-w-2xl mx-auto">
                         <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
+                            <DialogTitle className="flex items-center gap-2 text-lg">
                                 {isAddMode ? (
                                     <>
                                         <Plus className="w-5 h-5" />
@@ -784,53 +586,55 @@ export default function AllInvoices() {
                             </DialogTitle>
                         </DialogHeader>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-700">Customer Name *</label>
-                                <Input
-                                    placeholder="Enter customer name"
-                                    value={formInvoice.customerName || ""}
-                                    onChange={(e) => setFormInvoice({ ...formInvoice, customerName: e.target.value })}
-                                    disabled={!isEditMode}
-                                    className="mt-1"
-                                />
-                            </div>
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">Customer Name *</label>
+                                    <Input
+                                        placeholder="Enter customer name"
+                                        value={formInvoice.customerName || ""}
+                                        onChange={(e) => setFormInvoice({ ...formInvoice, customerName: e.target.value })}
+                                        disabled={!isEditMode}
+                                        className="mt-1 h-10"
+                                    />
+                                </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-gray-700">Email *</label>
-                                <Input
-                                    placeholder="Enter email address"
-                                    type="email"
-                                    value={formInvoice.email || ""}
-                                    onChange={(e) => setFormInvoice({ ...formInvoice, email: e.target.value })}
-                                    disabled={!isEditMode}
-                                    className="mt-1"
-                                />
-                            </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">Email *</label>
+                                    <Input
+                                        placeholder="Enter email address"
+                                        type="email"
+                                        value={formInvoice.email || ""}
+                                        onChange={(e) => setFormInvoice({ ...formInvoice, email: e.target.value })}
+                                        disabled={!isEditMode}
+                                        className="mt-1 h-10"
+                                    />
+                                </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-gray-700">Date *</label>
-                                <Input
-                                    type="date"
-                                    value={formInvoice.date || ""}
-                                    onChange={(e) => setFormInvoice({ ...formInvoice, date: e.target.value })}
-                                    disabled={!isEditMode}
-                                    className="mt-1"
-                                />
-                            </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">Date *</label>
+                                    <Input
+                                        type="date"
+                                        value={formInvoice.date || ""}
+                                        onChange={(e) => setFormInvoice({ ...formInvoice, date: e.target.value })}
+                                        disabled={!isEditMode}
+                                        className="mt-1 h-10"
+                                    />
+                                </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-gray-700">Amount *</label>
-                                <Input
-                                    type="number"
-                                    placeholder="Enter amount"
-                                    min="0"
-                                    step="0.01"
-                                    value={formInvoice.amount || ""}
-                                    onChange={(e) => setFormInvoice({ ...formInvoice, amount: Number(e.target.value) })}
-                                    disabled={!isEditMode}
-                                    className="mt-1"
-                                />
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">Amount *</label>
+                                    <Input
+                                        type="number"
+                                        placeholder="Enter amount"
+                                        min="0"
+                                        step="0.01"
+                                        value={formInvoice.amount || ""}
+                                        onChange={(e) => setFormInvoice({ ...formInvoice, amount: Number(e.target.value) })}
+                                        disabled={!isEditMode}
+                                        className="mt-1 h-10"
+                                    />
+                                </div>
                             </div>
 
                             <div>
@@ -838,7 +642,7 @@ export default function AllInvoices() {
                                 <select
                                     value={formInvoice.status || "Pending"}
                                     onChange={(e) => setFormInvoice({ ...formInvoice, status: e.target.value as Invoice["status"] })}
-                                    className="w-full border rounded px-3 py-2 mt-1 disabled:bg-gray-100"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 h-10 disabled:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     disabled={!isEditMode}
                                 >
                                     <option value="Paid">Paid</option>

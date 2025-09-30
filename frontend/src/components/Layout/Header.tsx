@@ -21,11 +21,21 @@ import {
   LogOut,
   User,
   Shield,
-  Heart
+  Heart,
+  Menu,
+  X
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+  sidebarCollapsed?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ 
+  onToggleSidebar, 
+  sidebarCollapsed = false 
+}) => {
   const { user, logout, hasRole } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
@@ -61,6 +71,12 @@ export const Header: React.FC = () => {
     navigate('/system-settings');
   };
 
+  const handleToggleSidebar = () => {
+    if (onToggleSidebar) {
+      onToggleSidebar();
+    }
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'admin': return 'bg-red-100 text-red-800 border-red-200';
@@ -86,9 +102,23 @@ export const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-background/80 backdrop-blur-sm">
       <div className="flex h-16 items-center justify-between px-6">
-        {/* Left Section - Logo and Sidebar Trigger */}
+        {/* Left Section - Collapse Button, Logo and Sidebar Trigger */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
+            {/* Collapse Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleToggleSidebar}
+              className="h-10 w-10 border border-gray-200 hover:bg-gray-50 rounded-lg flex items-center justify-center"
+            >
+              {sidebarCollapsed ? (
+                <Menu className="h-5 w-5 text-gray-600" />
+              ) : (
+                <X className="h-5 w-5 text-gray-600" />
+              )}
+            </Button>
+            
             <h1 className="text-xl font-bold text-gray-900 hidden sm:block">MediCare HMS</h1>
           </div>
         </div>

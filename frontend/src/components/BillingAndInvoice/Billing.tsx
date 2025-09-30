@@ -1,12 +1,67 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  Row,
+  Col,
+  Tag,
+  Space,
+  Button,
+  Avatar,
+  Badge,
+  Tabs,
+  Timeline,
+  Alert,
+  Divider,
+  Typography,
+  Flex,
+  List,
+  Descriptions,
+  Spin,
+  Select,
+  Input,
+  Table,
+  Modal,
+  Form,
+  InputNumber,
+  Popconfirm,
+  Tooltip,
+  Switch,
+  message
+} from "antd";
+import {
+  ShoppingCartOutlined,
+  MedicineBoxOutlined,
+  ExperimentOutlined,
+  UserOutlined,
+  TeamOutlined,
+  FileTextOutlined,
+  DashboardOutlined,
+  ThunderboltOutlined,
+  RocketOutlined,
+  ExportOutlined,
+  ReloadOutlined,
+  PieChartOutlined,
+  TableOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  PrinterOutlined,
+  DollarOutlined,
+  CalendarOutlined,
+  SearchOutlined,
+  ClockCircleOutlined
+} from "@ant-design/icons";
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi } from "@/ApiService";
+import type { ColumnsType } from "antd/es/table";
+import dayjs from "dayjs";
+
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { TextArea } = Input;
 
 interface Billing {
   id?: string;
@@ -15,6 +70,9 @@ interface Billing {
   medicines: { medicine_id: string; quantity: number }[];
   tests: { test_id: string; }[];
   notes: string;
+  status?: "PENDING" | "PAID" | "CANCELLED";
+  created_at?: string;
+  total_amount?: number;
 }
 
 export default function Billing() {
@@ -22,6 +80,7 @@ export default function Billing() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
   const [form, setForm] = useState<Partial<Billing>>({
     patient_id: "",
     doctor_id: "",
@@ -29,64 +88,77 @@ export default function Billing() {
     tests: [{ test_id: "" }],
     notes: "",
   });
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
-  const [selectedPrescription, setSelectedPrescription] = useState(null);
-  const [search, setSearch] = useState("");
-  const loginData = localStorage.getItem('loginData')
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedBilling, setSelectedBilling] = useState<Billing | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [loading, setLoading] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [activeTab, setActiveTab] = useState("billings");
 
-  // For viewing billing
-  const [viewPrescription, setViewBilling] = useState<Billing | null>(null);
+  const loginData = JSON.parse(localStorage.getItem('loginData') || '{}');
 
-  // Load billings and inventory from localStorage
+  // Load data on component mount
   useEffect(() => {
+    loadInitialData();
+    loadBilling();
+  }, []);
+
+  // Auto refresh functionality
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        loadBilling();
+        message.info('🔄 Billing data refreshed');
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
+
+  const loadInitialData = () => {
     Promise.all([
       getApi('/medicines'),
       getApi('/lab-tests'),
-      getApi("/users?user_type_id=2")
-    ]).then(([data, data1, data2]) => {
-      if (!data.error) {
-        setInventory(data)
-      }
-      else {
-        toast.error(data.error)
-      }
-      if (!data1.error) {
-        setTests(data1)
-      }
-      else {
-        toast.error(data1.error)
-      }
-      if (!data2.error) {
-        setPatients(data2)
-      }
-      else {
-        toast.error(data2.error)
-      }
-    }).catch((err) => {
-      console.error("Error: ", err)
-      toast.error("Error occurred while getting data.")
-    })
-    loadBilling()
-  }, []);
+      getApi("/users?user_type_id=2"), // Patients
+      getApi("/users?user_type_id=3")  // Doctors
+    ]).then(([medicinesData, testsData, patientsData, doctorsData]) => {
+      if (!medicinesData.error) setInventory(medicinesData);
+      else toast.error(medicinesData.error);
 
-  function loadBilling() {
+      if (!testsData.error) setTests(testsData);
+      else toast.error(testsData.error);
+
+      if (!patientsData.error) setPatients(patientsData);
+      else toast.error(patientsData.error);
+
+      if (!doctorsData.error) setDoctors(doctorsData);
+      else toast.error(doctorsData.error);
+    }).catch((err) => {
+      console.error("Error: ", err);
+      toast.error("Error occurred while getting data.");
+    });
+  };
+
+  const loadBilling = () => {
+    setLoading(true);
     getApi("/billing")
       .then((data) => {
         if (!data.error) {
-          setBilling(data)
-        }
-        else {
-          toast.error(data.error)
+          setBilling(data);
+        } else {
+          toast.error(data.error);
         }
       }).catch((err) => {
-        console.error("Error: ", err)
-        toast.error("Error occurred while getting billings.")
+        console.error("Error: ", err);
+        toast.error("Error occurred while getting billings.");
       })
-  }
+      .finally(() => setLoading(false));
+  };
 
-  const handleAddOrUpdate = (selectedPrescriptionData = selectedPrescription, isStatusUpdate = false) => {
-    form.doctor_id = loginData?.['id'] || 1;
+  const handleAddOrUpdate = (isStatusUpdate = false) => {
+    form.doctor_id = loginData?.id || "1";
+    
     if (!isStatusUpdate) {
       if (!form.patient_id || !form.medicines || form.medicines.length === 0) {
         toast.error("Please fill all required fields");
@@ -108,68 +180,84 @@ export default function Billing() {
       }
     }
 
-    if (selectedPrescriptionData) {
-      let payload = !isStatusUpdate ? { ...selectedPrescriptionData, ...form } : { ...selectedPrescriptionData }
+    if (selectedBilling?.id) {
+      const payload = !isStatusUpdate ? { ...selectedBilling, ...form } : { ...selectedBilling };
       PutApi('/billing', { ...payload })
         .then((data) => {
           if (!data.error) {
-            loadBilling()
+            loadBilling();
             toast.success("Billing updated successfully!");
-          }
-          else {
-            toast.error(data.error)
+          } else {
+            toast.error(data.error);
           }
         }).catch((err) => {
-          console.error("Error: ", err)
-          toast.error("Error occurred while updating billing.")
-        })
+          console.error("Error: ", err);
+          toast.error("Error occurred while updating billing.");
+        });
     } else {
-      const newPrescription: Billing = {
-        // id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9),
+      const newBilling: Billing = {
         patient_id: form.patient_id!,
         doctor_id: form.doctor_id!,
         medicines: form.medicines!,
         tests: form.tests!,
         notes: form.notes || "",
+        status: "PENDING"
       };
-      PostApi('/billing', { ...newPrescription })
+      PostApi('/billing', { ...newBilling })
         .then((data) => {
           if (!data.error) {
-            loadBilling()
-            toast.success("Billing updated successfully!");
-          }
-          else {
-            toast.error(data.error)
+            loadBilling();
+            toast.success("Billing created successfully!");
+          } else {
+            toast.error(data.error);
           }
         }).catch((err) => {
-          console.error("Error: ", err)
-          toast.error("Error occurred while updating billing.")
-        })
-      setBilling(prev => [...prev, newPrescription]);
-      toast.success("Billing added successfully!");
+          console.error("Error: ", err);
+          toast.error("Error occurred while creating billing.");
+        });
     }
 
-    setForm({ patient_id: "", doctor_id: "", medicines: [{ medicine_id: "", quantity: 1 }], tests: [{ test_id: "" }], notes: "" });
-    setSelectedPrescription(null);
-    setIsDialogOpen(false);
+    resetForm();
+    setIsModalOpen(false);
   };
 
   const handleEdit = (billing: Billing) => {
     setForm({ ...billing });
-    setSelectedPrescription(billing.id);
-    setIsDialogOpen(true);
+    setSelectedBilling(billing);
+    setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this billing?")) {
-      setBilling(prev => prev.filter(p => p.id !== id));
-      toast.success("Billing deleted successfully!");
-    }
+  const handleView = (billing: Billing) => {
+    setSelectedBilling(billing);
+    setIsViewModalOpen(true);
   };
 
-  function handleStatusChange(billing, status) {
-    handleAddOrUpdate({ ...billing, status: status }, true)
-  }
+  const handleStatusChange = (billing: Billing, status: string) => {
+    const updatedBilling = { ...billing, status };
+    PutApi('/billing', { ...updatedBilling })
+      .then((data) => {
+        if (!data.error) {
+          loadBilling();
+          toast.success(`Billing marked as ${status.toLowerCase()}!`);
+        } else {
+          toast.error(data.error);
+        }
+      }).catch((err) => {
+        console.error("Error: ", err);
+        toast.error("Error occurred while updating billing status.");
+      });
+  };
+
+  const resetForm = () => {
+    setForm({
+      patient_id: "",
+      doctor_id: "",
+      medicines: [{ medicine_id: "", quantity: 1 }],
+      tests: [{ test_id: "" }],
+      notes: "",
+    });
+    setSelectedBilling(null);
+  };
 
   const handleMedicineChange = (index: number, field: "medicine_id" | "quantity", value: string | number) => {
     const newMedicines = [...form.medicines!];
@@ -177,10 +265,10 @@ export default function Billing() {
     setForm({ ...form, medicines: newMedicines });
   };
 
-  const handleTestChange = (index: number, field: any, value: string | number) => {
-    const newMedicines = [...form.tests!];
-    newMedicines[index] = { ...newMedicines[index], [field]: value };
-    setForm({ ...form, tests: newMedicines });
+  const handleTestChange = (index: number, field: string, value: string | number) => {
+    const newTests = [...form.tests!];
+    newTests[index] = { ...newTests[index], [field]: value };
+    setForm({ ...form, tests: newTests });
   };
 
   const addTestField = () => {
@@ -202,238 +290,461 @@ export default function Billing() {
   };
 
   const handlePrint = () => {
-    const printContent = document.getElementById("billing-print-area")?.innerHTML;
+    const printContent = document.getElementById("billing-print-area");
     if (!printContent) return;
+    
     const printWindow = window.open("", "_blank", "width=800,height=600");
     if (printWindow) {
       printWindow.document.write(`
-      <html>
-        <head>
-          <title>Billing</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h2 { text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            .signature { margin-top: 40px; text-align: right; font-weight: bold; }
-            .signature-line { margin-top: 50px; border-top: 1px solid #000; width: 200px; float: right; text-align: center; }
-          </style>
-        </head>
-        <body>
-          ${printContent}
-          <div class="signature">
-            <div class="signature-line">Doctor's Signature</div>
-          </div>
-        </body>
-      </html>
-    `);
+        <html>
+          <head>
+            <title>Billing Receipt</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; }
+              h2 { text-align: center; color: #333; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
+              .signature { margin-top: 40px; text-align: right; }
+              .signature-line { border-top: 1px solid #000; width: 200px; margin-top: 50px; }
+              .header { text-align: center; margin-bottom: 30px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h2>Hospital Billing Receipt</h2>
+              <p>Date: ${new Date().toLocaleDateString()}</p>
+            </div>
+            ${printContent.innerHTML}
+            <div class="signature">
+              <div class="signature-line"></div>
+              <p>Authorized Signature</p>
+            </div>
+          </body>
+        </html>
+      `);
       printWindow.document.close();
       printWindow.print();
     }
   };
 
+  // UI Helpers
+  const getStatusColor = (status: string) => ({ 'PAID': 'green', 'PENDING': 'orange', 'CANCELLED': 'red' }[status] || 'default');
+  const getStatusIcon = (status: string) => ({ 'PAID': <CheckCircleOutlined />, 'PENDING': <ClockCircleOutlined />, 'CANCELLED': <CloseCircleOutlined /> }[status]);
+
+  const filteredBillings = billings.filter((billing) => {
+    const matchesSearch = searchText === "" || 
+      billing.patient_id.toLowerCase().includes(searchText.toLowerCase()) ||
+      billing.doctor_id.toLowerCase().includes(searchText.toLowerCase());
+    const matchesStatus = statusFilter === "all" || billing.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const columns: ColumnsType<Billing> = [
+    {
+      title: <Space><UserOutlined /> Billing Information</Space>,
+      key: 'billing',
+      render: (_, record) => (
+        <Flex align="center" gap="middle">
+          <Avatar 
+            size="large" 
+            icon={<ShoppingCartOutlined />} 
+            style={{ 
+              backgroundColor: getStatusColor(record.status || 'PENDING')
+            }}
+          />
+          <div>
+            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+              Patient: {patients.find(p => p.id === record.patient_id)?.name || record.patient_id}
+            </div>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              Doctor: {doctors.find(d => d.id === record.doctor_id)?.name || record.doctor_id}
+            </div>
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              <CalendarOutlined /> {record.created_at ? dayjs(record.created_at).format('MMM D, YYYY') : 'Recent'}
+            </div>
+          </div>
+        </Flex>
+      ),
+    },
+    {
+      title: <Space><MedicineBoxOutlined /> Items</Space>,
+      key: 'items',
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+          <div style={{ fontSize: '12px' }}>
+            <MedicineBoxOutlined /> {record.medicines.length} medicines
+          </div>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            <ExperimentOutlined /> {record.tests.length} tests
+          </div>
+          {record.total_amount && (
+            <div style={{ fontSize: '12px', color: '#999', fontWeight: 'bold' }}>
+              <DollarOutlined /> ${record.total_amount}
+            </div>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: <Space><FileTextOutlined /> Status</Space>,
+      key: 'status',
+      render: (_, record) => (
+        <Tag color={getStatusColor(record.status || 'PENDING')} icon={getStatusIcon(record.status || 'PENDING')}>
+          {record.status || 'PENDING'}
+        </Tag>
+      ),
+    },
+    {
+      title: <Space><ThunderboltOutlined /> Actions</Space>,
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="View Details">
+            <Button icon={<EyeOutlined />} shape="circle" type="primary" ghost onClick={() => handleView(record)} />
+          </Tooltip>
+          {record.status !== 'PAID' && (
+            <Tooltip title="Edit Billing">
+              <Button icon={<EditOutlined />} shape="circle" onClick={() => handleEdit(record)} />
+            </Tooltip>
+          )}
+          {record.status !== 'PAID' && (
+            <Tooltip title="Mark as Paid">
+              <Button 
+                type="primary" 
+                size="small" 
+                onClick={() => handleStatusChange(record, "PAID")}
+              >
+                Mark Paid
+              </Button>
+            </Tooltip>
+          )}
+        </Space>
+      ),
+    },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h1 className="text-2xl font-bold">Pharmacy</h1>
-        <p className="text-muted-foreground">Billing</p>
-        <Input
-          placeholder="Search by patient or doctor"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>{selectedPrescription ? "Edit Billing" : "Add Billing"}</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{selectedPrescription ? "Edit Billing" : "Add Billing"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="patient">Patient Name</Label>
-                <Select
-                  value={form.patient_id}
-                  onValueChange={value => setForm({ ...form, patient_id: value })}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Select Patient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.length === 0 ? (
-                      <SelectItem value="--">No Patients</SelectItem>
-                    ) : (
-                      patients.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* <div>
-                <Label htmlFor="doctor">Doctor Name</Label>
-                <Input
-                  id="doctor"
-                  value={form.doctor}
-                  onChange={e => setForm({ ...form, doctor: e.target.value })}
-                  placeholder="Doctor Name"
-                />
-              </div> */}
-              <div>
-                <Label>Medicines</Label>
-                {form.medicines!.map((med, index) => (
-                  <div key={index} className="flex space-x-2 items-center mb-2">
-                    <Select
-                      value={med.medicine_id}
-                      onValueChange={value => handleMedicineChange(index, "medicine_id", value)}
-                    >
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Select Medicine" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {inventory.length === 0 ? (
-                          <SelectItem value="--">No medicines</SelectItem>
-                        ) : (
-                          inventory.map(m => (
-                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      placeholder="Quantity"
-                      value={med.quantity}
-                      onChange={e => handleMedicineChange(index, "quantity", Number(e.target.value))}
-                    />
-                    <Button size="sm" variant="destructive" onClick={() => removeMedicineField(index)}>Remove</Button>
-                  </div>
-                ))}
-                <Button size="sm" onClick={addMedicineField}>Add Medicine</Button>
-              </div>
-              <div>
-                <Label>Tests</Label>
-                {form.tests!.map((med, index) => (
-                  <div key={index} className="flex space-x-2 items-center mb-2">
-                    <Select
-                      value={med.test_id}
-                      onValueChange={value => handleTestChange(index, "test_id", value)}
-                    >
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Select Medicine" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tests.length === 0 ? (
-                          <SelectItem value="--">No Tests</SelectItem>
-                        ) : (
-                          tests.map(m => (
-                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" variant="destructive" onClick={() => removeTestField(index)}>Remove</Button>
-                  </div>
-                ))}
-                <Button size="sm" onClick={addTestField}>Add Test</Button>
-              </div>
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Input
-                  id="notes"
-                  value={form.notes}
-                  onChange={e => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Additional notes"
-                />
-              </div>
-            </div>
-            <DialogFooter className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button onClick={() => handleAddOrUpdate()}>{selectedPrescription ? "Update" : "Add"}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Quick Actions */}
+      <Card>
+        <Flex justify="space-between" align="center">
+          <Space>
+            <Text strong>Quick Actions:</Text>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(true);
+              }}
+            >
+              Add New Billing
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={loadBilling}>
+              Refresh
+            </Button>
+            <Tooltip title="Auto Refresh">
+              <Switch 
+                checkedChildren="On" 
+                unCheckedChildren="Off" 
+                checked={autoRefresh} 
+                onChange={setAutoRefresh} 
+              />
+            </Tooltip>
+          </Space>
+          <Text type="secondary">
+            {filteredBillings.length} bills found
+          </Text>
+        </Flex>
+      </Card>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Patient</TableHead>
-              <TableHead>Doctor</TableHead>
-              <TableHead>Medicines</TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {billings.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">No billings found.</TableCell>
-              </TableRow>
-            ) : (
-              billings.map(billing => (
-                <TableRow key={billing.id}>
-                  <TableCell>{billing.patient_id}</TableCell>
-                  <TableCell>{billing.doctor_id}</TableCell>
-                  <TableCell>
-                    {/* {billing.medicines.map(m => `${m.id} (${m.quantity})`).join(", ")} */}
-                  </TableCell>
-                  <TableCell>{billing.notes}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    {billing?.['status'] !== 'PAID' && <Button size="sm" onClick={() => handleEdit(billing)}>Edit</Button>}
-                    {billing?.['status'] !== 'PAID' && <Button size="sm" onClick={() => handleStatusChange(billing, "PAID")}>Mark Paid</Button>}
-                    {/* <Button size="sm" variant="destructive" onClick={() => handleDelete(billing.id)}>Delete</Button> */}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Tabs for Different Views */}
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs.TabPane 
+          key="billings" 
+          tab={
+            <Space>
+              <TableOutlined /> All Billings <Badge count={filteredBillings.length} overflowCount={99} />
+            </Space>
+          }
+        >
+          <div className="space-y-6">
+            {/* Filters */}
+            <Card>
+              <Flex wrap="wrap" gap="middle" align="center">
+                <Input 
+                  placeholder="🔍 Search patients, doctors..." 
+                  prefix={<SearchOutlined />} 
+                  value={searchText} 
+                  onChange={(e) => setSearchText(e.target.value)} 
+                  style={{ width: 300 }} 
+                  size="large" 
+                />
+                <Select value={statusFilter} onChange={setStatusFilter} placeholder="Filter by Status" style={{ width: 150 }} size="large">
+                  <Option value="all">All Status</Option>
+                  <Option value="PAID">Paid</Option>
+                  <Option value="PENDING">Pending</Option>
+                  <Option value="CANCELLED">Cancelled</Option>
+                </Select>
+                <Button icon={<ReloadOutlined />} onClick={() => { setSearchText(''); setStatusFilter('all'); }}>
+                  Reset
+                </Button>
+              </Flex>
+            </Card>
+
+            {/* Main Table */}
+            <Card 
+              title={
+                <Space>
+                  <ShoppingCartOutlined /> Billing Records ({filteredBillings.length})
+                </Space>
+              } 
+              extra={
+                <Space>
+                  <Tag color="green">{billings.filter(b => b.status === 'PAID').length} Paid</Tag>
+                  <Tag color="orange">{billings.filter(b => b.status === 'PENDING').length} Pending</Tag>
+                  <Tag color="red">{billings.filter(b => b.status === 'CANCELLED').length} Cancelled</Tag>
+                </Space>
+              }
+            >
+              <Table 
+                columns={columns} 
+                dataSource={filteredBillings} 
+                rowKey="id" 
+                loading={loading} 
+                scroll={{ x: 800 }}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => 
+                    `${range[0]}-${range[1]} of ${total} billings`,
+                }}
+              />
+            </Card>
+          </div>
+        </Tabs.TabPane>
+        
+        <Tabs.TabPane key="activity" tab={<Space><DashboardOutlined /> Billing Analytics</Space>}>
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <Card title="Recent Billing Activity">
+                <Timeline>
+                  {billings.slice(0, 10).map(billing => (
+                    <Timeline.Item 
+                      key={billing.id} 
+                      color={getStatusColor(billing.status || 'PENDING')} 
+                      dot={getStatusIcon(billing.status || 'PENDING')}
+                    >
+                      <Space direction="vertical" size={0}>
+                        <div style={{ fontWeight: 'bold' }}>
+                          {patients.find(p => p.id === billing.patient_id)?.name || billing.patient_id}
+                        </div>
+                        <div style={{ color: '#666', fontSize: '12px' }}>
+                          <MedicineBoxOutlined /> {billing.medicines.length} medicines • 
+                          <ExperimentOutlined style={{ marginLeft: '8px' }} /> {billing.tests.length} tests
+                        </div>
+                        <div style={{ color: '#999', fontSize: '12px' }}>
+                          {billing.created_at ? dayjs(billing.created_at).fromNow() : 'Recently'} • 
+                          <Tag color={getStatusColor(billing.status || 'PENDING')} style={{ marginLeft: '8px' }}>
+                            {billing.status || 'PENDING'}
+                          </Tag>
+                        </div>
+                      </Space>
+                    </Timeline.Item>
+                  ))}
+                </Timeline>
+              </Card>
+            </Col>
+          </Row>
+        </Tabs.TabPane>
+      </Tabs>
+
+      {/* Add/Edit Billing Modal */}
+      <Modal 
+        title={
+          <Space>
+            {selectedBilling ? <EditOutlined /> : <PlusOutlined />}
+            {selectedBilling ? "Edit Billing" : "Add New Billing"}
+          </Space>
+        } 
+        open={isModalOpen} 
+        onCancel={() => {
+          setIsModalOpen(false);
+          resetForm();
+        }} 
+        onOk={() => handleAddOrUpdate()} 
+        okText={selectedBilling ? "Update Billing" : "Add Billing"} 
+        width={700} 
+        destroyOnClose
+      >
+        <Form layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Patient" required>
+                <Select
+                  placeholder="Select Patient"
+                  value={form.patient_id}
+                  onChange={(value) => setForm({ ...form, patient_id: value })}
+                >
+                  {patients.map(patient => (
+                    <Option key={patient.id} value={patient.id}>
+                      {patient.name}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Doctor">
+                <Input 
+                  value={doctors.find(d => d.id === form.doctor_id)?.name || "Current User"} 
+                  disabled 
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item label="Medicines" required>
+            {form.medicines!.map((med, index) => (
+              <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                <Select
+                  placeholder="Select Medicine"
+                  value={med.medicine_id}
+                  onChange={(value) => handleMedicineChange(index, "medicine_id", value)}
+                  style={{ flex: 2 }}
+                >
+                  {inventory.map(medicine => (
+                    <Option key={medicine.id} value={medicine.id}>
+                      {medicine.name}
+                    </Option>
+                  ))}
+                </Select>
+                <InputNumber
+                  placeholder="Quantity"
+                  value={med.quantity}
+                  onChange={(value) => handleMedicineChange(index, "quantity", value || 1)}
+                  min={1}
+                  style={{ flex: 1 }}
+                />
+                <Button 
+                  danger 
+                  icon={<DeleteOutlined />} 
+                  onClick={() => removeMedicineField(index)}
+                  disabled={form.medicines!.length === 1}
+                />
+              </div>
+            ))}
+            <Button type="dashed" icon={<PlusOutlined />} onClick={addMedicineField}>
+              Add Medicine
+            </Button>
+          </Form.Item>
+
+          <Form.Item label="Tests">
+            {form.tests!.map((test, index) => (
+              <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                <Select
+                  placeholder="Select Test"
+                  value={test.test_id}
+                  onChange={(value) => handleTestChange(index, "test_id", value)}
+                  style={{ flex: 1 }}
+                >
+                  {tests.map(testItem => (
+                    <Option key={testItem.id} value={testItem.id}>
+                      {testItem.name}
+                    </Option>
+                  ))}
+                </Select>
+                <Button 
+                  danger 
+                  icon={<DeleteOutlined />} 
+                  onClick={() => removeTestField(index)}
+                  disabled={form.tests!.length === 1}
+                />
+              </div>
+            ))}
+            <Button type="dashed" icon={<PlusOutlined />} onClick={addTestField}>
+              Add Test
+            </Button>
+          </Form.Item>
+
+          <Form.Item label="Notes">
+            <TextArea
+              placeholder="Additional notes..."
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              rows={3}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* View Billing Modal */}
-      {viewPrescription && (
-        <Dialog open={!!viewPrescription} onOpenChange={() => setViewBilling(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Billing Details</DialogTitle>
-            </DialogHeader>
-            <div id="billing-print-area" className="p-4">
-              <h2>Billing</h2>
-              <p><strong>Patient:</strong> {viewPrescription.patient_id}</p>
-              <p><strong>Doctor:</strong> {viewPrescription.doctor_id}</p>
-              <h3 className="mt-2 font-semibold">Medicines</h3>
-              <table className="w-full border mt-2">
-                <thead>
-                  <tr>
-                    <th className="border px-2 py-1">Medicine</th>
-                    <th className="border px-2 py-1">Quantity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewPrescription.medicines.map((m, i) => (
-                    <tr key={i}>
-                      <td className="border px-2 py-1">{m.medicine_id}</td>
-                      <td className="border px-2 py-1">{m.quantity}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {viewPrescription.notes && (
-                <p className="mt-2"><strong>Notes:</strong> {viewPrescription.notes}</p>
-              )}
+      <Modal 
+        title={
+          <Space>
+            <EyeOutlined /> Billing Details
+          </Space>
+        } 
+        open={isViewModalOpen} 
+        onCancel={() => setIsViewModalOpen(false)} 
+        footer={[
+          <Button key="print" icon={<PrinterOutlined />} onClick={handlePrint}>
+            Print Receipt
+          </Button>,
+          <Button key="close" onClick={() => setIsViewModalOpen(false)}>
+            Close
+          </Button>,
+        ]} 
+        width={700}
+      >
+        {selectedBilling && (
+          <div>
+            <div id="billing-print-area">
+              <Descriptions bordered column={2} size="middle">
+                <Descriptions.Item label="Patient Information" span={2}>
+                  <Space direction="vertical">
+                    <div><strong>Name:</strong> {patients.find(p => p.id === selectedBilling.patient_id)?.name || selectedBilling.patient_id}</div>
+                    <div><strong>Doctor:</strong> {doctors.find(d => d.id === selectedBilling.doctor_id)?.name || selectedBilling.doctor_id}</div>
+                    <div><strong>Status:</strong> <Tag color={getStatusColor(selectedBilling.status || 'PENDING')}>{selectedBilling.status || 'PENDING'}</Tag></div>
+                  </Space>
+                </Descriptions.Item>
+                <Descriptions.Item label="Medicines" span={2}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    {selectedBilling.medicines.map((med, index) => (
+                      <div key={index} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{inventory.find(m => m.id === med.medicine_id)?.name || med.medicine_id}</span>
+                        <span>Qty: {med.quantity}</span>
+                      </div>
+                    ))}
+                  </Space>
+                </Descriptions.Item>
+                {selectedBilling.tests.length > 0 && (
+                  <Descriptions.Item label="Tests" span={2}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      {selectedBilling.tests.map((test, index) => (
+                        <div key={index}>
+                          {tests.find(t => t.id === test.test_id)?.name || test.test_id}
+                        </div>
+                      ))}
+                    </Space>
+                  </Descriptions.Item>
+                )}
+                {selectedBilling.notes && (
+                  <Descriptions.Item label="Notes" span={2}>
+                    {selectedBilling.notes}
+                  </Descriptions.Item>
+                )}
+                {selectedBilling.total_amount && (
+                  <Descriptions.Item label="Total Amount" span={2}>
+                    <Text strong style={{ fontSize: '16px' }}>${selectedBilling.total_amount}</Text>
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
             </div>
-            <DialogFooter className="flex justify-end space-x-2">
-              <Button onClick={handlePrint}>Print / Save PDF</Button>
-              <Button variant="outline" onClick={() => setViewBilling(null)}>Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

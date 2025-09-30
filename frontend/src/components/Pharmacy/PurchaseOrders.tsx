@@ -1,21 +1,44 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table, TableBody, TableCell, TableHead,
-  TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogFooter, DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select, SelectTrigger, SelectValue,
-  SelectContent, SelectItem,
-} from "@/components/ui/select";
+import { 
+  Table, 
+  Input, 
+  Button, 
+  Modal, 
+  Form, 
+  Select, 
+  Card, 
+  Space, 
+  Tag, 
+  Tooltip, 
+  Popconfirm,
+  message,
+  Descriptions,
+  Divider
+} from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { 
+  SearchOutlined, 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined,
+  EyeOutlined,
+  ReloadOutlined,
+  TeamOutlined,
+  DashboardOutlined,
+  ShoppingCartOutlined,
+  UserOutlined,
+  PhoneOutlined,
+  CalendarOutlined,
+  ThunderboltOutlined,
+  RocketOutlined,
+  SyncOutlined,
+  CloseCircleOutlined,
+  MedicineBoxOutlined
+} from "@ant-design/icons";
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
+
+const { Option } = Select;
 
 interface PurchaseOrder {
   id: number;
@@ -30,6 +53,8 @@ interface PurchaseOrder {
     quantity: number;
     order_date: string;
   }[];
+  user?: any;
+  medicine_details?: any[];
 }
 
 interface Medicine {
@@ -48,9 +73,12 @@ const defaultOrder: PurchaseOrder = {
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
-  const [form, setForm] = useState<Partial<PurchaseOrder>>(defaultOrder);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+  const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
   const [search, setSearch] = useState("");
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [patients, setPatients] = useState([]);
@@ -61,6 +89,16 @@ export default function PurchaseOrders() {
     fetchPatients();
     fetchMedicines();
   }, []);
+
+  // Auto refresh notifier
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        message.info("🔄 Auto-refresh: Purchase orders data reloaded");
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
 
   const fetchOrders = () => {
     getApi("/orders")
@@ -80,10 +118,10 @@ export default function PurchaseOrders() {
         if (!res.error) {
           setPatients(res);
         } else {
-          toast.error("Failed to load orders.");
+          toast.error("Failed to load patients.");
         }
       })
-      .catch(() => toast.error("Server error while fetching orders"));
+      .catch(() => toast.error("Server error while fetching patients"));
   };
 
   const fetchMedicines = () => {
@@ -98,314 +136,509 @@ export default function PurchaseOrders() {
       .catch(() => toast.error("Server error while fetching medicines"));
   };
 
-  const handleAddOrder = () => {
-    if (!form.user_id || !form.received_date || !form.taken_by || !form.taken_by_phone_no || !form.items || form.items.length === 0) {
+  const handleAddOrUpdate = (values: any) => {
+    if (!values.user_id || !values.received_date || !values.taken_by || !values.taken_by_phone_no || !values.items || values.items.length === 0) {
       toast.error("Fill all required fields and add at least one item.");
       return;
     }
-    PostApi("/orders", { ...form, created_by: loginData.user_id })
-      .then((res) => {
-        if (!res.error) {
-          toast.success("Order added successfully");
-          setIsDialogOpen(false);
-          fetchOrders();
-          setForm(defaultOrder);
-          setIsEditMode(false);
-        } else {
-          toast.error(res.error || "Failed to add order");
-        }
-      })
-      .catch(() => toast.error("Server error while adding order"));
+
+    const orderData = {
+      ...values,
+      created_by: loginData.user_id
+    };
+
+    if (editingOrder) {
+      PutApi("/orders", { ...editingOrder, ...orderData })
+        .then((res) => {
+          if (!res.error) {
+            toast.success("Order updated successfully");
+            setIsModalOpen(false);
+            fetchOrders();
+            form.resetFields();
+            setEditingOrder(null);
+          } else {
+            toast.error(res.error || "Failed to update order");
+          }
+        })
+        .catch(() => toast.error("Server error while updating order"));
+    } else {
+      PostApi("/orders", orderData)
+        .then((res) => {
+          if (!res.error) {
+            toast.success("Order added successfully");
+            setIsModalOpen(false);
+            fetchOrders();
+            form.resetFields();
+          } else {
+            toast.error(res.error || "Failed to add order");
+          }
+        })
+        .catch(() => toast.error("Server error while adding order"));
+    }
   };
 
-  const handleUpdateOrder = () => {
-    if (!form.id) return;
-    PutApi("/orders", form)
-      .then((res) => {
-        if (!res.error) {
-          toast.success("Order updated successfully");
-          setIsDialogOpen(false);
-          fetchOrders();
-          setForm(defaultOrder);
-          setIsEditMode(false);
-        } else {
-          toast.error(res.error || "Failed to update order");
-        }
-      })
-      .catch(() => toast.error("Server error while updating order"));
-  };
-
-  const handleDeleteOrder = (id: number) => {
-    if (!confirm("Are you sure you want to delete this order?")) return;
-    DeleteApi(`/orders?id=${id}`)
-      .then((res) => {
-        if (!res.error) {
-          toast.success("Order deleted");
-          fetchOrders();
-        } else {
-          toast.error(res.error || "Failed to delete order");
-        }
-      })
-      .catch(() => toast.error("Server error while deleting order"));
+  const handleDeleteOrder = (order: PurchaseOrder) => {
+    Modal.confirm({
+      title: "Delete Purchase Order?",
+      content: "Are you sure you want to delete this purchase order? This action cannot be undone.",
+      okText: "Yes",
+      cancelText: "No",
+      okType: "danger",
+      onOk() {
+        DeleteApi(`/orders?id=${order.id}`)
+          .then((res) => {
+            if (!res.error) {
+              toast.success("Order deleted successfully");
+              fetchOrders();
+            } else {
+              toast.error(res.error || "Failed to delete order");
+            }
+          })
+          .catch(() => toast.error("Server error while deleting order"));
+      }
+    });
   };
 
   const handleEdit = (order: PurchaseOrder) => {
-    setForm(order);
-    setIsDialogOpen(true);
-    setIsEditMode(true);
+    setEditingOrder(order);
+    form.setFieldsValue({
+      ...order,
+      user_id: order.user_id,
+      received_date: order.received_date,
+      taken_by: order.taken_by,
+      taken_by_phone_no: order.taken_by_phone_no,
+      items: order.items || [],
+    });
+    setIsModalOpen(true);
   };
 
-  // Handlers for dynamic items editing:
-  const handleItemChange = (
-    index: number,
-    field: keyof PurchaseOrder["items"][0],
-    value: string | number
-  ) => {
-    if (!form.items) return;
-    const updatedItems = [...form.items];
-    if (field === "medicine_id" || field === "quantity") {
-      updatedItems[index][field] = Number(value);
-    } else {
-      updatedItems[index][field] = value as string;
-    }
-    setForm({ ...form, items: updatedItems });
+  const handleView = (order: PurchaseOrder) => {
+    setSelectedOrder(order);
+    setIsViewModalOpen(true);
   };
 
-  const handleAddItem = () => {
-    const newItem = { medicine_id: 0, quantity: 1, order_date: "" };
-    setForm({ ...form, items: [...(form.items || []), newItem] });
+  const resetFilters = () => {
+    setSearch("");
   };
 
-  const handleRemoveItem = (index: number) => {
-    if (!form.items) return;
-    const updatedItems = [...form.items];
-    updatedItems.splice(index, 1);
-    setForm({ ...form, items: updatedItems });
-  };
+  const filteredOrders = orders.filter(order =>
+    order.user_id.toString().includes(search) ||
+    order.received_date.includes(search) ||
+    order.taken_by?.toLowerCase().includes(search.toLowerCase()) ||
+    order.user?.username?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const columns: ColumnsType<PurchaseOrder> = [
+    {
+      title: (
+        <Space>
+          <ShoppingCartOutlined />
+          Order Info
+        </Space>
+      ),
+      key: "order",
+      render: (_, record: PurchaseOrder) => (
+        <Space>
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <ShoppingCartOutlined className="text-blue-600" />
+          </div>
+          <div>
+            <div style={{ fontWeight: "bold" }}>Order #{record.id}</div>
+            <div style={{ fontSize: "12px", color: "#666" }}>
+              User: {record.user?.username || record.user_id}
+            </div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <UserOutlined />
+          Collected By
+        </Space>
+      ),
+      key: "taken_by",
+      render: (_, record: PurchaseOrder) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ fontWeight: "500" }}>{record.taken_by}</span>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            <PhoneOutlined /> {record.taken_by_phone_no}
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <CalendarOutlined />
+          Dates
+        </Space>
+      ),
+      key: "dates",
+      render: (_, record: PurchaseOrder) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ fontWeight: "500" }}>Received: {record.received_date}</span>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            Created: {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <MedicineBoxOutlined />
+          Items
+        </Space>
+      ),
+      key: "items",
+      render: (_, record: PurchaseOrder) => (
+        <Space direction="vertical" size={0}>
+          <span className="font-bold text-blue-600">{record.items?.length || 0}</span>
+          <div style={{ fontSize: "12px", color: "#999" }}>
+            Medicine Items
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: (
+        <Space>
+          <ThunderboltOutlined />
+          Actions
+        </Space>
+      ),
+      key: "actions",
+      render: (_, record: PurchaseOrder) => (
+        <Space>
+          <Tooltip title="View Details">
+            <Button
+              icon={<EyeOutlined />}
+              shape="circle"
+              type="primary"
+              ghost
+              onClick={() => handleView(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Edit Order">
+            <Button
+              icon={<EditOutlined />}
+              shape="circle"
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Delete Order">
+            <Popconfirm
+              title="Delete this order?"
+              description="Are you sure you want to delete this purchase order? This action cannot be undone."
+              onConfirm={() => handleDeleteOrder(record)}
+              okText="Yes"
+              cancelText="No"
+              okType="danger"
+              icon={<CloseCircleOutlined style={{ color: "red" }} />}
+            >
+              <Button icon={<DeleteOutlined />} shape="circle" danger />
+            </Popconfirm>
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Purchase Orders</h2>
-          <p className="text-muted-foreground">Manage all medicine orders</p>
-        </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Search by User ID or Date..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
-              setForm(defaultOrder);
-              setIsEditMode(false);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button>{isEditMode ? "Edit Order" : "New Order"}</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>
-                  {isEditMode ? "Edit Purchase Order" : "New Purchase Order"}
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                <div>
-                  <Label>User ID</Label>
-                  <Select
-                    value={form.user_id.toString()}
-                    onValueChange={(val) =>
-                      setForm({ ...form, user_id: Number(val) })
-                      // handleItemChange(index, "medicine_id", Number(val))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Medicine" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patients.map((med) => (
-                        <SelectItem key={med.id} value={med.id.toString()}>
-                          {med.username}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Received Date</Label>
-                  <Input
-                    type="date"
-                    value={form.received_date || ""}
-                    onChange={(e) =>
-                      setForm({ ...form, received_date: e.target.value })
-                    }
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <Card className="bg-white shadow-sm border-0">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <ShoppingCartOutlined className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
+              <p className="text-gray-600 mt-1">Manage all medicine purchase orders</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+            <Tooltip title="Auto Refresh">
+              <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+                <SyncOutlined className="w-4 h-4 text-gray-600" />
+                <span className="text-sm text-gray-600">Auto Refresh</span>
+                <div 
+                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
+                    autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                  }`}
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                >
+                  <div 
+                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
+                      autoRefresh ? 'translate-x-4' : 'translate-x-1'
+                    }`}
                   />
-                </div>
-                <div>
-                  <Label>Taken by</Label>
-                  <Input
-                    value={form.taken_by || ""}
-                    onChange={(e) =>
-                      setForm({ ...form, taken_by: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Taken by phone no</Label>
-                  <Input
-                    value={form.taken_by_phone_no || ""}
-                    onChange={(e) =>
-                      setForm({ ...form, taken_by_phone_no: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label className="mb-2">Items</Label>
-                  {(form.items && form.items.length > 0) ? (
-                    form.items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-4 gap-4 items-end mb-4 border p-3 rounded-md"
-                      >
-                        <div>
-                          <Label>Medicine</Label>
-                          <Select
-                            value={item.medicine_id.toString()}
-                            onValueChange={(val) =>
-                              handleItemChange(index, "medicine_id", Number(val))
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Medicine" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {medicines.map((med) => (
-                                <SelectItem key={med.id} value={med.id.toString()}>
-                                  {med.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label>Quantity</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={item.quantity}
-                            onChange={(e) =>
-                              handleItemChange(index, "quantity", Number(e.target.value))
-                            }
-                          />
-                        </div>
-
-                        <div>
-                          <Label>Order Date</Label>
-                          <Input
-                            type="date"
-                            value={item.order_date}
-                            onChange={(e) =>
-                              handleItemChange(index, "order_date", e.target.value)
-                            }
-                          />
-                        </div>
-
-                        <div className="flex items-center">
-                          <Button
-                            variant="destructive"
-                            onClick={() => handleRemoveItem(index)}
-                            className="mt-6"
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No items added yet.</p>
-                  )}
-
-                  <Button onClick={handleAddItem} variant="outline" className="mt-2">
-                    + Add Item
-                  </Button>
                 </div>
               </div>
+            </Tooltip>
 
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setForm(defaultOrder);
-                    setIsDialogOpen(false);
-                    setIsEditMode(false);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={isEditMode ? handleUpdateOrder : handleAddOrder}>
-                  {isEditMode ? "Update" : "Add"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            <Tooltip title="Reset Filters">
+              <Button icon={<ReloadOutlined />} onClick={resetFilters}>
+                Reset Filters
+              </Button>
+            </Tooltip>
+
+            <Tooltip title="Add New Order">
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={() => {
+                  setEditingOrder(null);
+                  form.resetFields();
+                  setIsModalOpen(true);
+                }} 
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <RocketOutlined /> New Order
+              </Button>
+            </Tooltip>
+          </div>
         </div>
-      </div>
+      </Card>
+
+      {/* Search and Filter Section */}
+      <Card className="bg-white shadow-sm border-0">
+        <div className="p-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <TeamOutlined className="w-5 h-5" />
+              <span className="text-lg font-semibold">All Purchase Orders</span>
+              <Tag color="blue" className="ml-2">
+                {filteredOrders.length}
+              </Tag>
+            </div>
+            <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+              <Input 
+                placeholder="Search by user, date, or collector..." 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                prefix={<SearchOutlined />} 
+                allowClear 
+                style={{ width: 300 }}
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Orders Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order ID</TableHead>
-              <TableHead>User ID</TableHead>
-              <TableHead>Items Count</TableHead>
-              <TableHead>Received Date</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  No orders found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders
-                .filter((o) =>
-                  o.user_id.toString().includes(search) ||
-                  o.received_date.includes(search)
-                )
-                .map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>{order.id}</TableCell>
-                    <TableCell>{order.user_id}</TableCell>
-                    <TableCell>{order.items?.length}</TableCell>
-                    <TableCell>{order.received_date}</TableCell>
-                    <TableCell className="flex gap-2">
-                      <Button size="sm" onClick={() => handleEdit(order)}>
-                        Edit
-                      </Button>
-                      {/* <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteOrder(order.id)}
+      <Card className="shadow-md rounded-lg">
+        <Table 
+          columns={columns} 
+          dataSource={filteredOrders} 
+          rowKey="id" 
+          pagination={{ 
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => 
+              `${range[0]}-${range[1]} of ${total} orders`,
+          }} 
+          scroll={{ x: "max-content" }} 
+          rowClassName="hover:bg-gray-50"
+        />
+      </Card>
+
+      {/* Add/Edit Order Modal */}
+      <Modal
+        title={
+          <Space>
+            {editingOrder ? <EditOutlined /> : <PlusOutlined />}
+            {editingOrder ? "Edit Purchase Order" : "New Purchase Order"}
+          </Space>
+        }
+        open={isModalOpen}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingOrder(null);
+          form.resetFields();
+        }}
+        onOk={() => form.submit()}
+        okText={editingOrder ? "Update" : "Add"}
+        width={800}
+      >
+        <Form form={form} layout="vertical" onFinish={handleAddOrUpdate}>
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item
+              name="user_id"
+              label="Patient"
+              rules={[{ required: true, message: "Please select patient" }]}
+            >
+              <Select placeholder="Select patient">
+                {patients.map((patient: any) => (
+                  <Option key={patient.id} value={patient.id}>
+                    {patient.username}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              name="received_date"
+              label="Received Date"
+              rules={[{ required: true, message: "Please select received date" }]}
+            >
+              <Input type="date" />
+            </Form.Item>
+
+            <Form.Item
+              name="taken_by"
+              label="Collected By"
+              rules={[{ required: true, message: "Please enter collector name" }]}
+            >
+              <Input placeholder="Enter collector name" />
+            </Form.Item>
+
+            <Form.Item
+              name="taken_by_phone_no"
+              label="Collector Phone"
+              rules={[{ required: true, message: "Please enter collector phone" }]}
+            >
+              <Input placeholder="Enter collector phone number" />
+            </Form.Item>
+          </div>
+
+          <Form.List name="items">
+            {(fields, { add, remove }) => (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-medium">Order Items</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                    Add Item
+                  </Button>
+                </div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <div key={key} className="border p-4 rounded-lg mb-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'medicine_id']}
+                        label="Medicine"
+                        rules={[{ required: true, message: 'Please select medicine' }]}
                       >
-                        Delete
-                      </Button> */}
-                    </TableCell>
-                  </TableRow>
-                ))
+                        <Select placeholder="Select medicine">
+                          {medicines.map(medicine => (
+                            <Option key={medicine.id} value={medicine.id}>
+                              {medicine.name}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'quantity']}
+                        label="Quantity"
+                        rules={[{ required: true, message: 'Please enter quantity' }]}
+                      >
+                        <Input type="number" placeholder="Quantity" min={1} />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'order_date']}
+                        label="Order Date"
+                        rules={[{ required: true, message: 'Please select order date' }]}
+                      >
+                        <Input type="date" />
+                      </Form.Item>
+                    </div>
+                    <div className="text-right">
+                      <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />}>
+                        Remove Item
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
-          </TableBody>
-        </Table>
-      </div>
+          </Form.List>
+        </Form>
+      </Modal>
+
+      {/* View Order Modal */}
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined />
+            Order Details
+          </Space>
+        }
+        open={isViewModalOpen}
+        onCancel={() => {
+          setIsViewModalOpen(false);
+          setSelectedOrder(null);
+        }}
+        footer={[
+          <Button key="close" onClick={() => setIsViewModalOpen(false)}>
+            Close
+          </Button>
+        ]}
+        width={700}
+      >
+        {selectedOrder && (
+          <div>
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <ShoppingCartOutlined className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Order #{selectedOrder.id}</h3>
+                <p className="text-gray-600">Purchase order details</p>
+              </div>
+            </div>
+
+            <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="Patient">
+                {selectedOrder.user?.username || selectedOrder.user_id}
+              </Descriptions.Item>
+              <Descriptions.Item label="Collected By">
+                {selectedOrder.taken_by}
+              </Descriptions.Item>
+              <Descriptions.Item label="Collector Phone">
+                {selectedOrder.taken_by_phone_no}
+              </Descriptions.Item>
+              <Descriptions.Item label="Received Date">
+                {selectedOrder.received_date}
+              </Descriptions.Item>
+              <Descriptions.Item label="Created Date">
+                {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleDateString() : 'N/A'}
+              </Descriptions.Item>
+            </Descriptions>
+
+            <Divider />
+
+            <h4 className="font-semibold mb-3">Order Items</h4>
+            {selectedOrder.items && selectedOrder.items.length > 0 ? (
+              <Table
+                size="small"
+                dataSource={selectedOrder.items}
+                pagination={false}
+                columns={[
+                  { 
+                    title: 'Medicine', 
+                    key: 'medicine',
+                    render: (_, record) => {
+                      const medicine = medicines.find(m => m.id === record.medicine_id);
+                      return medicine?.name || `Medicine ID: ${record.medicine_id}`;
+                    }
+                  },
+                  { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
+                  { title: 'Order Date', dataIndex: 'order_date', key: 'order_date' },
+                ]}
+              />
+            ) : (
+              <p className="text-gray-500">No items in this order</p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

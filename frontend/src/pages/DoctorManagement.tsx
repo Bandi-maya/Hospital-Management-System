@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { InputNumber, Select } from "antd";
 import { countries } from "@/components/Patients/AddPatient";
 import { getApi, PostApi, PutApi } from "@/ApiService";
 import { DepartmentInterface } from "@/components/Departments/Departments";
+import { Search, PlusCircle, User, Stethoscope, Mail, Phone, MapPin, Calendar, Edit, Trash2, Filter, Download } from "lucide-react";
 
 const { Option } = Select;
 
@@ -30,10 +32,6 @@ interface Doctor {
   extra_fields: any;
 }
 
-// Key to store doctors in localStorage
-const LOCAL_STORAGE_KEY = "doctors";
-
-// Predefined specialization options
 const SPECIALIZATIONS = [
   "Cardiology",
   "Neurology",
@@ -73,6 +71,7 @@ export default function DoctorManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [specializationFilter, setSpecializationFilter] = useState("all");
 
   function loadDepartments() {
     getApi('/departments')
@@ -85,8 +84,8 @@ export default function DoctorManagement() {
         }
       })
       .catch((error) => {
-        console.error("Error fetching doctors:", error);
-        toast.error("Failed to fetch doctors");
+        console.error("Error fetching departments:", error);
+        toast.error("Failed to fetch departments");
       })
   }
 
@@ -107,7 +106,6 @@ export default function DoctorManagement() {
       }).finally(() => setLoading(false));
   }
 
-  // Load doctors from localStorage on mount
   useEffect(() => {
     loadData()
     loadDepartments()
@@ -122,9 +120,8 @@ export default function DoctorManagement() {
     if (doctor) {
       const date = new Date(doctor.dateOfBirth);
       const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
       const dd = String(date.getDate()).padStart(2, '0');
-
       const formattedDate = `${yyyy}-${mm}-${dd}`;
 
       setSelectedDoctor(doctor);
@@ -255,223 +252,494 @@ export default function DoctorManagement() {
     }
   };
 
-  // Filter doctors by search
-  const filteredDoctors = doctors.filter((d) =>
-    d.name.toLowerCase().includes(search.toLowerCase())
-    // d.specialization.toLowerCase().includes(search.toLowerCase()) ||
-    // d.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredDoctors = doctors.filter((d) => {
+    const matchesSearch = 
+      d.name?.toLowerCase().includes(search.toLowerCase()) ||
+      d.extra_fields?.specialization?.toLowerCase().includes(search.toLowerCase()) ||
+      d.email?.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesSpecialization = specializationFilter === "all" || 
+      d.extra_fields?.specialization === specializationFilter;
+    
+    return matchesSearch && matchesSpecialization;
+  });
 
-  console.log(form);
+  const stats = {
+    total: doctors.length,
+    cardiology: doctors.filter(d => d.extra_fields?.specialization === "Cardiology").length,
+    pediatrics: doctors.filter(d => d.extra_fields?.specialization === "Pediatrics").length,
+    neurology: doctors.filter(d => d.extra_fields?.specialization === "Neurology").length,
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h1 className="text-2xl font-bold">Doctor Management</h1>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Search doctors..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <Button onClick={() => handleOpenModal()}>Add Doctor</Button>
+    <div className="min-h-screen bg-gray-50/50 p-6">
+      {/* Header Section */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Doctor Management</h1>
+            <p className="text-gray-600 mt-1 text-base">Manage and track all healthcare professionals</p>
+          </div>
+          <Button 
+            onClick={() => handleOpenModal()}
+            className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700 shrink-0"
+            size="lg"
+          >
+            <PlusCircle className="w-5 h-5 mr-2" />
+            Add Doctor
+          </Button>
         </div>
       </div>
 
-      {/* Doctors List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Doctors</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredDoctors.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No doctors found.
+      {/* Statistics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card className="bg-white border-0 shadow-sm rounded-xl">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Total Doctors</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
               </div>
-            ) : (
-              filteredDoctors.map((doctor) => (
-                <div key={doctor.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold">{doctor.name}</h3>
-                    <p className="text-sm text-gray-600">{doctor.extra_fields.specialization}</p>
-                    <p className="text-sm text-gray-600">{doctor.email}</p>
-                    <p className="text-sm text-gray-600">{doctor.phone_no}</p>
-                  </div>
-                  <div className="space-x-2">
-                    <Button size="sm" onClick={() => handleOpenModal(doctor)}>Edit</Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(doctor.id)}>Delete</Button>
-                  </div>
-                </div>
-              ))
-            )}
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <User className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-0 shadow-sm rounded-xl">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Cardiology</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.cardiology}</p>
+              </div>
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Stethoscope className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-0 shadow-sm rounded-xl">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Pediatrics</p>
+                <p className="text-2xl font-bold text-green-600">{stats.pediatrics}</p>
+              </div>
+              <div className="p-2 bg-green-100 rounded-lg">
+                <User className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-0 shadow-sm rounded-xl">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Neurology</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.neurology}</p>
+              </div>
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Stethoscope className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters Card */}
+      <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
+        <CardContent className="p-5">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+            <div className="flex-1 w-full">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search doctors by name, specialization, or email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10 h-12 w-full text-base border-gray-300 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="w-full lg:w-56">
+              <Select 
+                value={specializationFilter} 
+                onChange={setSpecializationFilter}
+                className="w-full h-12 [&_.ant-select-selector]:h-12 [&_.ant-select-selection-item]:leading-10"
+                placeholder="All Specializations"
+              >
+                <Option value="all">All Specializations</Option>
+                {SPECIALIZATIONS.map((s) => (
+                  <Option key={s} value={s}>{s}</Option>
+                ))}
+              </Select>
+            </div>
+            <Button variant="outline" className="h-12 px-6 border-gray-300 hover:bg-gray-50 w-full lg:w-auto">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Doctors Grid */}
+      <Card className="bg-white border-0 shadow-sm rounded-xl">
+        <CardHeader className="px-6 py-5 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-xl font-semibold text-gray-900">Doctors</CardTitle>
+              <CardDescription className="text-gray-600 mt-1">
+                {filteredDoctors.length} doctor{filteredDoctors.length !== 1 ? 's' : ''} found
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : filteredDoctors.length === 0 ? (
+            <div className="text-center py-12">
+              <Stethoscope className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg font-medium mb-2">No doctors found</p>
+              <p className="text-gray-400 text-sm max-w-sm mx-auto">
+                {search || specializationFilter !== "all" 
+                  ? "Try adjusting your search or filters" 
+                  : "Get started by adding your first doctor"
+                }
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+              {filteredDoctors.map((doctor) => (
+                <Card key={doctor.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg overflow-hidden group">
+                  <CardContent className="p-5">
+                    <div className="space-y-4">
+                      {/* Header */}
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 text-lg truncate flex items-center gap-2">
+                            <User className="w-4 h-4 text-blue-500 shrink-0" />
+                            <span className="truncate">Dr. {doctor.name}</span>
+                          </h3>
+                          <Badge 
+                            variant="secondary" 
+                            className="mt-2 bg-blue-50 text-blue-700 border-blue-200 text-xs font-medium px-2 py-1"
+                          >
+                            {doctor.extra_fields?.specialization || "General Medicine"}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1 ml-3 shrink-0">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleOpenModal(doctor)}
+                            className="h-8 w-8 p-0 hover:bg-blue-50 hover:border-blue-200"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDelete(doctor.id!)}
+                            className="h-8 w-8 p-0 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* Details */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 text-gray-600">
+                          <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="text-sm truncate">{doctor.email}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-gray-600">
+                          <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="text-sm">{doctor.phone_no}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-gray-600">
+                          <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="text-sm truncate">
+                            {doctor.address?.city}, {doctor.address?.state}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-gray-600">
+                          <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="text-sm">
+                            {doctor.extra_fields?.experience || 0} years experience
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Add/Edit Doctor Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>{selectedDoctor ? "Edit Doctor" : "Add Doctor"}</CardTitle>
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <CardHeader className="px-6 py-5 border-b border-gray-200 bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Stethoscope className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-semibold text-gray-900">
+                    {selectedDoctor ? "Edit Doctor" : "Add New Doctor"}
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    {selectedDoctor ? "Update doctor information" : "Fill in the details to add a new doctor"}
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">First Name *</Label>
-                <Input
-                  id="first_name"
-                  value={form.extra_fields.first_name}
-                  onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, first_name: e.target.value } })}
-                  placeholder="Doctor name"
-                />
-              </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  {/* Personal Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Personal Information</h3>
+                    
+                    <div className="space-y-3">
+                      <Label htmlFor="first_name" className="text-sm font-medium text-gray-700">First Name *</Label>
+                      <Input
+                        id="first_name"
+                        value={form.extra_fields.first_name}
+                        onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, first_name: e.target.value } })}
+                        placeholder="Enter first name"
+                        className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                      />
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Last Name *</Label>
-                <Input
-                  id="last_name"
-                  value={form.extra_fields.last_name}
-                  onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, last_name: e.target.value } })}
-                  placeholder="Doctor name"
-                />
-              </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="last_name" className="text-sm font-medium text-gray-700">Last Name *</Label>
+                      <Input
+                        id="last_name"
+                        value={form.extra_fields.last_name}
+                        onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, last_name: e.target.value } })}
+                        placeholder="Enter last name"
+                        className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                      />
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Department *</Label>
-                <Select
-                  id="department_id"
-                  options={departments.map((d) => ({ value: d.id, label: d.name, key: d.id }))}
-                  value={form.department_id}
-                  onChange={(value) => setForm({ ...form, department_id: value })}
-                  placeholder="Select department"
-                />
-              </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="date_of_birth" className="text-sm font-medium text-gray-700">Date Of Birth *</Label>
+                      <Input
+                        type="date"
+                        id="date_of_birth"
+                        value={form.date_of_birth}
+                        onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+                        className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                      />
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Date Of Birth *</Label>
-                <Input
-                  type="date"
-                  id="date_of_birth"
-                  value={form.date_of_birth}
-                  onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
-                  placeholder="Doctor name"
-                />
-              </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="gender" className="text-sm font-medium text-gray-700">Gender *</Label>
+                      <Select
+                        options={[
+                          { value: "MALE", label: "Male" },
+                          { value: "FEMALE", label: "Female" },
+                          { value: "OTHER", label: "Other" },
+                        ]}
+                        id="gender"
+                        value={form.gender}
+                        onChange={(value) => setForm({ ...form, gender: value })}
+                        placeholder="Select gender"
+                        className="w-full [&_.ant-select-selector]:h-11 [&_.ant-select-selection-item]:leading-9"
+                        dropdownStyle={{ minWidth: '200px' }}
+                        popupMatchSelectWidth={false}
+                      />
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Gender *</Label>
-                <Select
-                  options={[
-                    { value: "MALE", label: "Male" },
-                    { value: "FEMALE", label: "Female" },
-                    { value: "OTHER", label: "Other" },
-                  ]}
-                  id="date_of_birth"
-                  value={form.gender}
-                  onChange={(value) => setForm({ ...form, gender: value })}
-                  placeholder="Doctor name"
-                />
-              </div>
+                  {/* Professional Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Professional Information</h3>
+                    
+                    <div className="space-y-3">
+                      <Label htmlFor="department_id" className="text-sm font-medium text-gray-700">Department *</Label>
+                      <Select
+                        id="department_id"
+                        options={departments.map((d) => ({ value: d.id, label: d.name, key: d.id }))}
+                        value={form.department_id}
+                        onChange={(value) => setForm({ ...form, department_id: value })}
+                        placeholder="Select department"
+                        className="w-full [&_.ant-select-selector]:h-11 [&_.ant-select-selection-item]:leading-9"
+                        dropdownStyle={{ minWidth: '250px' }}
+                        popupMatchSelectWidth={false}
+                      />
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="Email address"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone_no">Phone *</Label>
-                <Input
-                  id="phone_no"
-                  value={form.phone_no}
-                  onChange={(e) => setForm({ ...form, phone_no: e.target.value })}
-                  placeholder="Phone number"
-                />
-              </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="specialization" className="text-sm font-medium text-gray-700">Specialization *</Label>
+                      <Select
+                        showSearch
+                        placeholder="Select specialization"
+                        optionFilterProp="children"
+                        value={form.extra_fields.specialization || undefined}
+                        onChange={(value) => setForm({ ...form, extra_fields: { ...form.extra_fields, specialization: value } })}
+                        filterOption={(input, option) =>
+                          (option?.children as unknown as string)
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                        }
+                        className="w-full [&_.ant-select-selector]:h-11 [&_.ant-select-selection-item]:leading-9"
+                        dropdownStyle={{ minWidth: '250px' }}
+                        popupMatchSelectWidth={false}
+                      >
+                        {SPECIALIZATIONS.map((s) => (
+                          <Option key={s} value={s}>{s}</Option>
+                        ))}
+                      </Select>
+                    </div>
 
-              {/* Address */}
-              <div className="space-y-2">
-                <Label htmlFor="specialization">Street *</Label>
-                <Input
-                  value={form.address.street || undefined}
-                  onChange={(e) => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="specialization">City *</Label>
-                <Input
-                  value={form.address.city || undefined}
-                  onChange={(e) => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="specialization">State *</Label>
-                <Input
-                  value={form.address.state || undefined}
-                  onChange={(e) => setForm({ ...form, address: { ...form.address, state: e.target.value } })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="specialization">ZIP Code *</Label>
-                <Input
-                  value={form.address.zip_code || undefined}
-                  onChange={(e) => setForm({ ...form, address: { ...form.address, zip_code: e.target.value } })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="specialization">Country *</Label>
-                <Select
-                  placeholder="Select country"
-                  value={form.address.country || undefined}
-                  onChange={(value) => setForm({ ...form, address: { ...form.address, country: value } })}
-                  showSearch
-                  options={countries.map((c) => ({ value: c, label: c }))}
-                />
-              </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="experience" className="text-sm font-medium text-gray-700">Experience (years) *</Label>
+                      <InputNumber
+                        id="experience"
+                        min={0}
+                        max={50}
+                        value={(form as any).extra_fields.experience || 0}
+                        onChange={(value) => setForm({ ...form, extra_fields: { ...form.extra_fields, experience: value || 0 } })}
+                        className="w-full [&_.ant-input-number]:w-full [&_.ant-input-number-input]:h-11"
+                        controls={false}
+                      />
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="specialization">Specialization *</Label>
-                <Select
-                  showSearch
-                  placeholder="Select specialization"
-                  optionFilterProp="children"
-                  value={form.extra_fields.specialization || undefined}
-                  onChange={(value) => setForm({ ...form, extra_fields: { ...form.extra_fields, specialization: value } })}
-                  filterOption={(input, option) =>
-                    (option?.children as unknown as string)
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                  className="w-full"
+                  {/* Contact Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Contact Information</h3>
+                    
+                    <div className="space-y-3">
+                      <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        placeholder="Email address"
+                        className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="phone_no" className="text-sm font-medium text-gray-700">Phone *</Label>
+                      <Input
+                        id="phone_no"
+                        value={form.phone_no}
+                        onChange={(e) => setForm({ ...form, phone_no: e.target.value })}
+                        placeholder="Phone number"
+                        className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Address Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Address Information</h3>
+                    
+                    <div className="space-y-3">
+                      <Label htmlFor="street" className="text-sm font-medium text-gray-700">Street *</Label>
+                      <Input
+                        value={form.address.street || undefined}
+                        onChange={(e) => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
+                        placeholder="Street address"
+                        className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <Label htmlFor="city" className="text-sm font-medium text-gray-700">City *</Label>
+                        <Input
+                          value={form.address.city || undefined}
+                          onChange={(e) => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
+                          placeholder="City"
+                          className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label htmlFor="state" className="text-sm font-medium text-gray-700">State *</Label>
+                        <Input
+                          value={form.address.state || undefined}
+                          onChange={(e) => setForm({ ...form, address: { ...form.address, state: e.target.value } })}
+                          placeholder="State"
+                          className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <Label htmlFor="zip_code" className="text-sm font-medium text-gray-700">ZIP Code *</Label>
+                        <Input
+                          value={form.address.zip_code || undefined}
+                          onChange={(e) => setForm({ ...form, address: { ...form.address, zip_code: e.target.value } })}
+                          placeholder="ZIP code"
+                          className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label htmlFor="country" className="text-sm font-medium text-gray-700">Country *</Label>
+                        <Select
+                          placeholder="Select country"
+                          value={form.address.country || undefined}
+                          onChange={(value) => setForm({ ...form, address: { ...form.address, country: value } })}
+                          showSearch
+                          options={countries.map((c) => ({ value: c, label: c }))}
+                          className="w-full [&_.ant-select-selector]:h-11 [&_.ant-select-selection-item]:leading-9"
+                          dropdownStyle={{ minWidth: '250px' }}
+                          popupMatchSelectWidth={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 sticky bottom-0">
+              <div className="flex justify-end gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsModalOpen(false)} 
+                  className="h-11 px-6 text-base border-gray-300 hover:bg-gray-50"
                 >
-                  {SPECIALIZATIONS.map((s) => (
-                    <Option key={s} value={s}>{s}</Option>
-                  ))}
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="specialization">Experience *</Label>
-                <InputNumber
-                  id="experience"
-                  min={0}
-                  value={(form as any).extra_fields.experience || 0}
-                  onChange={(value) => setForm({ ...form, extra_fields: { ...form.extra_fields, experience: value || 0 } })}
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleSubmit}>
-                  {selectedDoctor ? "Update Doctor" : "Add Doctor"}
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmit} 
+                  disabled={isLoading}
+                  className="h-11 px-8 text-base bg-blue-600 hover:bg-blue-700"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {selectedDoctor ? "Updating..." : "Adding..."}
+                    </>
+                  ) : (
+                    selectedDoctor ? "Update Doctor" : "Add Doctor"
+                  )}
                 </Button>
               </div>
-            </CardContent>
+            </div>
           </Card>
         </div>
       )}
