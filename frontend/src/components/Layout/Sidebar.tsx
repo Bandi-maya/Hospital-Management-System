@@ -78,6 +78,17 @@ const createMenuItems = (): MenuItem[] => {
       ],
     },
     {
+      key: '/tokens',
+      label: 'Tokens',
+      icon: <CalendarOutlined />,
+      requiredPermission: 'appointments:read',
+      children: [
+        { key: '/tokens', label: 'All Tokens', icon: <CalendarOutlined /> },
+        { key: '/tokens/calendar', label: 'Calendar View', icon: <CalendarOutlined /> },
+        { key: '/tokens/create', label: 'Create Token', icon: <CalendarOutlined /> },
+      ],
+    },
+    {
       key: '/pharmacy',
       label: 'Pharmacy',
       icon: <MedicineBoxOutlined />,
@@ -105,6 +116,7 @@ const createMenuItems = (): MenuItem[] => {
       icon: <FileTextOutlined />,
       requiredPermission: 'billing:read',
       children: [
+        { key: '/billing', label: 'Billing', icon: <FileTextOutlined /> },
         { key: '/billing/invoices', label: 'All Invoices', icon: <FileTextOutlined /> },
         { key: '/billing/payments', label: 'Payments', icon: <FileTextOutlined /> },
         { key: '/billing/insurance', label: 'Insurance Claims', icon: <FileTextOutlined /> },

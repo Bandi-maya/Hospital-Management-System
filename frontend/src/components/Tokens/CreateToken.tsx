@@ -8,28 +8,20 @@ import { Badge } from "@/components/ui/badge";
 import { getApi, PostApi } from "@/ApiService";
 import { useNavigate } from "react-router-dom";
 
-export interface Appointment {
+export interface Token {
   id?: string;
   patient?: string;
   department_id: string;
   patient_id: string;
   doctor_id: string;
   doctor?: string;
-  duration: number;
+  token_number?: string;
+  // duration?: number;
   appointment_date: string;
-  appointment_start_time: string;
-  appointment_end_time?: string;
   status?: "Pending" | "Confirmed" | "Completed";
 }
 
-const LOCAL_STORAGE_KEY = "appointments";
-
-const patients = ["John Doe", "Jane Smith", "Alice Brown"];
-const doctors = ["Dr. Maya", "Dr. John", "Dr. Sarah"];
-const specializations = ["Cardiology", "Neurology", "Pediatrics"];
-
-export default function BookAppointment() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function CreateToken() {
   const navigate = useNavigate()
   const [patients, setPatients] = useState([])
   const [doctors, setDcotors] = useState([])
@@ -38,16 +30,9 @@ export default function BookAppointment() {
     patient_id: "",
     doctor_id: "",
     appointment_date: "",
-    appointment_start_time: "",
-    duration: 10,
+    // duration: 10,
     department_id: "",
   });
-
-  // Load appointments from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) setAppointments(JSON.parse(stored));
-  }, []);
 
   function getPatients() {
     getApi('/users?user_type_id=2')
@@ -103,61 +88,39 @@ export default function BookAppointment() {
     getDoctors()
   }, [])
 
-  // Save appointments to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(appointments));
-  }, [appointments]);
-
-  function calculateEndTime(startTimeStr, durationMinutes) {
-    const [hours, minutes] = startTimeStr.split(':').map(Number);
-    const start = new Date();
-    start.setHours(hours, minutes, 0, 0); // set time
-
-    const end = new Date(start.getTime() + durationMinutes * 60000); // 60000 ms = 1 minute
-
-    const endHours = String(end.getHours()).padStart(2, '0');
-    const endMinutes = String(end.getMinutes()).padStart(2, '0');
-
-    return `${endHours}:${endMinutes}`;
-  }
-
-
-  const handleBookAppointment = () => {
-    if (!form.patient_id || !form.doctor_id || !form.appointment_date || !form.appointment_start_time || !form.department_id || !form.duration) {
+  const handleCreateToken = () => {
+    if (!form.patient_id || !form.appointment_date || !form.department_id) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    const newAppointment: Appointment = {
-      // id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9),
+    const newToken: Token = {
       ...form,
-      appointment_end_time: calculateEndTime(form.appointment_start_time, form.duration)
     };
 
-    PostApi('/appointment', newAppointment)
+    PostApi('/tokens', newToken)
       .then((data) => {
         if (!data.error) {
-          toast.success("Appointment booked successfully!");
-          navigate('/appointments')
+          toast.success("Token created successfully!");
+          navigate('/tokens')
         }
         else {
           toast.error(data.error)
           console.error("Error occurred", data.error)
         }
       }).catch((error) => {
-        toast.error("Error occurred while creating appointment")
-        console.log("Error occurred while creating appointment", error)
+        toast.error("Error occurred while creating token")
+        console.log("Error occurred while creating token", error)
       })
   };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Appointment Management</h1>
-        <p className="text-muted-foreground">Book Appointment</p>
+        <h1 className="text-2xl font-bold">Token Management</h1>
+        <p className="text-muted-foreground">Create Token</p>
       </div>
 
-      {/* Appointment Form */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label>Patient</Label>
@@ -205,20 +168,10 @@ export default function BookAppointment() {
           <Label>Date</Label>
           <Input type="date" value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} />
         </div>
-
-        <div className="space-y-1">
-          <Label>Time</Label>
-          <Input type="time" value={form.appointment_start_time} onChange={(e) => setForm({ ...form, appointment_start_time: e.target.value })} />
-        </div>
-
-        <div className="space-y-1">
-          <Label>Duration in mins</Label>
-          <Input type="number" value={form.duration} onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })} />
-        </div>
       </div>
 
-      <Button onClick={handleBookAppointment} className="mt-4">
-        Book Appointment
+      <Button onClick={handleCreateToken} className="mt-4">
+        Create
       </Button>
 
       {/* Appointment List */}

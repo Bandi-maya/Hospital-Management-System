@@ -8,7 +8,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi } from "@/ApiService";
 
-interface Prescription {
+interface Billing {
   id?: string;
   patient_id: string;
   doctor_id: string;
@@ -17,15 +17,12 @@ interface Prescription {
   notes: string;
 }
 
-const LOCAL_STORAGE_KEY = "prescriptions";
-const INVENTORY_KEY = "medical_inventory";
-
-export default function Prescriptions() {
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+export default function Billing() {
+  const [billings, setBilling] = useState<Billing[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
-  const [form, setForm] = useState<Partial<Prescription>>({
+  const [form, setForm] = useState<Partial<Billing>>({
     patient_id: "",
     doctor_id: "",
     medicines: [{ medicine_id: "", quantity: 1 }],
@@ -38,10 +35,10 @@ export default function Prescriptions() {
   const [search, setSearch] = useState("");
   const loginData = localStorage.getItem('loginData')
 
-  // For viewing prescription
-  const [viewPrescription, setViewPrescription] = useState<Prescription | null>(null);
+  // For viewing billing
+  const [viewPrescription, setViewBilling] = useState<Billing | null>(null);
 
-  // Load prescriptions and inventory from localStorage
+  // Load billings and inventory from localStorage
   useEffect(() => {
     Promise.all([
       getApi('/medicines'),
@@ -70,61 +67,64 @@ export default function Prescriptions() {
       console.error("Error: ", err)
       toast.error("Error occurred while getting data.")
     })
-    loadPrescriptions()
+    loadBilling()
   }, []);
 
-  function loadPrescriptions() {
-    getApi("/prescriptions")
+  function loadBilling() {
+    getApi("/billing")
       .then((data) => {
         if (!data.error) {
-          setPrescriptions(data)
+          setBilling(data)
         }
         else {
           toast.error(data.error)
         }
       }).catch((err) => {
         console.error("Error: ", err)
-        toast.error("Error occurred while getting prescriptions.")
+        toast.error("Error occurred while getting billings.")
       })
   }
 
-  const handleAddOrUpdate = () => {
+  const handleAddOrUpdate = (selectedPrescriptionData = selectedPrescription, isStatusUpdate = false) => {
     form.doctor_id = loginData?.['id'] || 1;
-    if (!form.patient_id || !form.doctor_id || !form.medicines || form.medicines.length === 0) {
-      toast.error("Please fill all required fields");
-      return;
-    }
-
-    for (let med of form.medicines) {
-      if (!med.medicine_id || med.quantity <= 0) {
-        toast.error("Medicine name and quantity must be valid");
+    if (!isStatusUpdate) {
+      if (!form.patient_id || !form.medicines || form.medicines.length === 0) {
+        toast.error("Please fill all required fields");
         return;
+      }
+
+      for (let med of form.medicines) {
+        if (!med.medicine_id || med.quantity <= 0) {
+          toast.error("Medicine name and quantity must be valid");
+          return;
+        }
+      }
+
+      for (let test of form.tests) {
+        if (!test.test_id) {
+          toast.error("Test name must be valid");
+          return;
+        }
       }
     }
 
-    for (let test of form.tests) {
-      if (!test.test_id) {
-        toast.error("Test name must be valid");
-        return;
-      }
-    }
-
-    if (selectedPrescription) {
-      PutApi('/prescriptions', { ...selectedPrescription, ...form })
+    if (selectedPrescriptionData) {
+      let payload = !isStatusUpdate ? { ...selectedPrescriptionData, ...form } : { ...selectedPrescriptionData }
+      PutApi('/billing', { ...payload })
         .then((data) => {
           if (!data.error) {
-            loadPrescriptions()
-            toast.success("Prescription updated successfully!");
+            loadBilling()
+            toast.success("Billing updated successfully!");
           }
           else {
             toast.error(data.error)
           }
         }).catch((err) => {
           console.error("Error: ", err)
-          toast.error("Error occurred while updating prescription.")
+          toast.error("Error occurred while updating billing.")
         })
     } else {
-      const newPrescription: Prescription = {
+      const newPrescription: Billing = {
         // id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9),
         patient_id: form.patient_id!,
         doctor_id: form.doctor_id!,
@@ -132,21 +132,21 @@ export default function Prescriptions() {
         tests: form.tests!,
         notes: form.notes || "",
       };
-      PostApi('/prescriptions', { ...newPrescription })
+      PostApi('/billing', { ...newPrescription })
         .then((data) => {
           if (!data.error) {
-            loadPrescriptions()
-            toast.success("Prescription updated successfully!");
+            loadBilling()
+            toast.success("Billing updated successfully!");
           }
           else {
             toast.error(data.error)
           }
         }).catch((err) => {
           console.error("Error: ", err)
-          toast.error("Error occurred while updating prescription.")
+          toast.error("Error occurred while updating billing.")
         })
-      setPrescriptions(prev => [...prev, newPrescription]);
-      toast.success("Prescription added successfully!");
+      setBilling(prev => [...prev, newPrescription]);
+      toast.success("Billing added successfully!");
     }
 
     setForm({ patient_id: "", doctor_id: "", medicines: [{ medicine_id: "", quantity: 1 }], tests: [{ test_id: "" }], notes: "" });
@@ -154,68 +154,22 @@ export default function Prescriptions() {
     setIsDialogOpen(false);
   };
 
-  const handleAddOrUpdateBilling = () => {
-    form.doctor_id = loginData?.['id'] || 1;
-    if (!form.patient_id || !form.doctor_id || !form.medicines || form.medicines.length === 0) {
-      toast.error("Please fill all required fields");
-      return;
-    }
-
-    for (let med of form.medicines) {
-      if (!med.medicine_id || med.quantity <= 0) {
-        toast.error("Medicine name and quantity must be valid");
-        return;
-      }
-    }
-
-    for (let test of form.tests) {
-      if (!test.test_id) {
-        toast.error("Test name must be valid");
-        return;
-      }
-    }
-
-    const newPrescription: Prescription | any = {
-      prescription_id: form?.['id'],
-      // id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9),
-      patient_id: form.patient_id!,
-      doctor_id: form.doctor_id!,
-      medicines: form.medicines!,
-      tests: form.tests!,
-      notes: form.notes || "",
-    };
-    PostApi('/billing', { ...newPrescription })
-      .then((data) => {
-        if (!data.error) {
-          loadPrescriptions()
-          toast.success("Billing added successfully!");
-        }
-        else {
-          toast.error(data.error)
-        }
-      }).catch((err) => {
-        console.error("Error: ", err)
-        toast.error("Error occurred while updating prescription.")
-      })
-    toast.success("Prescription added successfully!");
-    setForm({ patient_id: "", doctor_id: "", medicines: [{ medicine_id: "", quantity: 1 }], tests: [{ test_id: "" }], notes: "" });
-    setSelectedPrescription(null);
-    setIsDialogOpen(false);
-    setIsBillingModalOpen(false)
-  };
-
-  const handleEdit = (prescription: Prescription) => {
-    setForm({ ...prescription });
-    setSelectedPrescription(prescription.id);
+  const handleEdit = (billing: Billing) => {
+    setForm({ ...billing });
+    setSelectedPrescription(billing.id);
     setIsDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this prescription?")) {
-      setPrescriptions(prev => prev.filter(p => p.id !== id));
-      toast.success("Prescription deleted successfully!");
+    if (confirm("Are you sure you want to delete this billing?")) {
+      setBilling(prev => prev.filter(p => p.id !== id));
+      toast.success("Billing deleted successfully!");
     }
   };
+
+  function handleStatusChange(billing, status) {
+    handleAddOrUpdate({ ...billing, status: status }, true)
+  }
 
   const handleMedicineChange = (index: number, field: "medicine_id" | "quantity", value: string | number) => {
     const newMedicines = [...form.medicines!];
@@ -248,14 +202,14 @@ export default function Prescriptions() {
   };
 
   const handlePrint = () => {
-    const printContent = document.getElementById("prescription-print-area")?.innerHTML;
+    const printContent = document.getElementById("billing-print-area")?.innerHTML;
     if (!printContent) return;
     const printWindow = window.open("", "_blank", "width=800,height=600");
     if (printWindow) {
       printWindow.document.write(`
       <html>
         <head>
-          <title>Prescription</title>
+          <title>Billing</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 20px; }
             h2 { text-align: center; }
@@ -283,7 +237,7 @@ export default function Prescriptions() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h1 className="text-2xl font-bold">Pharmacy</h1>
-        <p className="text-muted-foreground">Prescriptions</p>
+        <p className="text-muted-foreground">Billing</p>
         <Input
           placeholder="Search by patient or doctor"
           value={search}
@@ -292,11 +246,11 @@ export default function Prescriptions() {
         />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>{selectedPrescription ? "Edit Prescription" : "Add Prescription"}</Button>
+            <Button>{selectedPrescription ? "Edit Billing" : "Add Billing"}</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{selectedPrescription ? "Edit Prescription" : "Add Prescription"}</DialogTitle>
+              <DialogTitle>{selectedPrescription ? "Edit Billing" : "Add Billing"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -398,7 +352,7 @@ export default function Prescriptions() {
             </div>
             <DialogFooter className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddOrUpdate}>{selectedPrescription ? "Update" : "Add"}</Button>
+              <Button onClick={() => handleAddOrUpdate()}>{selectedPrescription ? "Update" : "Add"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -416,130 +370,23 @@ export default function Prescriptions() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {prescriptions.length === 0 ? (
+            {billings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">No prescriptions found.</TableCell>
+                <TableCell colSpan={6} className="text-center">No billings found.</TableCell>
               </TableRow>
             ) : (
-              prescriptions.map(prescription => (
-                <TableRow key={prescription.id}>
-                  <TableCell>{prescription.patient_id}</TableCell>
-                  <TableCell>{prescription.doctor_id}</TableCell>
+              billings.map(billing => (
+                <TableRow key={billing.id}>
+                  <TableCell>{billing.patient_id}</TableCell>
+                  <TableCell>{billing.doctor_id}</TableCell>
                   <TableCell>
-                    {/* {prescription.medicines.map(m => `${m.id} (${m.quantity})`).join(", ")} */}
+                    {/* {billing.medicines.map(m => `${m.id} (${m.quantity})`).join(", ")} */}
                   </TableCell>
-                  <TableCell>{prescription.notes}</TableCell>
+                  <TableCell>{billing.notes}</TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button size="sm" onClick={() => handleEdit(prescription)}>Edit</Button>
-                    {/* <Button size="sm" variant="destructive" onClick={() => handleDelete(prescription.id)}>Delete</Button> */}
-                    <Button size="sm" variant="outline" onClick={() => setViewPrescription(prescription)}>View</Button>
-                    <Dialog open={isBillingModalOpen} onOpenChange={(value) => {
-                      setForm({ ...prescription });
-                      setIsBillingModalOpen(value)
-                    }}>
-                      <DialogTrigger asChild>
-                        <Button>Add Billing</Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-lg">
-                        <DialogHeader>
-                          <DialogTitle>Add Billing</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="patient">Patient Name</Label>
-                            <Select
-                              value={form.patient_id}
-                              disabled
-                              onValueChange={value => setForm({ ...form, patient_id: value })}
-                            >
-                              <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Select Patient" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {patients.length === 0 ? (
-                                  <SelectItem value="--">No Patients</SelectItem>
-                                ) : (
-                                  patients.map(m => (
-                                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Medicines</Label>
-                            {form.medicines!.map((med, index) => (
-                              <div key={index} className="flex space-x-2 items-center mb-2">
-                                <Select
-                                  value={med.medicine_id}
-                                  onValueChange={value => handleMedicineChange(index, "medicine_id", value)}
-                                >
-                                  <SelectTrigger className="w-[150px]">
-                                    <SelectValue placeholder="Select Medicine" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {inventory.length === 0 ? (
-                                      <SelectItem value="--">No medicines</SelectItem>
-                                    ) : (
-                                      inventory.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.name} - {m.price}</SelectItem>
-                                      ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                  type="number"
-                                  placeholder="Quantity"
-                                  value={med.quantity}
-                                  onChange={e => handleMedicineChange(index, "quantity", Number(e.target.value))}
-                                />
-                                <Button size="sm" variant="destructive" onClick={() => removeMedicineField(index)}>Remove</Button>
-                              </div>
-                            ))}
-                            <Button size="sm" onClick={addMedicineField}>Add Medicine</Button>
-                          </div>
-                          <div>
-                            <Label>Tests</Label>
-                            {form.tests!.map((med, index) => (
-                              <div key={index} className="flex space-x-2 items-center mb-2">
-                                <Select
-                                  value={med.test_id}
-                                  onValueChange={value => handleTestChange(index, "test_id", value)}
-                                >
-                                  <SelectTrigger className="w-[150px]">
-                                    <SelectValue placeholder="Select Medicine" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {tests.length === 0 ? (
-                                      <SelectItem value="--">No Tests</SelectItem>
-                                    ) : (
-                                      tests.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.name} - {m.price}</SelectItem>
-                                      ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <Button size="sm" variant="destructive" onClick={() => removeTestField(index)}>Remove</Button>
-                              </div>
-                            ))}
-                            <Button size="sm" onClick={addTestField}>Add Test</Button>
-                          </div>
-                          <div>
-                            <Label htmlFor="notes">Notes</Label>
-                            <Input
-                              id="notes"
-                              value={form.notes}
-                              onChange={e => setForm({ ...form, notes: e.target.value })}
-                              placeholder="Additional notes"
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter className="flex justify-end space-x-2">
-                          <Button variant="outline" onClick={() => setIsBillingModalOpen(false)}>Cancel</Button>
-                          <Button onClick={handleAddOrUpdateBilling}>Add</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                    {billing?.['status'] !== 'PAID' && <Button size="sm" onClick={() => handleEdit(billing)}>Edit</Button>}
+                    {billing?.['status'] !== 'PAID' && <Button size="sm" onClick={() => handleStatusChange(billing, "PAID")}>Mark Paid</Button>}
+                    {/* <Button size="sm" variant="destructive" onClick={() => handleDelete(billing.id)}>Delete</Button> */}
                   </TableCell>
                 </TableRow>
               ))
@@ -548,15 +395,15 @@ export default function Prescriptions() {
         </Table>
       </div>
 
-      {/* View Prescription Modal */}
+      {/* View Billing Modal */}
       {viewPrescription && (
-        <Dialog open={!!viewPrescription} onOpenChange={() => setViewPrescription(null)}>
+        <Dialog open={!!viewPrescription} onOpenChange={() => setViewBilling(null)}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Prescription Details</DialogTitle>
+              <DialogTitle>Billing Details</DialogTitle>
             </DialogHeader>
-            <div id="prescription-print-area" className="p-4">
-              <h2>Prescription</h2>
+            <div id="billing-print-area" className="p-4">
+              <h2>Billing</h2>
               <p><strong>Patient:</strong> {viewPrescription.patient_id}</p>
               <p><strong>Doctor:</strong> {viewPrescription.doctor_id}</p>
               <h3 className="mt-2 font-semibold">Medicines</h3>
@@ -582,7 +429,7 @@ export default function Prescriptions() {
             </div>
             <DialogFooter className="flex justify-end space-x-2">
               <Button onClick={handlePrint}>Print / Save PDF</Button>
-              <Button variant="outline" onClick={() => setViewPrescription(null)}>Close</Button>
+              <Button variant="outline" onClick={() => setViewBilling(null)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

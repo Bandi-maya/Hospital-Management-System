@@ -10,7 +10,6 @@ import {
   Input,
   Select,
   Tooltip,
-  Tabs,
 } from "antd";
 import {
   EditOutlined,
@@ -22,7 +21,6 @@ import {
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 interface InsuranceInfo {
   policyNumber: string;
@@ -43,12 +41,19 @@ interface WardAllocation {
 
 const STORAGE_KEY = "wardAllocations";
 
+// Define a type for our new modal state
+type ModalInfo = {
+  type: "add" | "edit" | "insurance" | null;
+  record: WardAllocation | null;
+};
+
 const WardAllocations: React.FC = () => {
   const [data, setData] = useState<WardAllocation[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<WardAllocation | null>(
-    null
-  );
+  // 1. Replaced single boolean state with a more descriptive state object
+  const [modalInfo, setModalInfo] = useState<ModalInfo>({
+    type: null,
+    record: null,
+  });
   const [form] = Form.useForm();
 
   const [searchText, setSearchText] = useState("");
@@ -62,36 +67,42 @@ const WardAllocations: React.FC = () => {
     }
   }, []);
 
-  // Save data to localStorage on update
+  // Update data to localStorage on update
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [data]);
 
-  const showEditModal = (record?: WardAllocation) => {
-    if (record) {
-      setEditingRecord(record);
-      form.setFieldsValue(record);
-    } else {
-      setEditingRecord(null);
-      form.resetFields();
-    }
-    setIsModalVisible(true);
+  // 2. Created separate handlers for each modal type
+  const showAddModal = () => {
+    form.resetFields();
+    setModalInfo({ type: "add", record: null });
+  };
+
+  const showEditModal = (record: WardAllocation) => {
+    form.setFieldsValue(record);
+    setModalInfo({ type: "edit", record });
+  };
+
+  const showInsuranceModal = (record: WardAllocation) => {
+    form.setFieldsValue(record); // Set existing values, including insurance
+    setModalInfo({ type: "insurance", record });
   };
 
   const handleCancel = () => {
-    setIsModalVisible(false);
-    setEditingRecord(null);
+    setModalInfo({ type: null, record: null });
     form.resetFields();
   };
 
-  const handleSave = () => {
+  const handleUpdate = () => {
     form.validateFields().then((values) => {
-      if (editingRecord) {
+      if (modalInfo.record) {
+        // This handles both 'edit' and 'insurance' updates
         const updatedData = data.map((item) =>
-          item.key === editingRecord.key ? { ...item, ...values } : item
+          item.key === modalInfo.record!.key ? { ...item, ...values } : item
         );
         setData(updatedData);
       } else {
+        // This handles 'add'
         const newRecord = {
           key: String(Date.now()),
           ...values,
@@ -139,7 +150,7 @@ const WardAllocations: React.FC = () => {
       title: "Insurance",
       key: "insurance",
       render: (_: any, record: WardAllocation) =>
-        record.insurance ? (
+        record.insurance && record.insurance.provider ? (
           <Tag color="blue">{record.insurance.provider}</Tag>
         ) : (
           <Tag color="default">None</Tag>
@@ -150,11 +161,11 @@ const WardAllocations: React.FC = () => {
       key: "actions",
       render: (_: any, record: WardAllocation) => (
         <Space>
-          <Tooltip title="Edit">
+          <Tooltip title="Edit Ward Details">
             <Button
               type="link"
               icon={<EditOutlined />}
-              onClick={() => showEditModal(record)}
+              onClick={() => showEditModal(record)} // Use specific handler
             />
           </Tooltip>
           <Tooltip title="Delete">
@@ -165,11 +176,11 @@ const WardAllocations: React.FC = () => {
               onClick={() => handleDelete(record.key)}
             />
           </Tooltip>
-          <Tooltip title="Insurance">
+          <Tooltip title="Edit Insurance">
             <Button
               type="link"
               icon={<SafetyCertificateOutlined />}
-              onClick={() => showEditModal(record)}
+              onClick={() => showInsuranceModal(record)} // Use specific handler
             />
           </Tooltip>
         </Space>
@@ -186,6 +197,20 @@ const WardAllocations: React.FC = () => {
     return matchesSearch && matchesWard;
   });
 
+  // 4. Helper function for a dynamic modal title
+  const getModalTitle = () => {
+    switch (modalInfo.type) {
+      case "add":
+        return "Add Ward Allocation";
+      case "edit":
+        return "Edit Ward Allocation";
+      case "insurance":
+        return `Edit Insurance for ${modalInfo.record?.patientName}`;
+      default:
+        return "";
+    }
+  };
+
   return (
     <div className="p-6 space-y-6 bg-white rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-4">
@@ -193,7 +218,7 @@ const WardAllocations: React.FC = () => {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={() => showEditModal()}
+          onClick={showAddModal} // Use specific handler
         >
           Add Ward Allocation
         </Button>
@@ -233,18 +258,20 @@ const WardAllocations: React.FC = () => {
         rowKey="key"
       />
 
-      {/* Add/Edit Modal with Tabs */}
+      {/* Modal with conditionally rendered content */}
       <Modal
-        title={editingRecord ? "Edit Ward Allocation" : "Add Ward Allocation"}
-        open={isModalVisible}
+        title={getModalTitle()}
+        open={!!modalInfo.type} // Modal is open if type is not null
         onCancel={handleCancel}
-        onOk={handleSave}
-        okText="Save"
+        onOk={handleUpdate}
+        okText="Update"
         width={600}
+        destroyOnClose // Good practice to destroy form state when modal closes
       >
-        <Tabs defaultActiveKey="1">
-          <TabPane tab="Ward Details" key="1">
-            <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" name="ward_allocation_form">
+          {/* 3. Conditionally render Ward Details */}
+          {(modalInfo.type === "add" || modalInfo.type === "edit") && (
+            <>
               <Form.Item
                 name="patientName"
                 label="Patient Name"
@@ -285,17 +312,18 @@ const WardAllocations: React.FC = () => {
                 <Input type="date" />
               </Form.Item>
 
-              <Form.Item name="status" label="Status">
+              <Form.Item name="status" label="Status" initialValue="Active">
                 <Select>
                   <Option value="Active">Active</Option>
                   <Option value="Discharged">Discharged</Option>
                 </Select>
               </Form.Item>
-            </Form>
-          </TabPane>
+            </>
+          )}
 
-          <TabPane tab="Insurance Details" key="2">
-            <Form form={form} layout="vertical">
+          {/* 3. Conditionally render Insurance Details */}
+          {modalInfo.type === "insurance" && (
+            <>
               <Form.Item name={["insurance", "policyNumber"]} label="Policy No.">
                 <Input />
               </Form.Item>
@@ -311,9 +339,9 @@ const WardAllocations: React.FC = () => {
               <Form.Item name={["insurance", "expiryDate"]} label="Expiry Date">
                 <Input type="date" />
               </Form.Item>
-            </Form>
-          </TabPane>
-        </Tabs>
+            </>
+          )}
+        </Form>
       </Modal>
     </div>
   );

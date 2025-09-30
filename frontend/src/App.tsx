@@ -38,13 +38,17 @@ import UserTypesList from "./components/Admin/UserTypes";
 import UserFieldsList from "./components/Admin/UserFields";
 import Department from "./components/Departments/Departments";
 import DepartmentUsers from "./components/Departments/DepartmentUsers";
+import TokenCalendarView from "./components/Tokens/CalenderView";
+import CreateToken from "./components/Tokens/CreateToken";
+import TokenManagement from "./pages/TokenManagement";
+import Billing from "./components/BillingAndInvoice/Billing";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PatientManagement = lazy(() => import("./pages/PatientManagement"));
 const DoctorManagement = lazy(() => import("./pages/DoctorManagement"));
 const AppointmentManagement = lazy(() => import("./pages/AppointmentManagement"));
-const Billing = lazy(() => import("./pages/Billing"));
+// const Billing = lazy(() => import("./pages/Billing"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -171,6 +175,39 @@ const App = () => (
                     <AuthGuard requiredPermission="appointments:read">
                       <Layout>
                         <BookAppointment />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/tokens"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <TokenManagement />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/tokens/calendar"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <TokenCalendarView />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/tokens/create"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <CreateToken />
                       </Layout>
                     </AuthGuard>
                   }
@@ -423,6 +460,7 @@ const App = () => (
                   element={
                     <AuthGuard requiredPermission="billing:read">
                       <Layout>
+                        {/* <Billing /> */}
                         <Billing />
                       </Layout>
                     </AuthGuard>

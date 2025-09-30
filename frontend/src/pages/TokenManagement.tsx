@@ -18,6 +18,7 @@ interface Appointment {
   id: string;
   patient: any;
   doctor: any;
+  token_number?: any;
   appointment_date: string;
   appointment_start_time: string;
   status: "Pending" | "Confirmed" | "Completed";
@@ -25,12 +26,12 @@ interface Appointment {
 
 const LOCAL_STORAGE_KEY = "appointments";
 
-export default function AppointmentManagement() {
+export default function TokenManagement() {
   const navigate = useNavigate(); // <-- hook for navigation
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   function loadData() {
-    getApi('/appointment')
+    getApi('/tokens')
       .then((data) => {
         if (!data.error) {
           setAppointments(data)
@@ -60,11 +61,11 @@ export default function AppointmentManagement() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Appointment Management</h1>
+        <h1 className="text-2xl font-bold">Token Management</h1>
 
         {/* Navigate to BookAppointment page */}
-        <Button onClick={() => navigate("/appointments/book")}>
-          New Appointment
+        <Button onClick={() => navigate("/tokens/create")}>
+          Create Token
         </Button>
       </div>
 
@@ -94,6 +95,7 @@ export default function AppointmentManagement() {
                   <TableCell>{app?.patient?.username}</TableCell>
                   <TableCell>{app?.doctor?.username}</TableCell>
                   <TableCell>{app.appointment_date}</TableCell>
+                  <TableCell>{app.token_number}</TableCell>
                   <TableCell>{app.appointment_start_time}</TableCell>
                   <TableCell>
                     <Badge

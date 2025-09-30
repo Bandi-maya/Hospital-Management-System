@@ -46,28 +46,28 @@ export default function AllInvoices() {
     const [formInvoice, setFormInvoice] = useState<Partial<Invoice>>({});
     const [isLoading, setIsLoading] = useState(false);
 
+    const loadInvoices = () => {
+        setIsLoading(true);
+        try {
+            getApi('/billing')
+                .then((response) => {
+                    if (!response.error) {
+                        setInvoices(response);
+                    } else {
+                        toast.error(response.error)
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error fetching invoices from API:", error);
+                })
+        } catch (error) {
+            console.error("Error loading invoices:", error);
+            setInvoices(defaultInvoices);
+        } finally {
+            setIsLoading(false);
+        }
+    };
     useEffect(() => {
-        const loadInvoices = () => {
-            setIsLoading(true);
-            try {
-                getApi('/invoice-details')
-                    .then((response) => {
-                        if (!response.error) {
-                            setInvoices(response);
-                        } else {
-                            toast.error(response.error)
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("Error fetching invoices from API:", error);
-                    })
-            } catch (error) {
-                console.error("Error loading invoices:", error);
-                setInvoices(defaultInvoices);
-            } finally {
-                setIsLoading(false);
-            }
-        };
 
         loadInvoices();
     }, []);
@@ -458,16 +458,13 @@ export default function AllInvoices() {
     };
 
     function paymentStatusChange(record, status) {
-        PutApi('/invoice-details', {
-            id: record.id,
-            order_id: record.order_id,
-            total_amount: record.total_amount,
+        PutApi('/billing', {
+            ...record,
             status: status,
-            created_by: record.created_by,
         }).then((response) => {
             if (!response.error) {
                 toast.success("Payment status updated to Paid");
-                window.location.reload();
+                loadInvoices()
             } else {
                 toast.error(response.error)
             }
@@ -643,11 +640,11 @@ export default function AllInvoices() {
                                     <TableBody>
                                         {filteredInvoices.map((invoice: any) => (
                                             <TableRow key={invoice.id} className="hover:bg-gray-50">
-                                                <TableCell className="font-medium">{invoice.order.user.name}</TableCell>
-                                                <TableCell className="text-gray-600">{invoice.order.user.username}</TableCell>
+                                                <TableCell className="font-medium">{invoice.patient.name}</TableCell>
+                                                <TableCell className="text-gray-600">{invoice.patient.username}</TableCell>
                                                 <TableCell>{invoice.updated_at}</TableCell>
                                                 <TableCell className="text-right font-semibold">
-                                                    ${invoice.total_amount.toFixed(2)}
+                                                    ${invoice.total_amount}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant={getStatusVariant(invoice.status)}>
@@ -656,32 +653,37 @@ export default function AllInvoices() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex justify-end space-x-2">
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    onClick={() => paymentStatusChange(invoice, "CANCELLED")}
-                                                                    disabled={isLoading}
-                                                                >
-                                                                    Cancel
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>Cancel</TooltipContent>
-                                                        </Tooltip>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    onClick={() => paymentStatusChange(invoice, "PAID")}
-                                                                    disabled={isLoading}
-                                                                >
-                                                                    Paid
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>Paid</TooltipContent>
-                                                        </Tooltip>
+                                                        {
+                                                            invoice.status !== 'PAID' && <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => paymentStatusChange(invoice, "CANCELLED")}
+                                                                        disabled={isLoading}
+                                                                    >
+                                                                        Cancel
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Cancel</TooltipContent>
+                                                            </Tooltip>
+                                                        }
+                                                        {
+                                                            invoice.status !== 'PAID' &&
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => paymentStatusChange(invoice, "PAID")}
+                                                                        disabled={isLoading}
+                                                                    >
+                                                                        Paid
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Paid</TooltipContent>
+                                                            </Tooltip>
+                                                        }
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button

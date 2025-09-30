@@ -235,6 +235,20 @@ export default function MedicalRecords() {
             ]}
           />
         </Tabs.TabPane>
+        <Tabs.TabPane tab="Prescriptions" key="3">
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Medicines" key="4">
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Lab Tests" key="5">
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Operations" key="6">
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Consultations" key="7">
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Payments" key="8">
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Invoice" key="8">
+        </Tabs.TabPane>
       </Tabs>
 
       {/* Add Record Modal */}

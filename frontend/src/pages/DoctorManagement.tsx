@@ -201,7 +201,7 @@ export default function DoctorManagement() {
           setIsLoading(false);
         })
     } else {
-      PostApi(`/users`, { ...form, user_type_id: 1, name: form.extra_fields.first_name + " " + form.extra_fields.last_name, age: Math.floor((new Date().getTime() - new Date(form.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)), username: form.email })
+      PostApi(`/users`, { ...form, user_type_id: 1, name: form.extra_fields.first_name + " " + form.extra_fields.last_name, age: 10, username: form.email })
         .then((data) => {
           if (!data?.error) {
             toast.success("Doctor created successfully!");
