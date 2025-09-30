@@ -11,7 +11,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full">
-        <AppSidebar />
+        {/* <AppSidebar /> */}
         <SidebarInset>
           <Header />
           <main className="flex-1 p-6 bg-background">
