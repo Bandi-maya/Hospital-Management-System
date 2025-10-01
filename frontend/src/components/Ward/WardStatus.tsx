@@ -79,6 +79,8 @@ import {
 } from "@ant-design/icons";
 import { v4 as uuidv4 } from "uuid";
 import { DefaultOptionType } from "antd/es/select";
+import { getApi, PostApi, PutApi } from "@/ApiService";
+import { toast } from "sonner";
 
 const { Option } = Select;
 const { Search } = Input;
@@ -128,6 +130,8 @@ export default function WardStatus() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const [form] = Form.useForm();
+  const [data, setData] = useState()
+  const [departments, setDepartments] = useState([])
 
   // Enhanced initial data with more details
   const initialWards: Ward[] = [
@@ -223,47 +227,69 @@ export default function WardStatus() {
     }
   ];
 
+  function getWards() {
+    setLoading(true);
+    getApi("/wards")
+      .then((data) => {
+        if (!data.error) {
+          setData(data)
+        }
+        else {
+          toast.error(data.error)
+        }
+      }).catch((err) => {
+        console.error("Error: ", err)
+        toast.error("Error occurred while getting the wards.")
+      })
+      .finally(() => setLoading(false));
+  }
+  function getDepartments() {
+    setLoading(true);
+    getApi("/departments")
+      .then((data) => {
+        if (!data.error) {
+          setDepartments(data)
+        }
+        else {
+          toast.error(data.error)
+        }
+      }).catch((err) => {
+        console.error("Error: ", err)
+        toast.error("Error occurred while getting the departments.")
+      })
+      .finally(() => setLoading(false));
+  }
+
   // Load data from localStorage
   useEffect(() => {
-    setLoading(true);
-    const savedWards = localStorage.getItem("wards");
-    const savedActivities = localStorage.getItem("wardActivities");
-    
-    if (savedWards) {
-      try {
-        const parsedWards = JSON.parse(savedWards);
-        setWards(parsedWards.length > 0 ? parsedWards : initialWards);
-      } catch (error) {
-        setWards(initialWards);
-      }
-    } else {
-      setWards(initialWards);
-      localStorage.setItem("wards", JSON.stringify(initialWards));
-    }
-
-    if (savedActivities) {
-      try {
-        setActivities(JSON.parse(savedActivities));
-      } catch (error) {
-        setActivities([]);
-      }
-    }
-    setLoading(false);
+    getWards()
+    getDepartments()
   }, []);
 
   // Auto-refresh functionality
   useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(() => {
-        message.info('🔄 Data refreshed automatically');
+        getWards();
       }, 30000);
       return () => clearInterval(interval);
     }
   }, [autoRefresh]);
 
   const saveWards = (updatedWards: Ward[]) => {
-    setWards(updatedWards);
-    localStorage.setItem("wards", JSON.stringify(updatedWards));
+    PutApi("/wards", updatedWards)
+      .then((data) => {
+        if (!data.error) {
+          getWards()
+        }
+        else {
+          toast.error(data.error)
+        }
+      })
+      .catch((err) => {
+        console.error("Error: ", err)
+        toast.error("Error occurred while saving ward")
+      })
   };
 
   const logActivity = (action: string, wardId: string, details: string) => {
@@ -278,14 +304,6 @@ export default function WardStatus() {
     const updatedActivities = [newActivity, ...activities.slice(0, 49)]; // Keep last 50 activities
     setActivities(updatedActivities);
     localStorage.setItem("wardActivities", JSON.stringify(updatedActivities));
-  };
-
-  const calculateWardStatus = (occupied: number, capacity: number): "available" | "full" | "critical" => {
-    if (capacity === 0) return "full";
-    const occupancyRate = (occupied / capacity) * 100;
-    if (occupancyRate >= 100) return "full";
-    if (occupancyRate >= 80) return "critical";
-    return "available";
   };
 
   const getWardIcon = (type: string) => {
@@ -310,31 +328,50 @@ export default function WardStatus() {
   };
 
   const handleAddEditWard = (values: any) => {
-    const status = calculateWardStatus(values.occupied, values.capacity);
-    const wardData = { ...values, status };
+    const wardData = { ...values };
+
+    console.log(editingWard)
+    delete wardData.occupied
+    delete wardData.rating
+    delete wardData.status
 
     if (editingWard) {
-      const updatedWards = wards.map((w) =>
-        w.id === editingWard.id ? { ...w, ...wardData } : w
-      );
-      saveWards(updatedWards);
-      logActivity("UPDATE", editingWard.id, `Updated ward: ${values.name}`);
-      message.success("🏥 Ward updated successfully!");
+      PutApi("/wards", wardData)
+        .then((data) => {
+          if (!data.error) {
+            getWards()
+            setModalVisible(false);
+            form.resetFields();
+            setEditingWard(null);
+            toast.success("Successfully updated ward.")
+          }
+          else {
+            toast.error(data.error)
+          }
+        })
+        .catch((err) => {
+          console.error("Error: ", err)
+          toast.error("Error occurred while saving ward")
+        })
     } else {
-      const newWard: Ward = {
-        id: uuidv4(),
-        ...wardData,
-        description: values.description || "No description provided",
-        rating: 0,
-        lastCleaned: new Date().toISOString()
-      };
-      saveWards([...wards, newWard]);
-      logActivity("CREATE", newWard.id, `Created new ward: ${values.name}`);
-      message.success("✅ Ward added successfully!");
+      PostApi("/wards", wardData)
+        .then((data) => {
+          if (!data.error) {
+            getWards()
+            toast.success("Successfully added ward.")
+            setModalVisible(false);
+            form.resetFields();
+            setEditingWard(null);
+          }
+          else {
+            toast.error(data.error)
+          }
+        })
+        .catch((err) => {
+          console.error("Error: ", err)
+          toast.error("Error occurred while saving ward")
+        })
     }
-    setModalVisible(false);
-    form.resetFields();
-    setEditingWard(null);
   };
 
   const handleDelete = (wardId: string) => {
@@ -364,9 +401,9 @@ export default function WardStatus() {
     message.success("📤 Data exported successfully!");
   };
 
-  const filteredAndSortedWards = wards
+  const filteredAndSortedWards = (data ?? [])
     .filter(ward => {
-      const matchesSearch = searchText === "" || 
+      const matchesSearch = searchText === "" ||
         ward.name.toLowerCase().includes(searchText.toLowerCase()) ||
         ward.type.toLowerCase().includes(searchText.toLowerCase()) ||
         ward.specialization?.toLowerCase().includes(searchText.toLowerCase());
@@ -377,8 +414,8 @@ export default function WardStatus() {
       switch (sortOrder) {
         case "name": return a.name.localeCompare(b.name);
         case "capacity": return b.capacity - a.capacity;
-        case "occupied": return b.occupied - a.occupied;
-        case "rating": return (b.rating || 0) - (a.rating || 0);
+        // case "occupied": return b.occupied - a.occupied;
+        // case "rating": return (b.rating || 0) - (a.rating || 0);
         default: return 0;
       }
     });
@@ -389,7 +426,7 @@ export default function WardStatus() {
     totalCapacity: wards.reduce((sum, ward) => sum + ward.capacity, 0),
     totalOccupied: wards.reduce((sum, ward) => sum + ward.occupied, 0),
     availableBeds: wards.reduce((sum, ward) => sum + (ward.capacity - ward.occupied), 0),
-    occupancyRate: wards.reduce((sum, ward) => sum + ward.capacity, 0) > 0 ? 
+    occupancyRate: wards.reduce((sum, ward) => sum + ward.capacity, 0) > 0 ?
       (wards.reduce((sum, ward) => sum + ward.occupied, 0) / wards.reduce((sum, ward) => sum + ward.capacity, 0)) * 100 : 0,
     criticalWards: wards.filter(ward => ward.status === 'critical').length,
     fullWards: wards.filter(ward => ward.status === 'full').length
@@ -448,9 +485,9 @@ export default function WardStatus() {
           <div>
             <BellOutlined /> {record.occupied}/{capacity}
           </div>
-          <Progress 
-            percent={Math.round((record.occupied / capacity) * 100)} 
-            size="small" 
+          <Progress
+            percent={Math.round((record.occupied / capacity) * 100)}
+            size="small"
             showInfo={false}
           />
         </Space>
@@ -480,9 +517,9 @@ export default function WardStatus() {
       ),
       key: "rating",
       render: (record: Ward) => (
-        <Rate 
-          disabled 
-          value={record.rating} 
+        <Rate
+          disabled
+          value={record.rating}
           character={<StarOutlined />}
           style={{ fontSize: '14px' }}
         />
@@ -501,9 +538,9 @@ export default function WardStatus() {
           {getStatusIcon(record.status)}
           <Tag color={
             record.status === "available" ? "green" :
-            record.status === "critical" ? "orange" : "red"
+              record.status === "critical" ? "orange" : "red"
           }>
-            {record.status.toUpperCase()}
+            {/* {record.status.toUpperCase()} */}
           </Tag>
         </Space>
       ),
@@ -557,17 +594,17 @@ export default function WardStatus() {
     },
   ];
 
-    function handleSearch(
-      value: string,
-      event?: React.MouseEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement> | React.KeyboardEvent<HTMLInputElement>,
-      info?: { source?: "input" | "clear" }
-    ): void {
-        throw new Error("Function not implemented.");
-    }
+  function handleSearch(
+    value: string,
+    event?: React.MouseEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement> | React.KeyboardEvent<HTMLInputElement>,
+    info?: { source?: "input" | "clear" }
+  ): void {
+    throw new Error("Function not implemented.");
+  }
 
-    function handleTypeFilter(value: string, option?: DefaultOptionType | DefaultOptionType[]): void {
-        throw new Error("Function not implemented.");
-    }
+  function handleTypeFilter(value: string, option?: DefaultOptionType | DefaultOptionType[]): void {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
@@ -677,8 +714,8 @@ export default function WardStatus() {
       </Row>
 
       {/* Tabs for Different Views */}
-      <Tabs 
-        activeKey={activeTab} 
+      <Tabs
+        activeKey={activeTab}
         onChange={setActiveTab}
         items={[
           {
@@ -692,7 +729,7 @@ export default function WardStatus() {
             children: (
               <div className="space-y-6">
                 {/* Overall Progress */}
-                <Card 
+                <Card
                   title={
                     <Space>
                       <LineChartOutlined />
@@ -711,8 +748,8 @@ export default function WardStatus() {
                       stats.occupancyRate >= 90
                         ? "exception"
                         : stats.occupancyRate >= 80
-                        ? "active"
-                        : "normal"
+                          ? "active"
+                          : "normal"
                     }
                     strokeColor={{
                       '0%': '#108ee9',
@@ -789,7 +826,7 @@ export default function WardStatus() {
                 </Card>
 
                 {/* Wards Table */}
-                <Card 
+                <Card
                   title={
                     <Space>
                       <BellOutlined />
@@ -810,7 +847,7 @@ export default function WardStatus() {
                       pageSize: 10,
                       showSizeChanger: true,
                       showQuickJumper: true,
-                      showTotal: (total, range) => 
+                      showTotal: (total, range) =>
                         `${range[0]}-${range[1]} of ${total} wards`,
                     }}
                   />
@@ -836,7 +873,7 @@ export default function WardStatus() {
                       dot={getStatusIcon(activity.action === 'CREATE' ? 'available' : activity.action === 'DELETE' ? 'full' : 'critical')}
                       color={
                         activity.action === 'CREATE' ? 'green' :
-                        activity.action === 'DELETE' ? 'red' : 'blue'
+                          activity.action === 'DELETE' ? 'red' : 'blue'
                       }
                     >
                       <Space direction="vertical" size={0}>
@@ -844,7 +881,7 @@ export default function WardStatus() {
                           {activity.action} - {activity.details}
                         </div>
                         <div style={{ color: '#666', fontSize: '12px' }}>
-                          <ClockCircleOutlined /> {new Date(activity.timestamp).toLocaleString()} • 
+                          <ClockCircleOutlined /> {new Date(activity.timestamp).toLocaleString()} •
                           By: {activity.user}
                         </div>
                       </Space>
@@ -899,15 +936,15 @@ export default function WardStatus() {
                 }
                 rules={[{ required: true, message: "Please enter ward name" }]}
               >
-                <Input 
-                  placeholder="Enter ward name (e.g., General Ward A)" 
+                <Input
+                  placeholder="Enter ward name (e.g., General Ward A)"
                   prefix={<ItalicOutlined />}
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                name="type"
+                name="ward_type"
                 label={
                   <Space>
                     <AppstoreOutlined />
@@ -953,6 +990,31 @@ export default function WardStatus() {
                       Surgical Ward
                     </Space>
                   </Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="department_id"
+                label={
+                  <Space>
+                    <AppstoreOutlined />
+                    Department
+                  </Space>
+                }
+                rules={[{ required: true, message: "Please select ward type" }]}
+              >
+                <Select placeholder="Select ward type">
+                  {
+                    departments.map((department) => {
+                      return <Option value={department.id}>
+                        <Space>
+                          <ItalicOutlined />
+                          {department.name}
+                        </Space>
+                      </Option>
+                    })
+                  }
                 </Select>
               </Form.Item>
             </Col>
@@ -1055,7 +1117,7 @@ export default function WardStatus() {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="phone"
+                name="phone_no"
                 label={
                   <Space>
                     <PhoneOutlined />
@@ -1093,8 +1155,8 @@ export default function WardStatus() {
             <Input placeholder="Medical specialization" />
           </Form.Item>
 
-          <Form.Item 
-            name="description" 
+          <Form.Item
+            name="description"
             label={
               <Space>
                 <FileTextOutlined />
@@ -1108,8 +1170,8 @@ export default function WardStatus() {
             />
           </Form.Item>
 
-          <Form.Item 
-            name="notes" 
+          <Form.Item
+            name="notes"
             label={
               <Space>
                 <InfoCircleOutlined />
@@ -1139,20 +1201,20 @@ export default function WardStatus() {
           <Button key="close" onClick={() => setViewModalVisible(false)}>
             Close
           </Button>,
-        //   <Button
-        //     key="edit"
-        //     type="primary"
-        //     onClick={() => {
-        //       setViewModalVisible(false);
-        //       if (viewingWard) {
-        //         setEditingWard(viewingWard);
-        //         form.setFieldsValue(viewingWard);
-        //         setModalVisible(true);
-        //       }
-        //     }}
-        //   >
-        //     <EditOutlined /> Edit This Ward
-        //   </Button>,
+          //   <Button
+          //     key="edit"
+          //     type="primary"
+          //     onClick={() => {
+          //       setViewModalVisible(false);
+          //       if (viewingWard) {
+          //         setEditingWard(viewingWard);
+          //         form.setFieldsValue(viewingWard);
+          //         setModalVisible(true);
+          //       }
+          //     }}
+          //   >
+          //     <EditOutlined /> Edit This Ward
+          //   </Button>,
         ]}
         width={600}
       >
@@ -1169,7 +1231,7 @@ export default function WardStatus() {
                 {viewingWard.name}
               </Space>
             </Descriptions.Item>
-            
+
             <Descriptions.Item label={
               <Space>
                 <AppstoreOutlined />
@@ -1196,14 +1258,14 @@ export default function WardStatus() {
                 <div>
                   <strong>{viewingWard.occupied}</strong> / <strong>{viewingWard.capacity}</strong> beds occupied
                 </div>
-                <Progress 
+                <Progress
                   percent={Math.round((viewingWard.occupied / viewingWard.capacity) * 100)}
                   status={
                     viewingWard.status === "full"
                       ? "exception"
                       : viewingWard.status === "critical"
-                      ? "active"
-                      : "normal"
+                        ? "active"
+                        : "normal"
                   }
                 />
                 <div>

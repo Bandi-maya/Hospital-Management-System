@@ -39,7 +39,7 @@ export default function CalendarView() {
   function loadData(doctorId: string, date: Date) {
     setLoading(true);
     const dateString = date.toISOString().split("T")[0];
-    getApi(`/appointments?doctor_id=${doctorId}&date=${dateString}`)
+    getApi(`/appointment?doctor_id=${doctorId}&date=${dateString}`)
       .then((data) => {
         if (!data.error) {
           setAppointments(data)
