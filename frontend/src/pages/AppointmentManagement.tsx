@@ -65,13 +65,13 @@ export default function AppointmentManagement() {
   };
 
   const filteredAppointments = appointments.filter(app => {
-    const matchesSearch = 
+    const matchesSearch =
       app.patient?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.doctor?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.appointment_date.includes(searchTerm);
-    
+
     const matchesStatus = statusFilter === "all" || app.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -118,15 +118,15 @@ export default function AppointmentManagement() {
               </CardDescription>
             </div>
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => navigate("/calendar")}
                 className="h-12 px-6"
               >
                 <Calendar className="w-4 h-4 mr-2" />
                 Calendar View
               </Button>
-              <Button 
+              <Button
                 onClick={() => navigate("/appointments/book")}
                 className="h-12 px-6 text-base font-medium"
               >
@@ -279,8 +279,8 @@ export default function AppointmentManagement() {
                         <Calendar className="w-12 h-12 text-gray-300 mb-2" />
                         <p className="text-gray-500 text-lg">No appointments found</p>
                         <p className="text-gray-400 text-sm">
-                          {searchTerm || statusFilter !== "all" 
-                            ? "Try adjusting your search or filters" 
+                          {searchTerm || statusFilter !== "all"
+                            ? "Try adjusting your search or filters"
                             : "Create your first appointment"
                           }
                         </p>
@@ -305,7 +305,7 @@ export default function AppointmentManagement() {
                       <TableCell>{app.appointment_date}</TableCell>
                       <TableCell>{app.appointment_start_time}</TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           variant={getStatusVariant(app.status)}
                           className={`font-medium ${getStatusColor(app.status)}`}
                         >

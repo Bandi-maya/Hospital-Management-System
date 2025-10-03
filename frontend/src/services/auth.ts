@@ -21,13 +21,15 @@ class AuthService {
     try {
       // Mock authentication - replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
-      
+
       const mockUsers: Record<string, User> = {
         'admin@hospital.com': {
           id: '1',
           name: 'Dr. Sarah Johnson',
           email: 'admin@hospital.com',
-          role: 'admin',
+          user_type: {
+            type: 'admin',
+          },
           avatar: '',
           isActive: true,
           createdAt: new Date(),
@@ -37,7 +39,9 @@ class AuthService {
           id: '2',
           name: 'Dr. Michael Chen',
           email: 'doctor@hospital.com',
-          role: 'doctor',
+          user_type: {
+            type: 'doctor'
+          },
           avatar: '',
           isActive: true,
           createdAt: new Date(),
@@ -47,7 +51,9 @@ class AuthService {
           id: '3',
           name: 'Emily Rodriguez',
           email: 'nurse@hospital.com',
-          role: 'nurse',
+          user_type: {
+            type: 'nurse',
+          },
           avatar: '',
           isActive: true,
           createdAt: new Date(),
@@ -57,7 +63,9 @@ class AuthService {
           id: '4',
           name: 'John Smith',
           email: 'patient@hospital.com',
-          role: 'patient',
+          user_type: {
+            type: 'patient',
+          },
           avatar: '',
           isActive: true,
           createdAt: new Date(),
@@ -90,7 +98,7 @@ class AuthService {
     try {
       // Mock token validation - replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       if (!token.startsWith('mock-jwt-token-')) {
         throw new Error('Invalid token');
       }
@@ -100,7 +108,9 @@ class AuthService {
         id: userId,
         name: 'Dr. Sarah Johnson',
         email: 'admin@hospital.com',
-        role: 'admin',
+        user_type: {
+          type: 'admin',
+        },
         avatar: '',
         isActive: true,
         createdAt: new Date(),
@@ -117,7 +127,7 @@ class AuthService {
     try {
       // Mock forgot password - replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
         message: 'Password reset instructions sent to your email'
@@ -131,7 +141,7 @@ class AuthService {
     try {
       // Mock password reset - replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
         message: 'Password reset successful'

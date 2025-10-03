@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '@/types/common';
 import { authService } from '@/services/auth';
+import { PostApi } from '@/ApiService';
 
 interface AuthContextType {
   user: User | null;
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
@@ -32,13 +34,13 @@ export const useAuthProvider = () => {
         const token = localStorage.getItem('auth_token');
         const storedUser = localStorage.getItem('currentUser');
         const authTimestamp = localStorage.getItem('authTimestamp');
-        
+
         if (token && storedUser && authTimestamp) {
           // Check if session is still valid (24 hours)
           const timestamp = parseInt(authTimestamp);
           const now = Date.now();
           const twentyFourHours = 24 * 60 * 60 * 1000;
-          
+
           if (now - timestamp < twentyFourHours) {
             // Validate token with backend
             try {
@@ -78,17 +80,17 @@ export const useAuthProvider = () => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const response = await authService.login(email, password);
-      
+      const response = await PostApi("/login", { username: email, password: password });
+
       if (response.success && response.user) {
         setUser(response.user);
-        
+
         // Store all authentication data
-        localStorage.setItem('auth_token', response.token);
+        localStorage.setItem('auth_token', response.access_token);
         localStorage.setItem('currentUser', JSON.stringify(response.user));
-        localStorage.setItem('userRole', response.user.role);
+        localStorage.setItem('userRole', response.user?.role);
         localStorage.setItem('authTimestamp', Date.now().toString());
-        
+
         return true;
       }
       return false;
@@ -107,32 +109,33 @@ export const useAuthProvider = () => {
   };
 
   const hasRole = (role: UserRole): boolean => {
-    return user?.role === role;
+    return user?.user_type?.type?.toLowerCase() === role;
   };
 
   const hasPermission = (permission: string): boolean => {
+    console.log(permission)
     if (!user) return false;
-    
+
     // Define role-based permissions
     const permissions: Record<UserRole, string[]> = {
       admin: ['*'], // Admin has all permissions
-      doctor: ['patients:read', 'patients:write', 'appointments:read', 'appointments:write', 'prescriptions:write'],
-      nurse: ['patients:read', 'patients:write', 'vitals:write', 'appointments:read'],
-      patient: ['appointments:read', 'medical_records:read'],
-      receptionist: ['appointments:read', 'appointments:write', 'patients:read', 'patients:write'],
+      doctor: ['patients:read', 'patients:write', 'appointments:read', 'appointments:write', 'prescriptions:write', 'tokens:read', 'tokens:write'],
+      nurse: ['patients:read', 'patients:write', 'vitals:write', 'appointments:read', 'tokens:read', 'tokens:write'],
+      patient: ['appointments:read', 'medical_records:read', 'tokens:read'],
+      receptionist: ['appointments:read', 'appointments:write', 'patients:read', 'patients:write', 'tokens:read', 'tokens:write'],
       pharmacist: ['prescriptions:read', 'medicines:read', 'medicines:write'],
       lab_technician: ['lab_tests:read', 'lab_tests:write', 'lab_reports:write']
     };
 
-    const userPermissions = permissions[user.role] || [];
+    const userPermissions = permissions[user.user_type.type?.toLowerCase()] || [];
     return userPermissions.includes('*') || userPermissions.includes(permission);
   };
 
   // Helper function to get redirect path based on user role
   const getRedirectPath = (): string => {
     if (!user) return '/dashboard';
-    
-    switch (user.role) {
+
+    switch (user.user_type.type) {
       case 'admin':
         return '/admin/dashboard';
       case 'doctor':

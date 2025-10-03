@@ -86,7 +86,7 @@ const createMenuItems = (): MenuItem[] => {
       key: '/tokens',
       label: 'Tokens',
       icon: <CalendarOutlined />,
-      requiredPermission: 'appointments:read',
+      requiredPermission: 'tokens:read',
       children: [
         { key: '/tokens', label: 'All Tokens', icon: <CalendarOutlined /> },
         { key: '/tokens/calendar', label: 'Calendar View', icon: <CalendarOutlined /> },
@@ -265,8 +265,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
       }}
     >
       {/* Header Section with Collapse Button */}
-      <div style={{ 
-        padding: '16px', 
+      <div style={{
+        padding: '16px',
         borderBottom: '1px solid #f0f0f0',
         display: 'flex',
         alignItems: 'center',
@@ -287,12 +287,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
             justifyContent: 'center'
           }}
         />
-        
+
         {/* Logo and User Info - Hidden when collapsed */}
         {!internalCollapsed && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-            <Avatar 
-              size="small" 
+            <Avatar
+              size="small"
               style={{ backgroundColor: '#1890ff' }}
               src={user?.avatar}
             >
@@ -303,7 +303,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
                 {user?.name || 'User'}
               </Text>
               <Text type="secondary" style={{ fontSize: '10px', display: 'block' }}>
-                {user?.role ? user.role.replace('_', ' ').toUpperCase() : 'USER'}
+                {user.user_type.type ? user.user_type.type.replace('_', ' ').toUpperCase() : 'USER'}
               </Text>
             </div>
           </div>

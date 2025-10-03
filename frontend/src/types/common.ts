@@ -2,7 +2,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  user_type: any;
   avatar?: string;
   isActive: boolean;
   createdAt: Date;
