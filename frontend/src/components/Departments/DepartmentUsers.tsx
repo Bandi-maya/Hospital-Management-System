@@ -56,11 +56,12 @@ interface User {
   email: string;
   phone?: string;
   role: string;
-  status: "Active" | "Inactive";
+  status: "ACTIVE" | "INACTIVE";
   joinDate: string;
   lastLogin?: string;
   specialization?: string;
   avatar?: string;
+  user_type: any;
   department: string;
 }
 
@@ -69,6 +70,7 @@ interface DepartmentStats {
   activeUsers: number;
   inactiveUsers: number;
   doctors: number;
+  patients: number;
   nurses: number;
   staff: number;
   recentJoined: number;
@@ -91,66 +93,6 @@ export default function DepartmentUsers() {
     { id: 5, name: "Emergency Medicine", description: "Urgent medical care and trauma" },
   ];
 
-  const sampleUsers: User[] = [
-    {
-      id: 1,
-      name: "Dr. Sarah Johnson",
-      email: "sarah.johnson@hospital.com",
-      phone: "+1 (555) 123-4567",
-      role: "Doctor",
-      status: "Active",
-      joinDate: "2020-03-15",
-      lastLogin: "2024-01-15 09:30:00",
-      specialization: "Cardiologist",
-      department: "Cardiology"
-    },
-    {
-      id: 2,
-      name: "Dr. Michael Chen",
-      email: "michael.chen@hospital.com",
-      phone: "+1 (555) 987-6543",
-      role: "Doctor",
-      status: "Active",
-      joinDate: "2019-08-20",
-      lastLogin: "2024-01-15 08:15:00",
-      specialization: "Neurologist",
-      department: "Neurology"
-    },
-    {
-      id: 3,
-      name: "Nurse Emily Davis",
-      email: "emily.davis@hospital.com",
-      phone: "+1 (555) 456-7890",
-      role: "Nurse",
-      status: "Active",
-      joinDate: "2021-06-01",
-      lastLogin: "2024-01-14 16:45:00",
-      department: "Cardiology"
-    },
-    {
-      id: 4,
-      name: "Dr. Robert Wilson",
-      email: "robert.wilson@hospital.com",
-      role: "Doctor",
-      status: "Inactive",
-      joinDate: "2018-11-10",
-      lastLogin: "2024-01-10 11:20:00",
-      specialization: "Orthopedic Surgeon",
-      department: "Orthopedics"
-    },
-    {
-      id: 5,
-      name: "Nurse Lisa Garcia",
-      email: "lisa.garcia@hospital.com",
-      phone: "+1 (555) 234-5678",
-      role: "Nurse",
-      status: "Active",
-      joinDate: "2022-02-14",
-      lastLogin: "2024-01-15 07:30:00",
-      department: "Pediatrics"
-    }
-  ];
-
   function getUsersByDepartment(departmentId: number) {
     setLoading(true);
     getApi(`/users?department_id=${departmentId}`)
@@ -160,15 +102,11 @@ export default function DepartmentUsers() {
         } else {
           console.error(data.error);
           toast.error(data.error);
-          // Fallback to sample data
-          setUsers(sampleUsers.filter(user => user.department === departments.find(d => d.id === departmentId)?.name));
         }
       })
       .catch((error) => {
         toast.error("Failed to fetch users");
         console.error("Error fetching users:", error);
-        // Fallback to sample data
-        setUsers(sampleUsers.filter(user => user.department === departments.find(d => d.id === departmentId)?.name));
       })
       .finally(() => setLoading(false));
   }
@@ -223,12 +161,13 @@ export default function DepartmentUsers() {
   // Statistics
   const stats: DepartmentStats = {
     totalUsers: users.length,
-    activeUsers: users.filter(user => user.status === "Active").length,
-    inactiveUsers: users.filter(user => user.status === "Inactive").length,
-    doctors: users.filter(user => user.role === "Doctor").length,
-    nurses: users.filter(user => user.role === "Nurse").length,
-    staff: users.filter(user => user.role !== "Doctor" && user.role !== "Nurse").length,
-    recentJoined: users.filter(user => 
+    activeUsers: users.filter(user => user.status === "ACTIVE").length,
+    inactiveUsers: users.filter(user => user.status === "INACTIVE").length,
+    doctors: users.filter(user => user.user_type.id === 1).length,
+    nurses: users.filter(user => user.user_type.id === 3).length,
+    patients: users.filter(user => user.user_type.id === 2).length,
+    staff: users.filter(user => user.user_type.id !== 1 && user.user_type.id !== 2 && user.user_type.id !== 3).length,
+    recentJoined: users.filter(user =>
       dayjs(user.joinDate).isAfter(dayjs().subtract(30, 'day'))
     ).length
   };
@@ -269,11 +208,11 @@ export default function DepartmentUsers() {
             </Space>
           </div>
           <Space>
-            <Button 
-              type="primary" 
-              icon={<ReloadOutlined />} 
-              onClick={handleRefresh} 
-              size="large" 
+            <Button
+              type="primary"
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
+              size="large"
               style={{ background: '#fff', color: '#667eea', border: 'none', fontWeight: 'bold' }}
             >
               <RocketOutlined /> Refresh
@@ -329,8 +268,8 @@ export default function DepartmentUsers() {
 
       {/* Tabs for Different Views */}
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <Tabs.TabPane 
-          key="users" 
+        <Tabs.TabPane
+          key="users"
           tab={
             <Space>
               <TeamOutlined /> Users List <Badge count={users.length} overflowCount={99} />
@@ -343,12 +282,12 @@ export default function DepartmentUsers() {
               <div style={{ marginTop: 16 }}>Loading users...</div>
             </div>
           ) : (
-            <Card 
+            <Card
               title={
                 <Space>
                   <TableOutlined /> {selectedDepartment?.name} Users ({users.length})
                 </Space>
-              } 
+              }
               extra={
                 <Space>
                   <Tag color="green">{stats.activeUsers} Active</Tag>
@@ -363,13 +302,13 @@ export default function DepartmentUsers() {
                   <List.Item>
                     <List.Item.Meta
                       avatar={
-                        <Avatar 
-                          size="large" 
+                        <Avatar
+                          size="large"
                           icon={<UserOutlined />}
-                          style={{ 
-                            backgroundColor: getRoleColor(user.role) === 'blue' ? '#1890ff' : 
-                                          getRoleColor(user.role) === 'green' ? '#52c41a' :
-                                          getRoleColor(user.role) === 'orange' ? '#fa8c16' : '#722ed1'
+                          style={{
+                            backgroundColor: getRoleColor(user.role) === 'blue' ? '#1890ff' :
+                              getRoleColor(user.role) === 'green' ? '#52c41a' :
+                                getRoleColor(user.role) === 'orange' ? '#fa8c16' : '#722ed1'
                           }}
                         />
                       }
@@ -405,7 +344,7 @@ export default function DepartmentUsers() {
             </Card>
           )}
         </Tabs.TabPane>
-        
+
         <Tabs.TabPane key="activity" tab={<Space><DashboardOutlined /> Department Activity</Space>}>
           <Row gutter={[16, 16]}>
             <Col span={12}>
@@ -417,6 +356,7 @@ export default function DepartmentUsers() {
                       <Tag color="blue">Doctors: {stats.doctors}</Tag>
                       <Tag color="green">Nurses: {stats.nurses}</Tag>
                       <Tag color="orange">Staff: {stats.staff}</Tag>
+                      <Tag color="orange">Patients: {stats.patients}</Tag>
                     </div>
                     <div>
                       <Tag color="green">Active: {stats.activeUsers}</Tag>
@@ -430,9 +370,9 @@ export default function DepartmentUsers() {
               <Card title="Recent User Activity">
                 <Timeline>
                   {users.slice(0, 5).map(user => (
-                    <Timeline.Item 
-                      key={user.id} 
-                      color={getStatusColor(user.status)} 
+                    <Timeline.Item
+                      key={user.id}
+                      color={getStatusColor(user.status)}
                       dot={getStatusIcon(user.status)}
                     >
                       <Space direction="vertical" size={0}>

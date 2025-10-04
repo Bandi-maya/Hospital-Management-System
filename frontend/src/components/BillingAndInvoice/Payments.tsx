@@ -22,6 +22,8 @@ import autoTable from 'jspdf-autotable';
 import dayjs, { Dayjs } from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import { getApi } from "@/ApiService";
+import { toast } from "sonner";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -67,12 +69,16 @@ export default function Payments() {
     const [autoRefresh, setAutoRefresh] = useState(true);
 
     useEffect(() => {
-        const storedPayments = localStorage.getItem("payments");
-        const initialPayments = storedPayments ? JSON.parse(storedPayments) : defaultPayments;
-        setPayments(initialPayments);
-        if (!storedPayments) {
-            localStorage.setItem("payments", JSON.stringify(defaultPayments));
-        }
+        getApi("/payment")
+            .then((data) => {
+                if (!data.error) {
+                    setPayments(data)
+                }
+                else {
+                    toast.error(data.error)
+                }
+            })
+            .catch((err) => toast.error("Error occurred while getting payments"))
     }, []);
 
     // Auto refresh notifier
@@ -85,14 +91,16 @@ export default function Payments() {
         }
     }, [autoRefresh]);
 
-    const filteredPayments = React.useMemo(() => payments.filter(payment => {
-        const lowerSearchTerm = searchTerm.toLowerCase();
-        const matchesSearch = payment.customerName.toLowerCase().includes(lowerSearchTerm) || payment.email.toLowerCase().includes(lowerSearchTerm);
-        const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
-        const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
-        const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
-        return matchesSearch && matchesStatus && matchesMethod && matchesDate;
-    }), [payments, searchTerm, statusFilter, methodFilter, dateRange]);
+    const filteredPayments = payments
+    //     const filteredPayments = React.useMemo(() => payments
+    //     // .filter(payment => {
+    //         // const lowerSearchTerm = searchTerm.toLowerCase();
+    //         // const matchesSearch = payment.customerName.toLowerCase().includes(lowerSearchTerm) || payment.email.toLowerCase().includes(lowerSearchTerm);
+    //         // const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+    //         // const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
+    //         // const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
+    //         // return matchesSearch && matchesStatus && matchesMethod && matchesDate;
+    // }), [payments, searchTerm, statusFilter, methodFilter, dateRange]);
 
     // Statistics
     const stats = React.useMemo(() => {
@@ -100,7 +108,7 @@ export default function Payments() {
         const paid = payments.filter(p => p.status === "Paid").length;
         const pending = payments.filter(p => p.status === "Pending").length;
         const failed = payments.filter(p => p.status === "Failed").length;
-        
+
         const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
         const paidAmount = payments.filter(p => p.status === "Paid").reduce((sum, p) => sum + p.amount, 0);
         const pendingAmount = payments.filter(p => p.status === "Pending").reduce((sum, p) => sum + p.amount, 0);
@@ -543,39 +551,39 @@ export default function Payments() {
         // Edit/Add Mode - Return to original form layout
         return (
             <div className="space-y-4 pt-4">
-                <Input 
-                    placeholder="Customer Name" 
-                    value={formPayment.customerName} 
-                    onChange={e => setFormPayment({ ...formPayment, customerName: e.target.value })} 
-                    disabled={!isEditMode} 
-                    prefix={<UserOutlined />} 
+                <Input
+                    placeholder="Customer Name"
+                    value={formPayment.customerName}
+                    onChange={e => setFormPayment({ ...formPayment, customerName: e.target.value })}
+                    disabled={!isEditMode}
+                    prefix={<UserOutlined />}
                 />
-                <Input 
-                    placeholder="Email" 
-                    value={formPayment.email} 
-                    onChange={e => setFormPayment({ ...formPayment, email: e.target.value })} 
-                    disabled={!isEditMode} 
-                    prefix={<MailOutlined />} 
+                <Input
+                    placeholder="Email"
+                    value={formPayment.email}
+                    onChange={e => setFormPayment({ ...formPayment, email: e.target.value })}
+                    disabled={!isEditMode}
+                    prefix={<MailOutlined />}
                 />
-                <Input 
-                    type="number" 
-                    placeholder="Amount" 
-                    value={formPayment.amount} 
-                    onChange={e => setFormPayment({ ...formPayment, amount: Number(e.target.value) })} 
-                    disabled={!isEditMode} 
-                    prefix={<DollarOutlined />} 
+                <Input
+                    type="number"
+                    placeholder="Amount"
+                    value={formPayment.amount}
+                    onChange={e => setFormPayment({ ...formPayment, amount: Number(e.target.value) })}
+                    disabled={!isEditMode}
+                    prefix={<DollarOutlined />}
                 />
-                <DatePicker 
-                    value={formPayment.date ? dayjs(formPayment.date) : null} 
-                    onChange={(_, dateString) => setFormPayment({ ...formPayment, date: dateString as string })} 
-                    disabled={!isEditMode} 
-                    style={{ width: "100%" }} 
+                <DatePicker
+                    value={formPayment.date ? dayjs(formPayment.date) : null}
+                    onChange={(_, dateString) => setFormPayment({ ...formPayment, date: dateString as string })}
+                    disabled={!isEditMode}
+                    style={{ width: "100%" }}
                 />
-                <Select 
-                    value={formPayment.method} 
-                    onChange={val => setFormPayment({ ...formPayment, method: val })} 
-                    disabled={!isEditMode} 
-                    style={{ width: "100%" }} 
+                <Select
+                    value={formPayment.method}
+                    onChange={val => setFormPayment({ ...formPayment, method: val })}
+                    disabled={!isEditMode}
+                    style={{ width: "100%" }}
                     placeholder="Select Payment Method"
                 >
                     <Option value="Cash">Cash</Option>
@@ -583,11 +591,11 @@ export default function Payments() {
                     <Option value="UPI">UPI</Option>
                     <Option value="Net Banking">Net Banking</Option>
                 </Select>
-                <Select 
-                    value={formPayment.status} 
-                    onChange={val => setFormPayment({ ...formPayment, status: val })} 
-                    disabled={!isEditMode} 
-                    style={{ width: "100%" }} 
+                <Select
+                    value={formPayment.status}
+                    onChange={val => setFormPayment({ ...formPayment, status: val })}
+                    disabled={!isEditMode}
+                    style={{ width: "100%" }}
                     placeholder="Select Status"
                 >
                     <Option value="Paid">Paid</Option>
@@ -623,7 +631,7 @@ export default function Payments() {
 
         if (isEditMode) {
             return [
-                <Button key="back" onClick={() => setIsModalOpen(false)}>Cancel</Button>, 
+                <Button key="back" onClick={() => setIsModalOpen(false)}>Cancel</Button>,
                 <Button key="submit" type="primary" loading={loading} onClick={handleSavePayment} className="bg-blue-600 hover:bg-blue-700">
                     {formPayment.id ? "Update" : "Add"}
                 </Button>
@@ -652,16 +660,14 @@ export default function Payments() {
                             <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
                                 <SyncOutlined className="w-4 h-4 text-gray-600" />
                                 <span className="text-sm text-gray-600">Auto Refresh</span>
-                                <div 
-                                    className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
-                                        autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                                    }`}
+                                <div
+                                    className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                                        }`}
                                     onClick={() => setAutoRefresh(!autoRefresh)}
                                 >
-                                    <div 
-                                        className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
-                                            autoRefresh ? 'translate-x-4' : 'translate-x-1'
-                                        }`}
+                                    <div
+                                        className={`w-3 h-3 rounded-full bg-white transform transition-transform ${autoRefresh ? 'translate-x-4' : 'translate-x-1'
+                                            }`}
                                     />
                                 </div>
                             </div>
@@ -674,10 +680,10 @@ export default function Payments() {
                         </Tooltip>
 
                         <Tooltip title="Add New Payment">
-                            <Button 
-                                type="primary" 
-                                icon={<PlusOutlined />} 
-                                onClick={() => openModal('add')} 
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => openModal('add')}
                                 className="bg-green-600 hover:bg-green-700"
                             >
                                 <RocketOutlined /> Add Payment
@@ -812,18 +818,18 @@ export default function Payments() {
                             </Tag>
                         </div>
                         <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                            <Input 
-                                placeholder="Search customer or email..." 
-                                value={searchTerm} 
-                                onChange={e => setSearchTerm(e.target.value)} 
-                                prefix={<SearchOutlined />} 
-                                allowClear 
+                            <Input
+                                placeholder="Search customer or email..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                prefix={<SearchOutlined />}
+                                allowClear
                                 style={{ width: 250 }}
                             />
-                            <Select 
-                                value={statusFilter} 
-                                onChange={setStatusFilter} 
-                                style={{ width: 150 }} 
+                            <Select
+                                value={statusFilter}
+                                onChange={setStatusFilter}
+                                style={{ width: 150 }}
                                 placeholder="Filter by status"
                             >
                                 <Option value="all">All Status</Option>
@@ -831,10 +837,10 @@ export default function Payments() {
                                 <Option value="Pending">Pending</Option>
                                 <Option value="Failed">Failed</Option>
                             </Select>
-                            <Select 
-                                value={methodFilter} 
-                                onChange={setMethodFilter} 
-                                style={{ width: 150 }} 
+                            <Select
+                                value={methodFilter}
+                                onChange={setMethodFilter}
+                                style={{ width: 150 }}
                                 placeholder="Filter by method"
                             >
                                 <Option value="all">All Methods</Option>
@@ -843,13 +849,13 @@ export default function Payments() {
                                 <Option value="UPI">UPI</Option>
                                 <Option value="Net Banking">Net Banking</Option>
                             </Select>
-                            <RangePicker 
-                                value={dateRange} 
-                                onChange={(dates) => setDateRange(dates as [Dayjs, Dayjs])} 
+                            <RangePicker
+                                value={dateRange}
+                                onChange={(dates) => setDateRange(dates as [Dayjs, Dayjs])}
                             />
-                            <Button 
-                                icon={<FilePdfOutlined />} 
-                                onClick={handleBulkExport} 
+                            <Button
+                                icon={<FilePdfOutlined />}
+                                onClick={handleBulkExport}
                                 className="bg-purple-600 hover:bg-purple-700 text-white"
                             >
                                 Export PDF
@@ -861,18 +867,18 @@ export default function Payments() {
 
             {/* Payments Table */}
             <Card className="shadow-md rounded-lg">
-                <Table 
-                    dataSource={filteredPayments} 
-                    columns={columns} 
-                    rowKey="id" 
-                    pagination={{ 
-                        pageSize: 10, 
+                <Table
+                    dataSource={filteredPayments}
+                    columns={columns}
+                    rowKey="id"
+                    pagination={{
+                        pageSize: 10,
                         showSizeChanger: true,
                         showQuickJumper: true,
-                        showTotal: (total, range) => 
+                        showTotal: (total, range) =>
                             `${range[0]}-${range[1]} of ${total} payments`,
-                    }} 
-                    scroll={{ x: 900 }} 
+                    }}
+                    scroll={{ x: 900 }}
                     rowClassName="hover:bg-gray-50"
                     loading={loading}
                 />

@@ -168,9 +168,9 @@ export default function Prescriptions() {
           toast.error("Error occurred while updating prescription.")
         })
     } else {
-      const newPrescription: Prescription = {
+      const newPrescription: Prescription|any = {
         patient_id: values.patient_id,
-        doctor_id: values.doctor_id,
+        doctor_id: 2,
         medicines: values.medicines,
         tests: values.tests || [],
         notes: values.notes || "",
@@ -212,7 +212,7 @@ export default function Prescriptions() {
     const billingData = {
       prescription_id: selectedPrescription?.id,
       patient_id: values.patient_id,
-      doctor_id: values.doctor_id,
+      doctor_id: 2,
       medicines: values.medicines,
       tests: values.tests || [],
       notes: values.notes || "",

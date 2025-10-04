@@ -66,6 +66,8 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { getApi } from "@/ApiService";
+import { toast } from "sonner";
 
 dayjs.extend(relativeTime);
 
@@ -110,69 +112,20 @@ export default function Users() {
   // Load from localStorage
   useEffect(() => {
     setLoading(true);
-    const savedUsers = localStorage.getItem("hospitalUsers");
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    } else {
-      // Initialize with sample data
-      const sampleUsers: User[] = [
-        {
-          id: "1",
-          name: "Dr. Sarah Johnson",
-          email: "sarah.johnson@hospital.com",
-          phone: "+1 (555) 123-4567",
-          role: "Doctor",
-          department: "Cardiology",
-          status: "Active",
-          lastLogin: "2024-01-15 09:30:00",
-          joinDate: "2020-03-15",
-          specialization: "Cardiologist",
-          licenseNumber: "MED-123456",
-          address: "123 Medical Center, New York, NY",
-          notes: "Senior Cardiologist with 10+ years experience",
-          loginAttempts: 0,
-          twoFactorEnabled: true,
-          permissions: ["patient_read", "patient_write", "prescription_write"]
-        },
-        {
-          id: "2",
-          name: "Nurse Emily Davis",
-          email: "emily.davis@hospital.com",
-          phone: "+1 (555) 987-6543",
-          role: "Nurse",
-          department: "Emergency",
-          status: "Active",
-          lastLogin: "2024-01-15 08:15:00",
-          joinDate: "2021-06-01",
-          specialization: "Emergency Care",
-          licenseNumber: "NUR-789012",
-          address: "456 Health Ave, Boston, MA",
-          notes: "Emergency department head nurse",
-          loginAttempts: 0,
-          twoFactorEnabled: false,
-          permissions: ["patient_read", "medication_admin"]
-        },
-        {
-          id: "3",
-          name: "Admin Michael Brown",
-          email: "michael.brown@hospital.com",
-          phone: "+1 (555) 456-7890",
-          role: "Admin",
-          department: "Administration",
-          status: "Active",
-          lastLogin: "2024-01-14 17:45:00",
-          joinDate: "2019-01-10",
-          address: "789 Admin St, Chicago, IL",
-          notes: "System administrator",
-          loginAttempts: 0,
-          twoFactorEnabled: true,
-          permissions: ["all_access"]
+    getApi("/users")
+      .then((data) => {
+        if (!data.error) {
+          setUsers(data)
         }
-      ];
-      setUsers(sampleUsers);
-      localStorage.setItem("hospitalUsers", JSON.stringify(sampleUsers));
-    }
-    setLoading(false);
+        else {
+          toast.error(data.error)
+        }
+      }).catch((err) => {
+        toast.error("Error occurred while getting users")
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, []);
 
   // Auto refresh notifier
@@ -277,11 +230,11 @@ export default function Users() {
   };
 
   const getStatusColor = (status: string) =>
-    ({
-      Active: "green",
-      Inactive: "orange",
-      Suspended: "red",
-    }[status] || "default");
+  ({
+    Active: "green",
+    Inactive: "orange",
+    Suspended: "red",
+  }[status] || "default");
 
   const getStatusIcon = (status: string) => {
     const icons = {
@@ -293,13 +246,13 @@ export default function Users() {
   };
 
   const getRoleColor = (role: string) =>
-    ({
-      Admin: "red",
-      Doctor: "blue",
-      Nurse: "green",
-      Staff: "orange",
-      Receptionist: "purple",
-    }[role] || "default");
+  ({
+    Admin: "red",
+    Doctor: "blue",
+    Nurse: "green",
+    Staff: "orange",
+    Receptionist: "purple",
+  }[role] || "default");
 
   const getRoleIcon = (role: string) => {
     const icons = {
@@ -334,14 +287,14 @@ export default function Users() {
       key: "user",
       render: (_, record) => (
         <Space>
-          <Avatar 
-            size="large" 
-            icon={<UserOutlined />} 
-            style={{ 
-              backgroundColor: getRoleColor(record.role) === 'blue' ? '#1890ff' : 
-                            getRoleColor(record.role) === 'red' ? '#f5222d' :
-                            getRoleColor(record.role) === 'green' ? '#52c41a' :
-                            getRoleColor(record.role) === 'orange' ? '#fa8c16' : '#722ed1'
+          <Avatar
+            size="large"
+            icon={<UserOutlined />}
+            style={{
+              backgroundColor: getRoleColor(record.role) === 'blue' ? '#1890ff' :
+                getRoleColor(record.role) === 'red' ? '#f5222d' :
+                  getRoleColor(record.role) === 'green' ? '#52c41a' :
+                    getRoleColor(record.role) === 'orange' ? '#fa8c16' : '#722ed1'
             }}
           />
           <div>
@@ -370,7 +323,7 @@ export default function Users() {
             {record.role}
           </Tag>
           <div style={{ fontSize: "12px", color: "#666" }}>
-            {record.department}
+            {record?.department?.['name']}
           </div>
           {record.specialization && (
             <div style={{ fontSize: "12px", color: "#999" }}>
@@ -623,7 +576,7 @@ export default function Users() {
                       pageSize: 10,
                       showSizeChanger: true,
                       showQuickJumper: true,
-                      showTotal: (total, range) => 
+                      showTotal: (total, range) =>
                         `${range[0]}-${range[1]} of ${total} users`,
                     }}
                   />
@@ -683,14 +636,14 @@ export default function Users() {
           <div>
             {/* User Header */}
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <Avatar 
-                size={80} 
+              <Avatar
+                size={80}
                 icon={<UserOutlined />}
-                style={{ 
-                  backgroundColor: getRoleColor(selectedUser.role) === 'blue' ? '#1890ff' : 
-                                getRoleColor(selectedUser.role) === 'red' ? '#f5222d' :
-                                getRoleColor(selectedUser.role) === 'green' ? '#52c41a' :
-                                getRoleColor(selectedUser.role) === 'orange' ? '#fa8c16' : '#722ed1',
+                style={{
+                  backgroundColor: getRoleColor(selectedUser.role) === 'blue' ? '#1890ff' :
+                    getRoleColor(selectedUser.role) === 'red' ? '#f5222d' :
+                      getRoleColor(selectedUser.role) === 'green' ? '#52c41a' :
+                        getRoleColor(selectedUser.role) === 'orange' ? '#fa8c16' : '#722ed1',
                   marginBottom: 16
                 }}
               />
@@ -737,7 +690,7 @@ export default function Users() {
               <Descriptions.Item label="Security">
                 <Space>
                   <SecurityScanOutlined />
-                  Two-Factor Auth: 
+                  Two-Factor Auth:
                   <Tag color={selectedUser.twoFactorEnabled ? 'green' : 'red'}>
                     {selectedUser.twoFactorEnabled ? 'Enabled' : 'Disabled'}
                   </Tag>
@@ -809,7 +762,7 @@ export default function Users() {
               </Form.Item>
             </Col>
           </Row>
-          
+
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="phone" label="Phone">
@@ -867,8 +820,8 @@ export default function Users() {
             <Input.TextArea placeholder="Enter any additional notes" rows={3} />
           </Form.Item>
 
-          <Form.Item 
-            name="twoFactorEnabled" 
+          <Form.Item
+            name="twoFactorEnabled"
             label="Two-Factor Authentication"
             valuePropName="checked"
           >

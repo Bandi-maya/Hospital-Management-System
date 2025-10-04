@@ -14,8 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { getApi } from "@/ApiService";
+import { getApi, PutApi } from "@/ApiService";
 import { Search, PlusCircle, Calendar, User, Stethoscope, Clock, Filter, Download } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { totalmem } from "os";
 
 interface Appointment {
   id: string;
@@ -33,6 +35,7 @@ export default function TokenManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth()
 
   function loadData() {
     setLoading(true);
@@ -58,21 +61,40 @@ export default function TokenManagement() {
     loadData();
   }, []);
 
+  function assignToDoctor(record) {
+    const date = new Date(record.appointment_date);
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+    const dd = String(date.getDate()).padStart(2, '0');
+
+    delete record.updated_at
+
+    const formattedDate = `${yyyy}-${mm}-${dd}`;
+    PutApi("/tokens", { ...record, doctor_id: user?.id, appointment_date: formattedDate })
+      .then((data) => {
+        if (!data.error) {
+          loadData()
+        } else {
+          toast.error(data.error)
+        }
+      }).catch(() => {
+        toast.error("Error occurred while assigning to doctor")
+      })
+  }
+
   const handleUpdateStatus = (id: string, status: Appointment["status"]) => {
-    setAppointments(prev =>
-      prev.map(app => (app.id === id ? { ...app, status } : app))
-    );
+
     toast.success("Status updated!");
   };
 
   const filteredAppointments = appointments.filter(app => {
-    const matchesSearch = 
-      app.patient?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.doctor?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.token_number?.toString().includes(searchTerm);
-    
+    const matchesSearch = app
+    // app.patient?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    // app.doctor?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    // app.token_number?.toString().includes(searchTerm);
+
     const matchesStatus = statusFilter === "all" || app.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -118,7 +140,7 @@ export default function TokenManagement() {
                 Manage and track all appointment tokens
               </CardDescription>
             </div>
-            <Button 
+            <Button
               onClick={() => navigate("/tokens/create")}
               className="h-12 px-6 text-base font-medium"
             >
@@ -271,8 +293,8 @@ export default function TokenManagement() {
                         <Calendar className="w-12 h-12 text-gray-300 mb-2" />
                         <p className="text-gray-500 text-lg">No appointments found</p>
                         <p className="text-gray-400 text-sm">
-                          {searchTerm || statusFilter !== "all" 
-                            ? "Try adjusting your search or filters" 
+                          {searchTerm || statusFilter !== "all"
+                            ? "Try adjusting your search or filters"
                             : "Create your first appointment token"
                           }
                         </p>
@@ -302,12 +324,17 @@ export default function TokenManagement() {
                       </TableCell>
                       <TableCell>{app.appointment_start_time}</TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           variant={getStatusVariant(app.status)}
                           className={`font-medium ${getStatusColor(app.status)}`}
                         >
                           {app.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!app?.['doctor_id'] && (
+                          <Button onClick={() => assignToDoctor(app)}>Assign to me</Button>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {app.status !== "Completed" && (

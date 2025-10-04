@@ -20,7 +20,6 @@ import PurchaseOrders from "./components/Pharmacy/PurchaseOrders";
 import LabTests from "./components/Laboratory/LabTests";
 import LabReports from "./components/Laboratory/LabReports";
 import TestResults from "./components/Laboratory/TestResults";
-import AllInvoices from "./components/BillingAndInvoice/AllInvoice";
 import Payments from "./components/BillingAndInvoice/Payments";
 import InsuranceClaims from "./components/BillingAndInvoice/InsuranceClaims";
 import WardAllocations from "./components/Ward/WardAllocation";
@@ -42,6 +41,9 @@ import TokenCalendarView from "./components/Tokens/CalenderView";
 import CreateToken from "./components/Tokens/CreateToken";
 import TokenManagement from "./pages/TokenManagement";
 import Billing from "./components/BillingAndInvoice/Billing";
+import SurgeryList from "./components/Surgery/SurgeriesList";
+import SurgeryType from "./components/Surgery/SurgeryTypes";
+import OperationTheatres from "./components/Surgery/OperationTheatres";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -280,11 +282,33 @@ const App = () => (
                 />
 
                 <Route
-                  path="/billing/invoices"
+                  path="/surgery/list"
                   element={
                     <AuthGuard requiredPermission="appointments:read">
                       <Layout>
-                        <AllInvoices />
+                        <SurgeryList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/surgery/types"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <SurgeryType />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/surgery/operation-theatres"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <OperationTheatres />
                       </Layout>
                     </AuthGuard>
                   }

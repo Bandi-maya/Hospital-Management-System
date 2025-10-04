@@ -84,7 +84,7 @@ interface UserType {
   id: string;
   type: string;
   description: string;
-  status?: "Active" | "Inactive";
+  status?: "ACTIVE" | "INACTIVE";
   createdAt?: string;
   updatedAt?: string;
   userCount?: number;
@@ -116,7 +116,7 @@ export default function UserTypesList() {
       id: "1",
       type: "Administrator",
       description: "Full system access with administrative privileges",
-      status: "Active",
+      status: "ACTIVE",
       createdAt: "2024-01-01",
       updatedAt: "2024-01-15",
       userCount: 5
@@ -125,7 +125,7 @@ export default function UserTypesList() {
       id: "2",
       type: "Doctor",
       description: "Medical professional with patient care access",
-      status: "Active",
+      status: "ACTIVE",
       createdAt: "2024-01-02",
       updatedAt: "2024-01-10",
       userCount: 25
@@ -134,7 +134,7 @@ export default function UserTypesList() {
       id: "3",
       type: "Nurse",
       description: "Nursing staff with patient management access",
-      status: "Active",
+      status: "ACTIVE",
       createdAt: "2024-01-03",
       updatedAt: "2024-01-12",
       userCount: 50
@@ -143,7 +143,7 @@ export default function UserTypesList() {
       id: "4",
       type: "Receptionist",
       description: "Front desk staff with appointment scheduling access",
-      status: "Active",
+      status: "ACTIVE",
       createdAt: "2024-01-04",
       updatedAt: "2024-01-08",
       userCount: 12
@@ -152,7 +152,7 @@ export default function UserTypesList() {
       id: "5",
       type: "Lab Technician",
       description: "Laboratory staff with test result management access",
-      status: "Inactive",
+      status: "INACTIVE",
       createdAt: "2024-01-05",
       updatedAt: "2024-01-14",
       userCount: 8
@@ -223,13 +223,13 @@ export default function UserTypesList() {
         id: userType.id,
         type: userType.type,
         description: userType.description,
-        status: userType.status || "Active"
+        status: userType.status || "ACTIVE"
       });
     } else {
       setSelectedType(null);
       form.resetFields();
       form.setFieldsValue({
-        status: "Active"
+        status: "ACTIVE"
       });
     }
     setIsModalOpen(true);
@@ -281,8 +281,8 @@ export default function UserTypesList() {
   // Statistics
   const stats: UserTypeStats = {
     total: userTypes.length,
-    active: userTypes.filter((ut) => ut.status === "Active").length,
-    inactive: userTypes.filter((ut) => ut.status === "Inactive").length,
+    active: userTypes.filter((ut) => ut.status === "ACTIVE").length,
+    inactive: userTypes.filter((ut) => ut.status === "INACTIVE").length,
     recentAdded: userTypes.filter((ut) => 
       dayjs(ut.createdAt).isAfter(dayjs().subtract(7, 'day'))
     ).length
@@ -310,7 +310,7 @@ export default function UserTypesList() {
             size="large" 
             icon={<UserSwitchOutlined />} 
             style={{ 
-              backgroundColor: record.status === 'Active' ? '#52c41a' : '#f5222d'
+              backgroundColor: record.status === 'ACTIVE' ? '#52c41a' : '#f5222d'
             }}
           />
           <div>

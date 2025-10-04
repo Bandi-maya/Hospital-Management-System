@@ -75,7 +75,7 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { toast } from "sonner";
-import { getApi, PostApi, PutApi } from "@/ApiService";
+import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import dayjs from "dayjs";
 
 const { Option } = Select;
@@ -86,9 +86,9 @@ export interface DepartmentInterface {
   id: number;
   name: string;
   description: string;
-  status?: "Active" | "Inactive";
-  createdAt?: string;
-  updatedAt?: string;
+  status?: "ACTIVE" | "INACTIVE";
+  created_at?: string;
+  updated_at?: string;
   doctorCount?: number;
   patientCount?: number;
 }
@@ -114,70 +114,6 @@ export default function Department() {
 
   const [form] = Form.useForm();
 
-  // Initial Sample Data
-  const initialDepartments: DepartmentInterface[] = [
-    {
-      id: 1,
-      name: "Cardiology",
-      description: "Heart and cardiovascular system care",
-      status: "Active",
-      createdAt: "2024-01-01",
-      updatedAt: "2024-01-15",
-      doctorCount: 15,
-      patientCount: 320
-    },
-    {
-      id: 2,
-      name: "Neurology",
-      description: "Brain and nervous system disorders",
-      status: "Active",
-      createdAt: "2024-01-02",
-      updatedAt: "2024-01-10",
-      doctorCount: 12,
-      patientCount: 280
-    },
-    {
-      id: 3,
-      name: "Orthopedics",
-      description: "Bones, joints, and musculoskeletal system",
-      status: "Active",
-      createdAt: "2024-01-03",
-      updatedAt: "2024-01-12",
-      doctorCount: 18,
-      patientCount: 450
-    },
-    {
-      id: 4,
-      name: "Pediatrics",
-      description: "Medical care for infants, children, and adolescents",
-      status: "Active",
-      createdAt: "2024-01-04",
-      updatedAt: "2024-01-08",
-      doctorCount: 20,
-      patientCount: 600
-    },
-    {
-      id: 5,
-      name: "Emergency Medicine",
-      description: "Urgent medical care and trauma",
-      status: "Active",
-      createdAt: "2024-01-05",
-      updatedAt: "2024-01-14",
-      doctorCount: 25,
-      patientCount: 1200
-    },
-    {
-      id: 6,
-      name: "Dermatology",
-      description: "Skin, hair, and nail conditions",
-      status: "Inactive",
-      createdAt: "2024-01-06",
-      updatedAt: "2024-01-16",
-      doctorCount: 8,
-      patientCount: 150
-    }
-  ];
-
   const loadData = () => {
     setIsLoading(true);
     getApi('/departments')
@@ -186,15 +122,11 @@ export default function Department() {
           setDepartments(data);
         } else {
           toast.error(data.error);
-          // Fallback to sample data
-          setDepartments(initialDepartments);
         }
       })
       .catch((error) => {
         console.error("Error fetching departments:", error);
         toast.error("Failed to fetch departments");
-        // Fallback to sample data
-        setDepartments(initialDepartments);
       }).finally(() => setIsLoading(false));
   };
 
@@ -202,10 +134,10 @@ export default function Department() {
     loadData();
   }, []);
 
-  // Auto refresh notifier
   useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(() => {
+        loadData()
         message.info("🔄 Auto-refresh: Department data reloaded");
       }, 30000);
       return () => clearInterval(interval);
@@ -219,13 +151,13 @@ export default function Department() {
         id: department.id,
         name: department.name,
         description: department.description,
-        status: department.status || "Active"
+        status: department.status || "ACTIVE"
       });
     } else {
       setSelectedDepartment(null);
       form.resetFields();
       form.setFieldsValue({
-        status: "Active"
+        status: "ACTIVE"
       });
     }
     setIsModalOpen(true);
@@ -235,7 +167,6 @@ export default function Department() {
     setIsLoading(true);
 
     if (selectedDepartment) {
-      // Update existing department
       PutApi(`/departments`, { ...values, id: selectedDepartment.id })
         .then((data) => {
           if (!data.error) {
@@ -251,7 +182,6 @@ export default function Department() {
           toast.error("Failed to update department");
         }).finally(() => setIsLoading(false));
     } else {
-      // Add new department
       PostApi(`/departments`, { ...values })
         .then((data) => {
           if (!data.error) {
@@ -273,18 +203,27 @@ export default function Department() {
 
   const deleteDepartment = async (id: number) => {
     setIsLoading(true);
-    // Note: You'll need to implement DeleteApi for departments
-    toast.success("Department deletion would be implemented here");
-    setIsLoading(false);
+    DeleteApi("/department", { id: id })
+      .then((data) => {
+        if (!data.error) {
+          loadData()
+        }
+        else {
+          toast.error(data.error)
+        }
+      }).catch((err) => {
+        toast.error("Error occurred while deleting the department")
+      }).finally(() => {
+        setIsLoading(false);
+      })
   };
 
-  // Statistics
   const stats: DepartmentStats = {
     total: departments.length,
-    active: departments.filter((d) => d.status === "Active").length,
-    inactive: departments.filter((d) => d.status === "Inactive").length,
-    recentAdded: departments.filter((d) => 
-      dayjs(d.createdAt).isAfter(dayjs().subtract(7, 'day'))
+    active: departments.filter((d) => d.status === "ACTIVE").length,
+    inactive: departments.filter((d) => d.status === "INACTIVE").length,
+    recentAdded: departments.filter((d) =>
+      dayjs(d.created_at).isAfter(dayjs().subtract(7, 'day'))
     ).length,
     totalDoctors: departments.reduce((acc, d) => acc + (d.doctorCount || 0), 0),
     totalPatients: departments.reduce((acc, d) => acc + (d.patientCount || 0), 0)
@@ -295,7 +234,7 @@ export default function Department() {
   const getStatusIcon = (status: string) => ({ 'Active': <CheckCircleOutlined />, 'Inactive': <CloseCircleOutlined /> }[status]);
 
   const filteredDepartments = departments.filter((department) => {
-    const matchesSearch = searchText === "" || 
+    const matchesSearch = searchText === "" ||
       department.name.toLowerCase().includes(searchText.toLowerCase()) ||
       department.description.toLowerCase().includes(searchText.toLowerCase());
     const matchesStatus = statusFilter === "all" || department.status === statusFilter;
@@ -308,18 +247,18 @@ export default function Department() {
       key: 'department',
       render: (_, record) => (
         <Flex align="center" gap="middle">
-          <Avatar 
-            size="large" 
-            icon={<ClusterOutlined />} 
-            style={{ 
-              backgroundColor: record.status === 'Active' ? '#52c41a' : '#f5222d'
+          <Avatar
+            size="large"
+            icon={<ClusterOutlined />}
+            style={{
+              backgroundColor: record.status === 'ACTIVE' ? '#52c41a' : '#f5222d'
             }}
           />
           <div>
             <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{record.name}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>{record.description}</div>
             <div style={{ fontSize: '12px', color: '#999' }}>
-              <TeamOutlined /> {record.doctorCount || 0} doctors • 
+              <TeamOutlined /> {record.doctorCount || 0} doctors •
               <UserOutlined style={{ marginLeft: '8px' }} /> {record.patientCount || 0} patients
             </div>
           </div>
@@ -334,14 +273,14 @@ export default function Department() {
           <Tag color={getStatusColor(record.status || 'Active')} icon={getStatusIcon(record.status || 'Active')} style={{ fontWeight: 'bold' }}>
             {record.status || 'Active'}
           </Tag>
-          {record.createdAt && (
+          {record.created_at && (
             <div style={{ fontSize: '12px', color: '#666' }}>
-              <CalendarOutlined /> Created: {dayjs(record.createdAt).format('MMM D, YYYY')}
+              <CalendarOutlined /> Created: {dayjs(record.created_at).format('MMM D, YYYY')}
             </div>
           )}
-          {record.updatedAt && (
+          {record.updated_at && (
             <div style={{ fontSize: '12px', color: '#999' }}>
-              Updated: {dayjs(record.updatedAt).fromNow()}
+              Updated: {dayjs(record.updated_at).fromNow()}
             </div>
           )}
         </Space>
@@ -356,16 +295,16 @@ export default function Department() {
             <Button icon={<EditOutlined />} shape="circle" onClick={() => handleOpenModal(record)} />
           </Tooltip>
           <Tooltip title="Delete Department">
-            <Popconfirm 
-              title="Delete this department?" 
-              description="Are you sure you want to delete this department? This action cannot be undone." 
-              onConfirm={() => deleteDepartment(record.id)} 
-              okText="Yes" 
-              cancelText="No" 
+            <Popconfirm
+              title="Delete this department?"
+              description="Are you sure you want to delete this department? This action cannot be undone."
+              onConfirm={() => deleteDepartment(record.id)}
+              okText="Yes"
+              cancelText="No"
               okType="danger"
               icon={<CloseCircleOutlined style={{ color: 'red' }} />}
             >
-              <Button icon={<DeleteOutlined />} shape="circle" danger />
+              <Button disabled icon={<DeleteOutlined />} shape="circle" danger />
             </Popconfirm>
           </Tooltip>
         </Space>
@@ -391,18 +330,18 @@ export default function Department() {
           </div>
           <Space>
             <Tooltip title="Auto Refresh">
-              <Switch 
-                checkedChildren={<SyncOutlined />} 
-                unCheckedChildren={<CloseCircleOutlined />} 
-                checked={autoRefresh} 
-                onChange={setAutoRefresh} 
+              <Switch
+                checkedChildren={<SyncOutlined />}
+                unCheckedChildren={<CloseCircleOutlined />}
+                checked={autoRefresh}
+                onChange={setAutoRefresh}
               />
             </Tooltip>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />} 
-              onClick={() => handleOpenModal()} 
-              size="large" 
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => handleOpenModal()}
+              size="large"
               style={{ background: '#fff', color: '#ff6b6b', border: 'none', fontWeight: 'bold' }}
             >
               <RocketOutlined /> Add Department
@@ -423,8 +362,8 @@ export default function Department() {
 
       {/* Tabs for Different Views */}
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <Tabs.TabPane 
-          key="departments" 
+        <Tabs.TabPane
+          key="departments"
           tab={
             <Space>
               <BuildOutlined /> All Departments <Badge count={filteredDepartments.length} overflowCount={99} />
@@ -434,39 +373,39 @@ export default function Department() {
           <div className="space-y-6">
             <Card>
               <Flex wrap="wrap" gap="middle" align="center" style={{ marginBottom: '16px' }}>
-                <Input 
-                  placeholder="🔍 Search departments, descriptions..." 
-                  prefix={<SearchOutlined />} 
-                  value={searchText} 
-                  onChange={(e) => setSearchText(e.target.value)} 
-                  style={{ width: 300 }} 
-                  size="large" 
+                <Input
+                  placeholder="🔍 Search departments, descriptions..."
+                  prefix={<SearchOutlined />}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  style={{ width: 300 }}
+                  size="large"
                 />
                 <Select value={statusFilter} onChange={setStatusFilter} placeholder="Filter by Status" style={{ width: 150 }} size="large">
                   <Option value="all">All Status</Option>
-                  <Option value="Active">Active</Option>
-                  <Option value="Inactive">Inactive</Option>
+                  <Option value="ACTIVE">Active</Option>
+                  <Option value="INACTIVE">Inactive</Option>
                 </Select>
                 <Space>
                   <Button icon={<ReloadOutlined />} onClick={() => { setSearchText(''); setStatusFilter('all'); }}>Reset</Button>
                   <Button icon={<ExportOutlined />}>Export</Button>
                 </Space>
               </Flex>
-              <Alert 
-                message="Department Overview" 
-                description={`${stats.active} active and ${stats.inactive} inactive departments. Serving ${stats.totalDoctors} doctors and ${stats.totalPatients} patients across all departments.`} 
-                type={stats.inactive > 0 ? "warning" : "info"} 
-                showIcon 
-                closable 
+              <Alert
+                message="Department Overview"
+                description={`${stats.active} active and ${stats.inactive} inactive departments. Serving ${stats.totalDoctors} doctors and ${stats.totalPatients} patients across all departments.`}
+                type={stats.inactive > 0 ? "warning" : "info"}
+                showIcon
+                closable
               />
             </Card>
 
-            <Card 
+            <Card
               title={
                 <Space>
                   <TableOutlined /> Department List ({filteredDepartments.length})
                 </Space>
-              } 
+              }
               extra={
                 <Space>
                   <Tag color="green">{stats.active} Active</Tag>
@@ -475,24 +414,24 @@ export default function Department() {
                 </Space>
               }
             >
-              <Table 
-                columns={columns} 
-                dataSource={filteredDepartments} 
-                rowKey="id" 
-                loading={isLoading} 
+              <Table
+                columns={columns}
+                dataSource={filteredDepartments}
+                rowKey="id"
+                loading={isLoading}
                 scroll={{ x: 800 }}
                 pagination={{
                   pageSize: 10,
                   showSizeChanger: true,
                   showQuickJumper: true,
-                  showTotal: (total, range) => 
+                  showTotal: (total, range) =>
                     `${range[0]}-${range[1]} of ${total} departments`,
                 }}
               />
             </Card>
           </div>
         </Tabs.TabPane>
-        
+
         <Tabs.TabPane key="activity" tab={<Space><DashboardOutlined /> Department Analytics</Space>}>
           <Row gutter={[16, 16]}>
             <Col span={12}>
@@ -500,10 +439,10 @@ export default function Department() {
                 <div style={{ textAlign: 'center', padding: '20px' }}>
                   <PieChartOutlined style={{ fontSize: '48px', color: '#ff6b6b' }} />
                   <div style={{ marginTop: '16px' }}>
-                    <Progress 
-                      type="circle" 
-                      percent={Math.round((stats.active / (stats.total || 1)) * 100)} 
-                      strokeColor="#52c41a" 
+                    <Progress
+                      type="circle"
+                      percent={Math.round((stats.active / (stats.total || 1)) * 100)}
+                      strokeColor="#52c41a"
                     />
                     <div style={{ marginTop: '16px' }}>
                       <Tag color="green">Active: {stats.active}</Tag>
@@ -517,9 +456,9 @@ export default function Department() {
               <Card title="Recent Department Activity">
                 <Timeline>
                   {departments.slice(0, 5).map(department => (
-                    <Timeline.Item 
-                      key={department.id} 
-                      color={getStatusColor(department.status || 'Active')} 
+                    <Timeline.Item
+                      key={department.id}
+                      color={getStatusColor(department.status || 'Active')}
                       dot={getStatusIcon(department.status || 'Active')}
                     >
                       <Space direction="vertical" size={0}>
@@ -528,7 +467,7 @@ export default function Department() {
                           {department.description}
                         </div>
                         <div style={{ color: '#999', fontSize: '12px' }}>
-                          <TeamOutlined /> {department.doctorCount || 0} doctors • 
+                          <TeamOutlined /> {department.doctorCount || 0} doctors •
                           <UserOutlined style={{ marginLeft: '8px' }} /> {department.patientCount || 0} patients
                         </div>
                       </Space>
@@ -542,52 +481,52 @@ export default function Department() {
       </Tabs>
 
       {/* Add/Edit Department Modal */}
-      <Modal 
+      <Modal
         title={
           <Space>
             {selectedDepartment ? <EditOutlined /> : <PlusOutlined />}
             {selectedDepartment ? "Edit Department" : "Add Department"}
           </Space>
-        } 
-        open={isModalOpen} 
-        onCancel={() => setIsModalOpen(false)} 
-        onOk={() => form.submit()} 
-        okText={selectedDepartment ? "Update Department" : "Add Department"} 
-        width={600} 
+        }
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onOk={() => form.submit()}
+        okText={selectedDepartment ? "Update Department" : "Add Department"}
+        width={600}
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item 
-                name="name" 
-                label="Department Name" 
+              <Form.Item
+                name="name"
+                label="Department Name"
                 rules={[{ required: true, message: "Please enter department name" }]}
               >
                 <Input prefix={<BuildOutlined />} placeholder="Enter department name" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item 
-                name="status" 
-                label="Status" 
+              <Form.Item
+                name="status"
+                label="Status"
                 rules={[{ required: true }]}
               >
                 <Select placeholder="Select status">
-                  <Option value="Active">Active</Option>
-                  <Option value="Inactive">Inactive</Option>
+                  <Option value="ACTIVE">Active</Option>
+                  <Option value="INACTIVE">Inactive</Option>
                 </Select>
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item 
-            name="description" 
-            label="Description" 
+          <Form.Item
+            name="description"
+            label="Description"
             rules={[{ required: true, message: "Please enter department description" }]}
           >
-            <TextArea 
-              rows={3} 
-              placeholder="Enter detailed description of this department and its services" 
+            <TextArea
+              rows={3}
+              placeholder="Enter detailed description of this department and its services"
             />
           </Form.Item>
         </Form>

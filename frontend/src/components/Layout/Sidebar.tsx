@@ -116,13 +116,23 @@ const createMenuItems = (): MenuItem[] => {
       ],
     },
     {
+      key: '/surgery',
+      label: 'Surgery',
+      icon: <ExperimentOutlined />,
+      requiredPermission: 'lab_tests:read',
+      children: [
+        { key: '/surgery/list', label: 'Surgeries', icon: <ExperimentOutlined /> },
+        { key: '/surgery/types', label: 'Surgery Types', icon: <ExperimentOutlined /> },
+        { key: '/surgery/operation-theatres', label: 'Operation Theatres', icon: <FileTextOutlined /> },
+      ],
+    },
+    {
       key: '/billing',
-      label: 'Billing & Invoices',
+      label: 'Billing',
       icon: <FileTextOutlined />,
       requiredPermission: 'billing:read',
       children: [
         { key: '/billing', label: 'Billing', icon: <FileTextOutlined /> },
-        { key: '/billing/invoices', label: 'All Invoices', icon: <FileTextOutlined /> },
         { key: '/billing/payments', label: 'Payments', icon: <FileTextOutlined /> },
         { key: '/billing/insurance', label: 'Insurance Claims', icon: <FileTextOutlined /> },
       ],
@@ -212,7 +222,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
   const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
     return items.filter(item => {
       if (!item.requiredPermission) return true;
-      if (item.requiredPermission === '*') return hasRole('admin');
+      // if (item.requiredPermission === '*') return hasRole('admin');
       return hasPermission(item.requiredPermission);
     }).map(item => ({
       ...item,

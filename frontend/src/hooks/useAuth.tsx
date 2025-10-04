@@ -119,7 +119,8 @@ export const useAuthProvider = () => {
     // Define role-based permissions
     const permissions: Record<UserRole, string[]> = {
       admin: ['*'], // Admin has all permissions
-      doctor: ['patients:read', 'patients:write', 'appointments:read', 'appointments:write', 'prescriptions:write', 'tokens:read', 'tokens:write'],
+      // doctor: ['patients:read', 'patients:write', 'appointments:read', 'appointments:write', 'prescriptions:write', 'tokens:read', 'tokens:write'],
+      doctor: ['*'],
       nurse: ['patients:read', 'patients:write', 'vitals:write', 'appointments:read', 'tokens:read', 'tokens:write'],
       patient: ['appointments:read', 'medical_records:read', 'tokens:read'],
       receptionist: ['appointments:read', 'appointments:write', 'patients:read', 'patients:write', 'tokens:read', 'tokens:write'],

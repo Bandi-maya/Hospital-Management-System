@@ -19,7 +19,7 @@ export default function PatientList() {
   const navigate = useNavigate();
 
   const loadPatients = async () => {
-    await getApi(`/users?user_type_id=2`)
+    await getApi(`/users?user_type_id=3`)
       .then((data) => {
         if (!data?.error) {
           setPatients(data);

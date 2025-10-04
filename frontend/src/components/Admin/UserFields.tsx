@@ -273,7 +273,7 @@ export default function UserFieldsList() {
         field_type: field.field_type,
         is_mandatory: field.is_mandatory,
         user_type: field.user_type,
-        status: field.status || "Active"
+        status: field.status || "ACTIVE"
       });
     } else {
       setSelectedField(null);
@@ -281,7 +281,7 @@ export default function UserFieldsList() {
       form.setFieldsValue({
         field_type: "STRING",
         is_mandatory: false,
-        status: "Active"
+        status: "ACTIVE"
       });
     }
     setIsModalOpen(true);

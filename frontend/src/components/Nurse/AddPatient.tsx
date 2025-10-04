@@ -161,7 +161,6 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
     const navigate = useNavigate();
 
     const [form] = Form.useForm();
-    const [doctorList, setDoctorList] = useState<any[]>([])
     const [departmentList, setDepartmentList] = useState<any[]>([])
     const [extraFields, setExtraFields] = useState<any>([])
 
@@ -169,7 +168,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         getApi("/user-fields")
             .then((data) => {
                 if (!data?.error) {
-                    setExtraFields(data.filter((field) => field.user_type === 2));
+                    setExtraFields(data.filter((field) => field.user_type === 3));
                 }
                 else {
                     toast.error("Error fetching doctors: " + data.error);
@@ -181,21 +180,6 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
             });
     }
 
-    function getDoctors() {
-        getApi(`/users?user_type_id=1`)
-            .then((data) => {
-                if (!data?.error) {
-                    setDoctorList(data);
-                }
-                else {
-                    toast.error("Error fetching doctors: " + data.error);
-                    console.error("Error fetching doctors:", data.error);
-                }
-            }).catch((error) => {
-                toast.error("Error fetching doctors");
-                console.error("Error deleting doctors:", error);
-            });
-    }
     function getDepartments() {
         getApi(`/departments`)
             .then((data) => {
@@ -213,7 +197,6 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
     }
 
     useEffect(() => {
-        getDoctors()
         getExtraFields()
         getDepartments()
     }, [])
@@ -229,7 +212,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         const newPatient: any = {
             extra_fields: values.extra_fields,
             department_id: values.department_id,
-            user_type_id: 2,
+            user_type_id: 3,
             username: values.email,
             name: `${values?.extra_fields?.first_name} ${values?.extra_fields?.last_name}`,
             date_of_birth: formattedDate,

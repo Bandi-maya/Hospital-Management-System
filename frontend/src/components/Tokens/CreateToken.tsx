@@ -90,7 +90,7 @@ export default function CreateToken() {
   }, [])
 
   const handleCreateToken = () => {
-    if (!form.patient_id || !form.appointment_date || !form.department_id || !form.doctor_id) {
+    if (!form.patient_id || !form.appointment_date || !form.department_id) {
       toast.error("Please fill in all fields");
       return;
     }

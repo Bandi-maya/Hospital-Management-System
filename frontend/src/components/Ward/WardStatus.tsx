@@ -79,7 +79,7 @@ import {
 } from "@ant-design/icons";
 import { v4 as uuidv4 } from "uuid";
 import { DefaultOptionType } from "antd/es/select";
-import { getApi, PostApi, PutApi } from "@/ApiService";
+import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { toast } from "sonner";
 
 const { Option } = Select;
@@ -98,6 +98,7 @@ interface Ward {
   location?: string;
   phone?: string;
   email?: string;
+  beds?: any;
   headNurse?: string;
   specialization?: string;
   equipment?: string[];
@@ -130,109 +131,15 @@ export default function WardStatus() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const [form] = Form.useForm();
-  const [data, setData] = useState()
+  // const [data, setData] = useState()
   const [departments, setDepartments] = useState([])
-
-  // Enhanced initial data with more details
-  const initialWards: Ward[] = [
-    {
-      id: uuidv4(),
-      name: "General Ward A",
-      type: "General",
-      capacity: 20,
-      occupied: 15,
-      description: "General purpose ward for stable patients with basic medical care facilities",
-      status: "available",
-      location: "Building A, Floor 2",
-      phone: "+1-555-0101",
-      email: "ward-a@hospital.com",
-      headNurse: "Sarah Johnson",
-      specialization: "General Medicine",
-      equipment: ["Patient Monitors", "IV Stands", "Emergency Cart"],
-      rating: 4,
-      lastCleaned: "2024-01-15 08:30",
-      notes: "Regular maintenance scheduled weekly"
-    },
-    {
-      id: uuidv4(),
-      name: "ICU Unit 1",
-      type: "ICU",
-      capacity: 10,
-      occupied: 10,
-      description: "Intensive Care Unit equipped with advanced life support systems",
-      status: "full",
-      location: "Emergency Wing, Floor 1",
-      phone: "+1-555-0102",
-      email: "icu-1@hospital.com",
-      headNurse: "Dr. Michael Chen",
-      specialization: "Critical Care",
-      equipment: ["Ventilators", "Defibrillators", "Vital Monitors", "Infusion Pumps"],
-      rating: 5,
-      lastCleaned: "2024-01-15 06:00",
-      notes: "High priority unit - strict hygiene protocols"
-    },
-    {
-      id: uuidv4(),
-      name: "Private Suite 101",
-      type: "Private",
-      capacity: 1,
-      occupied: 0,
-      description: "Luxury private suite with premium amenities and personalized care",
-      status: "available",
-      location: "VIP Wing, Floor 3",
-      phone: "+1-555-0103",
-      email: "suite-101@hospital.com",
-      headNurse: "Emma Wilson",
-      specialization: "Executive Healthcare",
-      equipment: ["Smart TV", "Private Bathroom", "Visitor Lounge"],
-      rating: 5,
-      lastCleaned: "2024-01-15 10:00",
-      notes: "Available for immediate admission"
-    },
-    {
-      id: uuidv4(),
-      name: "Pediatric Ward B",
-      type: "Pediatric",
-      capacity: 15,
-      occupied: 12,
-      description: "Child-friendly ward with specialized pediatric care",
-      status: "critical",
-      location: "Children's Wing, Floor 2",
-      phone: "+1-555-0104",
-      email: "pediatric-b@hospital.com",
-      headNurse: "Lisa Rodriguez",
-      specialization: "Pediatrics",
-      equipment: ["Child Monitors", "Play Area", "Parent Accommodation"],
-      rating: 4,
-      lastCleaned: "2024-01-14 16:00",
-      notes: "Colorful decor to comfort children"
-    },
-    {
-      id: uuidv4(),
-      name: "Maternity Suite",
-      type: "Maternity",
-      capacity: 8,
-      occupied: 6,
-      description: "Specialized care for expecting mothers and newborns",
-      status: "available",
-      location: "Maternity Wing, Floor 4",
-      phone: "+1-555-0105",
-      email: "maternity@hospital.com",
-      headNurse: "Dr. Amanda Smith",
-      specialization: "Obstetrics & Gynecology",
-      equipment: ["Baby Incubators", "Delivery Beds", "Neonatal Monitors"],
-      rating: 5,
-      lastCleaned: "2024-01-15 07:30",
-      notes: "24/7 neonatal specialist available"
-    }
-  ];
 
   function getWards() {
     setLoading(true);
     getApi("/wards")
       .then((data) => {
         if (!data.error) {
-          setData(data)
+          setWards(data)
         }
         else {
           toast.error(data.error)
@@ -336,7 +243,7 @@ export default function WardStatus() {
     delete wardData.status
 
     if (editingWard) {
-      PutApi("/wards", wardData)
+      PutApi("/wards", { ...wardData, id: editingWard.id })
         .then((data) => {
           if (!data.error) {
             getWards()
@@ -375,17 +282,23 @@ export default function WardStatus() {
   };
 
   const handleDelete = (wardId: string) => {
-    const ward = wards.find(w => w.id === wardId);
-    const updatedWards = wards.filter((w) => w.id !== wardId);
-    saveWards(updatedWards);
-    if (ward) {
-      logActivity("DELETE", wardId, `Deleted ward: ${ward.name}`);
-    }
-    message.success("🗑️ Ward deleted successfully!");
+    DeleteApi("/wards", { id: wardId })
+      .then((data) => {
+        if (!data.error) {
+          toast.success("Ward deleted successfully")
+          getWards()
+        }
+        else {
+          toast.error(data.error)
+        }
+      }).catch((err) => {
+        toast.error("Error occurred while deleting the ward")
+
+      })
   };
 
   const handleResetData = () => {
-    saveWards(initialWards);
+    getWards();
     logActivity("SYSTEM", "system", "Reset all ward data to initial state");
     message.info("🔄 Data reset to initial state");
   };
@@ -401,7 +314,7 @@ export default function WardStatus() {
     message.success("📤 Data exported successfully!");
   };
 
-  const filteredAndSortedWards = (data ?? [])
+  const filteredAndSortedWards = (wards ?? [])
     .filter(ward => {
       const matchesSearch = searchText === "" ||
         ward.name.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -424,12 +337,12 @@ export default function WardStatus() {
   const stats = {
     totalWards: wards.length,
     totalCapacity: wards.reduce((sum, ward) => sum + ward.capacity, 0),
-    totalOccupied: wards.reduce((sum, ward) => sum + ward.occupied, 0),
-    availableBeds: wards.reduce((sum, ward) => sum + (ward.capacity - ward.occupied), 0),
+    totalOccupied: wards.reduce((sum, ward) => sum + ward.beds.filter((bed) => bed.status !== "ACTIVE").length, 0),
+    availableBeds: wards.reduce((sum, ward) => sum + ward.beds.filter((bed) => bed.status === "ACTIVE").length, 0),
     occupancyRate: wards.reduce((sum, ward) => sum + ward.capacity, 0) > 0 ?
       (wards.reduce((sum, ward) => sum + ward.occupied, 0) / wards.reduce((sum, ward) => sum + ward.capacity, 0)) * 100 : 0,
     criticalWards: wards.filter(ward => ward.status === 'critical').length,
-    fullWards: wards.filter(ward => ward.status === 'full').length
+    fullWards: wards.filter(ward => ward.capacity === ward.beds.filter((bed) => bed.status === "ACTIVE").length).length
   };
 
   const columns = [
@@ -493,38 +406,38 @@ export default function WardStatus() {
         </Space>
       ),
     },
-    {
-      title: (
-        <Space>
-          <TeamOutlined />
-          Head Nurse
-        </Space>
-      ),
-      key: "nurse",
-      render: (record: Ward) => (
-        <Space>
-          <UserOutlined />
-          {record.headNurse || "Not assigned"}
-        </Space>
-      ),
-    },
-    {
-      title: (
-        <Space>
-          <StarOutlined />
-          Rating
-        </Space>
-      ),
-      key: "rating",
-      render: (record: Ward) => (
-        <Rate
-          disabled
-          value={record.rating}
-          character={<StarOutlined />}
-          style={{ fontSize: '14px' }}
-        />
-      ),
-    },
+    // {
+    //   title: (
+    //     <Space>
+    //       <TeamOutlined />
+    //       Head Nurse
+    //     </Space>
+    //   ),
+    //   key: "nurse",
+    //   render: (record: Ward) => (
+    //     <Space>
+    //       <UserOutlined />
+    //       {record.headNurse || "Not assigned"}
+    //     </Space>
+    //   ),
+    // },
+    // {
+    //   title: (
+    //     <Space>
+    //       <StarOutlined />
+    //       Rating
+    //     </Space>
+    //   ),
+    //   key: "rating",
+    //   render: (record: Ward) => (
+    //     <Rate
+    //       disabled
+    //       value={record.rating}
+    //       character={<StarOutlined />}
+    //       style={{ fontSize: '14px' }}
+    //     />
+    //   ),
+    // },
     {
       title: (
         <Space>
@@ -1042,36 +955,6 @@ export default function WardStatus() {
             </Col>
             <Col span={8}>
               <Form.Item
-                name="occupied"
-                label={
-                  <Space>
-                    <TeamOutlined />
-                    Occupied Beds
-                  </Space>
-                }
-                dependencies={['capacity']}
-                rules={[
-                  { required: true, message: "Please enter occupied beds" },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      const capacity = getFieldValue('capacity');
-                      if (value == null || (capacity && value <= capacity)) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error('Occupied beds cannot exceed capacity'));
-                    },
-                  }),
-                ]}
-              >
-                <InputNumber
-                  min={0}
-                  placeholder="Occupied beds"
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
                 name="rating"
                 label={
                   <Space>
@@ -1097,19 +980,6 @@ export default function WardStatus() {
                 }
               >
                 <Input placeholder="Building and floor location" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="headNurse"
-                label={
-                  <Space>
-                    <UserOutlined />
-                    Head Nurse
-                  </Space>
-                }
-              >
-                <Input placeholder="Head nurse name" />
               </Form.Item>
             </Col>
           </Row>
@@ -1277,7 +1147,7 @@ export default function WardStatus() {
               </Space>
             </Descriptions.Item>
 
-            <Descriptions.Item label={
+            {/* <Descriptions.Item label={
               <Space>
                 <UserOutlined />
                 Staff Information
@@ -1296,7 +1166,7 @@ export default function WardStatus() {
                   </div>
                 )}
               </div>
-            </Descriptions.Item>
+            </Descriptions.Item> */}
 
             <Descriptions.Item label={
               <Space>
@@ -1307,14 +1177,14 @@ export default function WardStatus() {
               {viewingWard.location || "Not specified"}
             </Descriptions.Item>
 
-            <Descriptions.Item label={
+            {/* <Descriptions.Item label={
               <Space>
                 <StarOutlined />
                 Rating
               </Space>
             }>
               <Rate disabled value={viewingWard.rating} character={<StarOutlined />} />
-            </Descriptions.Item>
+            </Descriptions.Item> */}
 
             {viewingWard.description && (
               <Descriptions.Item label={

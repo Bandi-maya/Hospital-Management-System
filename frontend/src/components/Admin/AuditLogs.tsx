@@ -65,6 +65,8 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import isBetween from 'dayjs/plugin/isBetween';
+import { getApi } from "@/ApiService";
+import { toast } from "sonner";
 
 // Extend dayjs with isBetween plugin
 dayjs.extend(isBetween);
@@ -153,11 +155,16 @@ export default function HMSAuditLogs() {
 
   // Initialize logs
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setLogs(generateLogs());
-      setLoading(false);
-    }, 1000);
+    getApi("/activity-logs")
+    .then((data) => {
+      if (!data.error) {
+        setLogs(data)
+      }
+      else {
+        toast.error(data.error)
+      }
+    })
+    .catch((err) => toast.error("Error occurred while getting logs"))
   }, []);
 
   // Auto-refresh functionality
@@ -175,10 +182,10 @@ export default function HMSAuditLogs() {
 
   // Enhanced filter logic
   const filteredLogs = logs.filter((log) => {
-    const matchesSearch =
-      log.performedBy.toLowerCase().includes(filters.search.toLowerCase()) ||
-      log.ipAddress.includes(filters.search) ||
-      log.details.toLowerCase().includes(filters.search.toLowerCase());
+      const matchesSearch = logs
+      // log.performedBy.toLowerCase().includes(filters.search.toLowerCase()) ||
+      // log.ipAddress.includes(filters.search) ||
+      // log.details.toLowerCase().includes(filters.search.toLowerCase());
 
     const matchesRole = filters.roleFilter ? log.role === filters.roleFilter : true;
     const matchesModule = filters.moduleFilter ? log.module === filters.moduleFilter : true;

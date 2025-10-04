@@ -70,6 +70,29 @@ export function PutApi(urlEndPoint, data: any, options: any = {}) {
     });
 }
 
+export function PatchApi(urlEndPoint, data: any, options: any = {}) {
+    const token = localStorage.getItem('auth_token');
+    return fetch(baseUrl + urlEndPoint, {
+        ...options,
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+            ...(options.headers || {}),
+        },
+        body: JSON.stringify(data),
+    }).then(async response => {
+        let data = response.json()
+        if (data?.['msg'] === 'Token has expired') {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('authTimestamp');
+            localStorage.removeItem('userRole');
+        }
+        return data;
+    });
+}
+
 export function DeleteApi(urlEndPoint, data = {}, options: any = {}) {
     const token = localStorage.getItem('auth_token');
     return fetch(baseUrl + urlEndPoint, {
