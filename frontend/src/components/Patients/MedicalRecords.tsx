@@ -479,7 +479,7 @@ export default function MedicalRecords() {
             title: "Items",
             dataIndex: "items",
             key: "items",
-            render: (items) => items.join(", ")
+            // render: (items) => items.join(", ")
           },
           {
             title: "Actions",
