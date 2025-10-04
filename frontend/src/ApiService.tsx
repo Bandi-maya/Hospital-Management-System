@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://91.108.104.49:5000';
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export function getApi(urlEndPoint, options: any = {}) {
     const token = localStorage.getItem('auth_token');
@@ -13,7 +13,7 @@ export function getApi(urlEndPoint, options: any = {}) {
         },
 
     }).then(async response => {
-        let data = response.json()
+        let data = await response.json()
         if (data?.['msg'] === 'Token has expired') {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('currentUser');
@@ -36,7 +36,7 @@ export function PostApi(urlEndPoint, data: any, options: any = {}) {
         },
         body: JSON.stringify(data),
     }).then(async response => {
-        let data = response.json()
+        let data = await response.json()
         if (data?.['msg'] === 'Token has expired') {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('currentUser');
@@ -59,7 +59,7 @@ export function PutApi(urlEndPoint, data: any, options: any = {}) {
         },
         body: JSON.stringify(data),
     }).then(async response => {
-        let data = response.json()
+        let data = await response.json()
         if (data?.['msg'] === 'Token has expired') {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('currentUser');
@@ -82,7 +82,7 @@ export function PatchApi(urlEndPoint, data: any, options: any = {}) {
         },
         body: JSON.stringify(data),
     }).then(async response => {
-        let data = response.json()
+        let data = await response.json()
         if (data?.['msg'] === 'Token has expired') {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('currentUser');
@@ -105,7 +105,7 @@ export function DeleteApi(urlEndPoint, data = {}, options: any = {}) {
         },
         body: JSON.stringify(data),
     }).then(async response => {
-        let data = response.json()
+        let data = await response.json()
         if (data?.['msg'] === 'Token has expired') {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('currentUser');

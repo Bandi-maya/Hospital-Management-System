@@ -22,7 +22,7 @@ export default function CalendarView() {
   const [loading, setLoading] = useState(false)
 
   function getDoctors() {
-    getApi('/users?user_type_id=1')
+    getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
           setDoctors(data)
@@ -203,11 +203,11 @@ export default function CalendarView() {
                         <div className="space-y-2 flex-1">
                           <div className="flex items-center gap-2">
                             <User className="w-4 h-4 text-gray-400" />
-                            <span className="font-medium">{app.patient || "Unknown Patient"}</span>
+                            <span className="font-medium">{app.patient.name || "Unknown Patient"}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Stethoscope className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm text-gray-600">Dr. {app.doctor || "Unknown Doctor"}</span>
+                            <span className="text-sm text-gray-600">Dr. {app.doctor.name || "Unknown Doctor"}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-gray-400" />

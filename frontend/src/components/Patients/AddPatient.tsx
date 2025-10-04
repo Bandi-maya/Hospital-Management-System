@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     Card,
     CardContent,
@@ -164,12 +164,15 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
     const [doctorList, setDoctorList] = useState<any[]>([])
     const [departmentList, setDepartmentList] = useState<any[]>([])
     const [extraFields, setExtraFields] = useState<any>([])
+    const userTypeId = useMemo(() => {
+        return extraFields?.[0]?.user_type
+    }, [extraFields])
 
     function getExtraFields() {
         getApi("/user-fields")
             .then((data) => {
                 if (!data?.error) {
-                    setExtraFields(data.filter((field) => field.user_type === 2));
+                    setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === "PATIENT"));
                 }
                 else {
                     toast.error("Error fetching doctors: " + data.error);
@@ -182,7 +185,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
     }
 
     function getDoctors() {
-        getApi(`/users?user_type_id=1`)
+        getApi(`/users?user_type=DOCTOR`)
             .then((data) => {
                 if (!data?.error) {
                     setDoctorList(data);
@@ -229,7 +232,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         const newPatient: any = {
             extra_fields: values.extra_fields,
             department_id: values.department_id,
-            user_type_id: 2,
+            user_type_id: userTypeId,
             username: values.email,
             name: `${values?.extra_fields?.first_name} ${values?.extra_fields?.last_name}`,
             date_of_birth: formattedDate,
@@ -393,9 +396,9 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
                             <Form.Item
                                 label="Blood Type"
                                 name="bloodType"
-                                // rules={[
-                                //     { required: true, message: "Please select blood type" },
-                                // ]}
+                            // rules={[
+                            //     { required: true, message: "Please select blood type" },
+                            // ]}
                             >
                                 <AntdSelect
                                     options={[

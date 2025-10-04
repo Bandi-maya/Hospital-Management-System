@@ -80,11 +80,11 @@ const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
-interface UserType {
+export interface UserType {
   id: string;
   type: string;
   description: string;
-  status?: "ACTIVE" | "INACTIVE";
+  is_active: boolean;
   createdAt?: string;
   updatedAt?: string;
   userCount?: number;
@@ -111,54 +111,6 @@ export default function UserTypesList() {
   const [form] = Form.useForm();
 
   // Initial Sample Data
-  const initialUserTypes: UserType[] = [
-    {
-      id: "1",
-      type: "Administrator",
-      description: "Full system access with administrative privileges",
-      status: "ACTIVE",
-      createdAt: "2024-01-01",
-      updatedAt: "2024-01-15",
-      userCount: 5
-    },
-    {
-      id: "2",
-      type: "Doctor",
-      description: "Medical professional with patient care access",
-      status: "ACTIVE",
-      createdAt: "2024-01-02",
-      updatedAt: "2024-01-10",
-      userCount: 25
-    },
-    {
-      id: "3",
-      type: "Nurse",
-      description: "Nursing staff with patient management access",
-      status: "ACTIVE",
-      createdAt: "2024-01-03",
-      updatedAt: "2024-01-12",
-      userCount: 50
-    },
-    {
-      id: "4",
-      type: "Receptionist",
-      description: "Front desk staff with appointment scheduling access",
-      status: "ACTIVE",
-      createdAt: "2024-01-04",
-      updatedAt: "2024-01-08",
-      userCount: 12
-    },
-    {
-      id: "5",
-      type: "Lab Technician",
-      description: "Laboratory staff with test result management access",
-      status: "INACTIVE",
-      createdAt: "2024-01-05",
-      updatedAt: "2024-01-14",
-      userCount: 8
-    }
-  ];
-
   const loadData = async () => {
     simulateLoading();
     await getApi(`/user-types`)
@@ -166,14 +118,12 @@ export default function UserTypesList() {
         if (!data?.error) {
           setUserTypes(data);
         } else {
+          toast.error(data.error)
           console.error("Error fetching user types:", data.error);
-          // Fallback to sample data
-          setUserTypes(initialUserTypes);
         }
       }).catch((error) => {
+        toast.error("Error occurred while fetching user types")
         console.error("Error fetching user types:", error);
-        // Fallback to sample data
-        setUserTypes(initialUserTypes);
       }).finally(() => {
         setIsLoading(false);
       })
@@ -223,7 +173,7 @@ export default function UserTypesList() {
         id: userType.id,
         type: userType.type,
         description: userType.description,
-        status: userType.status || "ACTIVE"
+        status: userType.is_active ? "ACTIVE" : "INACTIVE"
       });
     } else {
       setSelectedType(null);
@@ -237,6 +187,8 @@ export default function UserTypesList() {
 
   const handleSubmit = async (values: any) => {
     simulateLoading();
+    values.is_active = values.status === 'ACTIVE'
+    delete values.status;
 
     if (selectedType) {
       // Update existing user type
@@ -281,9 +233,9 @@ export default function UserTypesList() {
   // Statistics
   const stats: UserTypeStats = {
     total: userTypes.length,
-    active: userTypes.filter((ut) => ut.status === "ACTIVE").length,
-    inactive: userTypes.filter((ut) => ut.status === "INACTIVE").length,
-    recentAdded: userTypes.filter((ut) => 
+    active: userTypes.filter((ut) => ut.is_active).length,
+    inactive: userTypes.filter((ut) => !ut.is_active).length,
+    recentAdded: userTypes.filter((ut) =>
       dayjs(ut.createdAt).isAfter(dayjs().subtract(7, 'day'))
     ).length
   };
@@ -293,10 +245,10 @@ export default function UserTypesList() {
   const getStatusIcon = (status: string) => ({ 'Active': <CheckCircleOutlined />, 'Inactive': <CloseCircleOutlined /> }[status]);
 
   const filteredUserTypes = userTypes.filter((userType) => {
-    const matchesSearch = searchText === "" || 
+    const matchesSearch = searchText === "" ||
       userType.type.toLowerCase().includes(searchText.toLowerCase()) ||
       userType.description.toLowerCase().includes(searchText.toLowerCase());
-    const matchesStatus = statusFilter === "all" || userType.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || (userType.is_active ? "ACTIVE" : "INACTIVE") === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -306,11 +258,11 @@ export default function UserTypesList() {
       key: 'type',
       render: (_, record) => (
         <Flex align="center" gap="middle">
-          <Avatar 
-            size="large" 
-            icon={<UserSwitchOutlined />} 
-            style={{ 
-              backgroundColor: record.status === 'ACTIVE' ? '#52c41a' : '#f5222d'
+          <Avatar
+            size="large"
+            icon={<UserSwitchOutlined />}
+            style={{
+              backgroundColor: record.is_active ? '#52c41a' : '#f5222d'
             }}
           />
           <div>
@@ -330,8 +282,8 @@ export default function UserTypesList() {
       key: 'status',
       render: (_, record) => (
         <Space direction="vertical">
-          <Tag color={getStatusColor(record.status || 'Active')} icon={getStatusIcon(record.status || 'Active')} style={{ fontWeight: 'bold' }}>
-            {record.status || 'Active'}
+          <Tag color={getStatusColor(record.is_active ? "ACTIVE" : "INACTIVE")} icon={getStatusIcon(record.is_active ? "ACTIVE" : "INACTIVE")} style={{ fontWeight: 'bold' }}>
+            {record.is_active ? "ACTIVE" : "INACTIVE"}
           </Tag>
           {record.createdAt && (
             <div style={{ fontSize: '12px', color: '#666' }}>
@@ -350,12 +302,12 @@ export default function UserTypesList() {
             <Button icon={<EditOutlined />} shape="circle" onClick={() => handleOpenModal(record)} />
           </Tooltip>
           <Tooltip title="Delete User Type">
-            <Popconfirm 
-              title="Delete this user type?" 
-              description="Are you sure you want to delete this user type? This action cannot be undone." 
-              onConfirm={() => deleteUserType(record.id)} 
-              okText="Yes" 
-              cancelText="No" 
+            <Popconfirm
+              title="Delete this user type?"
+              description="Are you sure you want to delete this user type? This action cannot be undone."
+              onConfirm={() => deleteUserType(record.id)}
+              okText="Yes"
+              cancelText="No"
               okType="danger"
               icon={<CloseCircleOutlined style={{ color: 'red' }} />}
             >
@@ -385,18 +337,18 @@ export default function UserTypesList() {
           </div>
           <Space>
             <Tooltip title="Auto Refresh">
-              <Switch 
-                checkedChildren={<SyncOutlined />} 
-                unCheckedChildren={<CloseCircleOutlined />} 
-                checked={autoRefresh} 
-                onChange={setAutoRefresh} 
+              <Switch
+                checkedChildren={<SyncOutlined />}
+                unCheckedChildren={<CloseCircleOutlined />}
+                checked={autoRefresh}
+                onChange={setAutoRefresh}
               />
             </Tooltip>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />} 
-              onClick={() => handleOpenModal()} 
-              size="large" 
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => handleOpenModal()}
+              size="large"
               style={{ background: '#fff', color: '#f5576c', border: 'none', fontWeight: 'bold' }}
             >
               <RocketOutlined /> Add User Type
@@ -417,8 +369,8 @@ export default function UserTypesList() {
 
       {/* Tabs for Different Views */}
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <Tabs.TabPane 
-          key="types" 
+        <Tabs.TabPane
+          key="types"
           tab={
             <Space>
               <ApartmentOutlined /> All User Types <Badge count={filteredUserTypes.length} overflowCount={99} />
@@ -428,13 +380,13 @@ export default function UserTypesList() {
           <div className="space-y-6">
             <Card>
               <Flex wrap="wrap" gap="middle" align="center" style={{ marginBottom: '16px' }}>
-                <Input 
-                  placeholder="🔍 Search user types, descriptions..." 
-                  prefix={<SearchOutlined />} 
-                  value={searchText} 
-                  onChange={(e) => setSearchText(e.target.value)} 
-                  style={{ width: 300 }} 
-                  size="large" 
+                <Input
+                  placeholder="🔍 Search user types, descriptions..."
+                  prefix={<SearchOutlined />}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  style={{ width: 300 }}
+                  size="large"
                 />
                 <Select value={statusFilter} onChange={setStatusFilter} placeholder="Filter by Status" style={{ width: 150 }} size="large">
                   <Option value="all">All Status</Option>
@@ -446,21 +398,21 @@ export default function UserTypesList() {
                   <Button icon={<ExportOutlined />}>Export</Button>
                 </Space>
               </Flex>
-              <Alert 
-                message="User Types Overview" 
-                description={`${stats.active} active and ${stats.inactive} inactive user types. ${stats.recentAdded} types added in the last 7 days.`} 
-                type={stats.inactive > 0 ? "warning" : "info"} 
-                showIcon 
-                closable 
+              <Alert
+                message="User Types Overview"
+                description={`${stats.active} active and ${stats.inactive} inactive user types. ${stats.recentAdded} types added in the last 7 days.`}
+                type={stats.inactive > 0 ? "warning" : "info"}
+                showIcon
+                closable
               />
             </Card>
 
-            <Card 
+            <Card
               title={
                 <Space>
                   <TableOutlined /> User Types List ({filteredUserTypes.length})
                 </Space>
-              } 
+              }
               extra={
                 <Space>
                   <Tag color="green">{stats.active} Active</Tag>
@@ -468,24 +420,24 @@ export default function UserTypesList() {
                 </Space>
               }
             >
-              <Table 
-                columns={columns} 
-                dataSource={filteredUserTypes} 
-                rowKey="id" 
-                loading={isLoading} 
+              <Table
+                columns={columns}
+                dataSource={filteredUserTypes}
+                rowKey="id"
+                loading={isLoading}
                 scroll={{ x: 800 }}
                 pagination={{
                   pageSize: 10,
                   showSizeChanger: true,
                   showQuickJumper: true,
-                  showTotal: (total, range) => 
+                  showTotal: (total, range) =>
                     `${range[0]}-${range[1]} of ${total} user types`,
                 }}
               />
             </Card>
           </div>
         </Tabs.TabPane>
-        
+
         <Tabs.TabPane key="activity" tab={<Space><DashboardOutlined /> Recent Activity</Space>}>
           <Row gutter={[16, 16]}>
             <Col span={12}>
@@ -493,10 +445,10 @@ export default function UserTypesList() {
                 <div style={{ textAlign: 'center', padding: '20px' }}>
                   <PieChartOutlined style={{ fontSize: '48px', color: '#f5576c' }} />
                   <div style={{ marginTop: '16px' }}>
-                    <Progress 
-                      type="circle" 
-                      percent={Math.round((stats.active / (stats.total || 1)) * 100)} 
-                      strokeColor="#52c41a" 
+                    <Progress
+                      type="circle"
+                      percent={Math.round((stats.active / (stats.total || 1)) * 100)}
+                      strokeColor="#52c41a"
                     />
                     <div style={{ marginTop: '16px' }}>
                       <Tag color="green">Active: {stats.active}</Tag>
@@ -510,10 +462,10 @@ export default function UserTypesList() {
               <Card title="Recent User Type Activity">
                 <Timeline>
                   {userTypes.slice(0, 5).map(userType => (
-                    <Timeline.Item 
-                      key={userType.id} 
-                      color={getStatusColor(userType.status || 'Active')} 
-                      dot={getStatusIcon(userType.status || 'Active')}
+                    <Timeline.Item
+                      key={userType.id}
+                      color={getStatusColor(userType.is_active ? "ACTIVE" : "INACTIVE")}
+                      dot={getStatusIcon(userType.is_active ? "ACTIVE" : "INACTIVE")}
                     >
                       <Space direction="vertical" size={0}>
                         <div style={{ fontWeight: 'bold' }}>{userType.type}</div>
@@ -534,35 +486,35 @@ export default function UserTypesList() {
       </Tabs>
 
       {/* Add/Edit User Type Modal */}
-      <Modal 
+      <Modal
         title={
           <Space>
             {selectedType ? <EditOutlined /> : <PlusOutlined />}
             {selectedType ? "Edit User Type" : "Add User Type"}
           </Space>
-        } 
-        open={isModalOpen} 
-        onCancel={() => setIsModalOpen(false)} 
-        onOk={() => form.submit()} 
-        okText={selectedType ? "Update User Type" : "Add User Type"} 
-        width={600} 
+        }
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onOk={() => form.submit()}
+        okText={selectedType ? "Update User Type" : "Add User Type"}
+        width={600}
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item 
-                name="type" 
-                label="User Type" 
+              <Form.Item
+                name="type"
+                label="User Type"
                 rules={[{ required: true, message: "Please enter user type" }]}
               >
                 <Input prefix={<ApartmentOutlined />} placeholder="Enter user type" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item 
-                name="status" 
-                label="Status" 
+              <Form.Item
+                name="status"
+                label="Status"
                 rules={[{ required: true }]}
               >
                 <Select placeholder="Select status">
@@ -572,14 +524,14 @@ export default function UserTypesList() {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item 
-            name="description" 
-            label="Description" 
+          <Form.Item
+            name="description"
+            label="Description"
             rules={[{ required: true, message: "Please enter description" }]}
           >
-            <TextArea 
-              rows={3} 
-              placeholder="Enter detailed description of this user type and its permissions" 
+            <TextArea
+              rows={3}
+              placeholder="Enter detailed description of this user type and its permissions"
             />
           </Form.Item>
         </Form>

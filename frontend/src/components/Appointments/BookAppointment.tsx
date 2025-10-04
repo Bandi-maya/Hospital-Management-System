@@ -12,11 +12,11 @@ import { Calendar, User, Stethoscope, Building, Clock, PlusCircle, ArrowLeft } f
 
 export interface Appointment {
   id?: string;
-  patient?: string;
+  patient?: any;
   department_id: string;
   patient_id: string;
   doctor_id: string;
-  doctor?: string;
+  doctor?: any;
   duration: number;
   appointment_date: string;
   appointment_start_time: string;
@@ -41,7 +41,7 @@ export default function BookAppointment() {
   });
 
   function getPatients() {
-    getApi('/users?user_type_id=2')
+    getApi('/users?user_type=PATIENT')
       .then((data) => {
         if (!data.error) {
           setPatients(data)
@@ -57,7 +57,7 @@ export default function BookAppointment() {
   }
 
   function getDoctors() {
-    getApi('/users?user_type_id=1')
+    getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
           setDoctors(data)

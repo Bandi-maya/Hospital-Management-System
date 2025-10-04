@@ -78,6 +78,7 @@ import { Patient } from "@/types/patient";
 import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { toast } from "sonner";
 import dayjs from "dayjs";
+import { UserType } from "./UserTypes";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -88,17 +89,11 @@ interface UserField {
   field_name: string;
   field_type: "STRING" | "INTEGER" | "JSON";
   is_mandatory: boolean;
+  is_active: boolean;
   user_type: string;
   user_type_name?: string;
-  status?: "Active" | "Inactive";
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-interface UserType {
-  id: string;
-  type: string;
-  description: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface UserFieldStats {
@@ -125,73 +120,6 @@ export default function UserFieldsList() {
 
   const [form] = Form.useForm();
 
-  // Initial Sample Data
-  const initialUserFields: UserField[] = [
-    {
-      id: "1",
-      field_name: "Phone Number",
-      field_type: "STRING",
-      is_mandatory: true,
-      user_type: "1",
-      user_type_name: "Administrator",
-      status: "Active",
-      createdAt: "2024-01-01",
-      updatedAt: "2024-01-15"
-    },
-    {
-      id: "2",
-      field_name: "License Number",
-      field_type: "STRING",
-      is_mandatory: true,
-      user_type: "2",
-      user_type_name: "Doctor",
-      status: "Active",
-      createdAt: "2024-01-02",
-      updatedAt: "2024-01-10"
-    },
-    {
-      id: "3",
-      field_name: "Specialization",
-      field_type: "STRING",
-      is_mandatory: false,
-      user_type: "2",
-      user_type_name: "Doctor",
-      status: "Active",
-      createdAt: "2024-01-03",
-      updatedAt: "2024-01-12"
-    },
-    {
-      id: "4",
-      field_name: "Years of Experience",
-      field_type: "INTEGER",
-      is_mandatory: false,
-      user_type: "2",
-      user_type_name: "Doctor",
-      status: "Active",
-      createdAt: "2024-01-04",
-      updatedAt: "2024-01-08"
-    },
-    {
-      id: "5",
-      field_name: "Additional Info",
-      field_type: "JSON",
-      is_mandatory: false,
-      user_type: "3",
-      user_type_name: "Nurse",
-      status: "Inactive",
-      createdAt: "2024-01-05",
-      updatedAt: "2024-01-14"
-    }
-  ];
-
-  const initialUserTypes: UserType[] = [
-    { id: "1", type: "Administrator", description: "Full system access" },
-    { id: "2", type: "Doctor", description: "Medical professional" },
-    { id: "3", type: "Nurse", description: "Nursing staff" },
-    { id: "4", type: "Receptionist", description: "Front desk staff" },
-    { id: "5", type: "Lab Technician", description: "Laboratory staff" }
-  ];
-
   const simulateLoading = () => {
     setIsLoading(true);
   };
@@ -210,22 +138,18 @@ export default function UserFieldsList() {
         }));
         setUserFields(enhancedData);
       } else {
+        toast.error(data.error)
         console.error("Error fetching user fields:", data.error);
-        // Fallback to sample data
-        setUserFields(initialUserFields);
       }
       if (!usertypesData?.error) {
         setUserTypes(usertypesData);
       } else {
+        toast.error(usertypesData.error)
         console.error("Error fetching user types:", usertypesData.error);
-        // Fallback to sample data
-        setUserTypes(initialUserTypes);
       }
     }).catch((error) => {
+      toast.error("Error occurred while fetching data")
       console.error("Error loading data:", error);
-      // Fallback to sample data
-      setUserFields(initialUserFields);
-      setUserTypes(initialUserTypes);
     }).finally(() => {
       setIsLoading(false);
     });
@@ -273,7 +197,7 @@ export default function UserFieldsList() {
         field_type: field.field_type,
         is_mandatory: field.is_mandatory,
         user_type: field.user_type,
-        status: field.status || "ACTIVE"
+        status: field.is_active ? "ACTIVE" : "INACTIVE"
       });
     } else {
       setSelectedField(null);
@@ -289,6 +213,8 @@ export default function UserFieldsList() {
 
   const handleSubmit = async (values: any) => {
     simulateLoading();
+    values.is_active = values.status === "ACTIVE"
+    delete values.status
 
     if (selectedField) {
       // Update existing field
@@ -338,13 +264,13 @@ export default function UserFieldsList() {
     stringType: userFields.filter((uf) => uf.field_type === "STRING").length,
     integerType: userFields.filter((uf) => uf.field_type === "INTEGER").length,
     jsonType: userFields.filter((uf) => uf.field_type === "JSON").length,
-    active: userFields.filter((uf) => uf.status === "Active").length
+    active: userFields.filter((uf) => uf.is_active).length
   };
 
   // UI Helpers
   const getFieldTypeColor = (type: string) => ({ 'STRING': 'blue', 'INTEGER': 'green', 'JSON': 'purple' }[type] || 'default');
   const getMandatoryColor = (mandatory: boolean) => mandatory ? 'red' : 'green';
-  const getStatusColor = (status: string) => ({ 'Active': 'green', 'Inactive': 'red' }[status] || 'default');
+  const getStatusColor = (status: string) => ({ 'ACTIVE': 'green', 'INACTIVE': 'red' }[status] || 'default');
   const getStatusIcon = (status: string) => ({ 'Active': <CheckCircleOutlined />, 'Inactive': <CloseCircleOutlined /> }[status]);
 
   const filteredUserFields = userFields.filter((field) => {
@@ -391,12 +317,12 @@ export default function UserFieldsList() {
           <Tag color={getMandatoryColor(record.is_mandatory)}>
             {record.is_mandatory ? 'Mandatory' : 'Optional'}
           </Tag>
-          <Tag color={getStatusColor(record.status || 'Active')} icon={getStatusIcon(record.status || 'Active')}>
-            {record.status || 'Active'}
+          <Tag color={getStatusColor(record.is_active ? "ACTIVE" : "INACTIVE")} icon={getStatusIcon(record.is_active ? "ACTIVE" : "INACTIVE")}>
+            {record.is_active ? "ACTIVE" : "INACTIVE"}
           </Tag>
-          {record.createdAt && (
+          {record.created_at && (
             <div style={{ fontSize: '12px', color: '#666' }}>
-              <CalendarOutlined /> Created: {dayjs(record.createdAt).format('MMM D, YYYY')}
+              <CalendarOutlined /> Created: {dayjs(record.created_at).format('MMM D, YYYY')}
             </div>
           )}
         </Space>
@@ -581,8 +507,8 @@ export default function UserFieldsList() {
                   {userFields.slice(0, 5).map(field => (
                     <Timeline.Item 
                       key={field.id} 
-                      color={getStatusColor(field.status || 'Active')} 
-                      dot={getStatusIcon(field.status || 'Active')}
+                      color={getStatusColor(field.is_active ? "ACTIVE" : "INACTIVE")} 
+                      dot={getStatusIcon(field.is_active ? "ACTIVE" : "INACTIVE")}
                     >
                       <Space direction="vertical" size={0}>
                         <div style={{ fontWeight: 'bold' }}>{field.field_name}</div>

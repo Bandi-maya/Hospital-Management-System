@@ -68,6 +68,9 @@ export default function TokenManagement() {
     const dd = String(date.getDate()).padStart(2, '0');
 
     delete record.updated_at
+    delete record.created_at
+    delete record.patient
+    delete record.doctor
 
     const formattedDate = `${yyyy}-${mm}-${dd}`;
     PutApi("/tokens", { ...record, doctor_id: user?.id, appointment_date: formattedDate })

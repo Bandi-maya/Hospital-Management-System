@@ -85,7 +85,7 @@ export default function Prescriptions() {
     Promise.all([
       getApi('/medicines'),
       getApi('/lab-tests'),
-      getApi("/users?user_type_id=2"),
+      getApi("/users?user_type=DOCTOR"),
       getApi('/surgery-type'),
     ]).then(([data, data1, data2, data3]) => {
       if (!data.error) {

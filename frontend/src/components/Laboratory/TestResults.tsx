@@ -71,7 +71,7 @@ export default function TestResults() {
   const loginData = JSON.parse(localStorage.getItem("loginData") || "{}");
 
   async function loadPatients() {
-    await getApi("/users?user_type_id=2")
+    await getApi("/users?user_type=PATIENT")
       .then((data) => {
         if (!data?.error) {
           setPatients(data);

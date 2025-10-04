@@ -157,7 +157,7 @@ export const countries = [
     "Zimbabwe",
 ];
 
-export default function AddPatient({ onAddPatient }: AddPatientProps) {
+export default function AddNurse({ onAddPatient }: AddPatientProps) {
     const navigate = useNavigate();
 
     const [form] = Form.useForm();
@@ -168,7 +168,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         getApi("/user-fields")
             .then((data) => {
                 if (!data?.error) {
-                    setExtraFields(data.filter((field) => field.user_type === 3));
+                    setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === 'NURSE'));
                 }
                 else {
                     toast.error("Error fetching doctors: " + data.error);

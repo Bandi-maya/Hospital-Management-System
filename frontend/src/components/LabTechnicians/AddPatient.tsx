@@ -182,7 +182,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
     }
 
     function getDoctors() {
-        getApi(`/users?user_type_id=4`)
+        getApi(`/users?user_type=DOCTOR`)
             .then((data) => {
                 if (!data?.error) {
                     setDoctorList(data);

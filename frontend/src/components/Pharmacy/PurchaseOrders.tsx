@@ -113,7 +113,7 @@ export default function PurchaseOrders() {
   };
 
   const fetchPatients = () => {
-    getApi("/users?user_type_id=2")
+    getApi("/users?user_type=DOCTOR")
       .then((res) => {
         if (!res.error) {
           setPatients(res);

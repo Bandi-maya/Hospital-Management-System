@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -59,12 +59,7 @@ export default function DoctorManagement() {
     department_id: "",
     date_of_birth: "",
     gender: "",
-    extra_fields: {
-      first_name: "",
-      last_name: "",
-      experience: 0,
-      specialization: "",
-    },
+    extra_fields: {},
     email: "",
     phone_no: "",
   });
@@ -72,6 +67,26 @@ export default function DoctorManagement() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [specializationFilter, setSpecializationFilter] = useState("all");
+  const [extraFields, setExtraFields] = useState<any>([])
+  const userTypeId = useMemo(() => {
+    return extraFields?.[0]?.user_type
+  }, [extraFields])
+
+  function getExtraFields() {
+    getApi("/user-fields")
+      .then((data) => {
+        if (!data?.error) {
+          setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === "DOCTOR"));
+        }
+        else {
+          toast.error("Error fetching doctors: " + data.error);
+          console.error("Error fetching doctors:", data.error);
+        }
+      }).catch((error) => {
+        toast.error("Error fetching doctors");
+        console.error("Error deleting doctors:", error);
+      });
+  }
 
   function loadDepartments() {
     getApi('/departments')
@@ -91,7 +106,7 @@ export default function DoctorManagement() {
 
   function loadData() {
     setLoading(true)
-    getApi('/users?user_type_id=1')
+    getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
           setDoctors(data);
@@ -109,6 +124,7 @@ export default function DoctorManagement() {
   useEffect(() => {
     loadData()
     loadDepartments()
+    getExtraFields()
   }, []);
 
   const simulateLoading = () => {
@@ -118,12 +134,6 @@ export default function DoctorManagement() {
 
   const handleOpenModal = (doctor = null) => {
     if (doctor) {
-      const date = new Date(doctor.dateOfBirth);
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      const formattedDate = `${yyyy}-${mm}-${dd}`;
-
       setSelectedDoctor(doctor);
       setForm({
         address: {
@@ -134,14 +144,9 @@ export default function DoctorManagement() {
           zip_code: doctor.address.zip_code,
         },
         department_id: doctor.department_id,
-        date_of_birth: formattedDate,
+        date_of_birth: doctor.date_of_birth.split("T")[0],
         gender: doctor.gender,
-        extra_fields: {
-          first_name: doctor.extra_fields.fields_data.first_name,
-          last_name: doctor.extra_fields.fields_data.last_name,
-          experience: doctor.extra_fields?.experience || 0,
-          specialization: doctor.extra_fields?.specialization || "",
-        },
+        extra_fields: doctor.extra_fields.fields_data,
         email: doctor.email,
         phone_no: doctor.phone_no,
       });
@@ -158,12 +163,7 @@ export default function DoctorManagement() {
         date_of_birth: "",
         department_id: "",
         gender: "",
-        extra_fields: {
-          first_name: "",
-          last_name: "",
-          experience: 0,
-          specialization: "",
-        },
+        extra_fields: {},
         email: "",
         phone_no: "",
       });
@@ -174,7 +174,7 @@ export default function DoctorManagement() {
   const handleSubmit = () => {
     simulateLoading();
 
-    if (!form.extra_fields.first_name || !form.extra_fields.last_name || !form.gender || !form.date_of_birth || !form.address.city || !form.address.state || !form.address.zip_code || !form.address.country || !form.extra_fields.specialization || !form.extra_fields.experience || !form.email || !form.phone_no) {
+    if (!form.gender || !form.date_of_birth || !form.address.city || !form.address.state || !form.address.zip_code || !form.address.country || !form.email || !form.phone_no) {
       toast.error("Please fill in all fields");
       setIsLoading(false);
       return;
@@ -198,7 +198,7 @@ export default function DoctorManagement() {
           setIsLoading(false);
         })
     } else {
-      PostApi(`/users`, { ...form, user_type_id: 1, name: form.extra_fields.first_name + " " + form.extra_fields.last_name, age: 10, username: form.email })
+      PostApi(`/users`, { ...form, user_type_id: userTypeId, name: form.extra_fields?.['first_name'] + " " + form.extra_fields?.['last_name'], age: 10, username: form.email })
         .then((data) => {
           if (!data?.error) {
             toast.success("Doctor created successfully!");
@@ -253,14 +253,14 @@ export default function DoctorManagement() {
   };
 
   const filteredDoctors = doctors.filter((d) => {
-    const matchesSearch = 
+    const matchesSearch =
       d.name?.toLowerCase().includes(search.toLowerCase()) ||
       d.extra_fields?.specialization?.toLowerCase().includes(search.toLowerCase()) ||
       d.email?.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesSpecialization = specializationFilter === "all" || 
+
+    const matchesSpecialization = specializationFilter === "all" ||
       d.extra_fields?.specialization === specializationFilter;
-    
+
     return matchesSearch && matchesSpecialization;
   });
 
@@ -280,7 +280,7 @@ export default function DoctorManagement() {
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Doctor Management</h1>
             <p className="text-gray-600 mt-1 text-base">Manage and track all healthcare professionals</p>
           </div>
-          <Button 
+          <Button
             onClick={() => handleOpenModal()}
             className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700 shrink-0"
             size="lg"
@@ -366,8 +366,8 @@ export default function DoctorManagement() {
               </div>
             </div>
             <div className="w-full lg:w-56">
-              <Select 
-                value={specializationFilter} 
+              <Select
+                value={specializationFilter}
                 onChange={setSpecializationFilter}
                 className="w-full h-12 [&_.ant-select-selector]:h-12 [&_.ant-select-selection-item]:leading-10"
                 placeholder="All Specializations"
@@ -408,8 +408,8 @@ export default function DoctorManagement() {
               <Stethoscope className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg font-medium mb-2">No doctors found</p>
               <p className="text-gray-400 text-sm max-w-sm mx-auto">
-                {search || specializationFilter !== "all" 
-                  ? "Try adjusting your search or filters" 
+                {search || specializationFilter !== "all"
+                  ? "Try adjusting your search or filters"
                   : "Get started by adding your first doctor"
                 }
               </p>
@@ -427,25 +427,25 @@ export default function DoctorManagement() {
                             <User className="w-4 h-4 text-blue-500 shrink-0" />
                             <span className="truncate">Dr. {doctor.name}</span>
                           </h3>
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className="mt-2 bg-blue-50 text-blue-700 border-blue-200 text-xs font-medium px-2 py-1"
                           >
                             {doctor.extra_fields?.specialization || "General Medicine"}
                           </Badge>
                         </div>
                         <div className="flex gap-1 ml-3 shrink-0">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleOpenModal(doctor)}
                             className="h-8 w-8 p-0 hover:bg-blue-50 hover:border-blue-200"
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleDelete(doctor.id!)}
                             className="h-8 w-8 p-0 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
                           >
@@ -453,7 +453,7 @@ export default function DoctorManagement() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       {/* Details */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-3 text-gray-600">
@@ -505,35 +505,28 @@ export default function DoctorManagement() {
                 </div>
               </div>
             </CardHeader>
-            
+
             <div className="flex-1 overflow-y-auto">
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                   {/* Personal Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Personal Information</h3>
-                    
-                    <div className="space-y-3">
-                      <Label htmlFor="first_name" className="text-sm font-medium text-gray-700">First Name *</Label>
-                      <Input
-                        id="first_name"
-                        value={form.extra_fields.first_name}
-                        onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, first_name: e.target.value } })}
-                        placeholder="Enter first name"
-                        className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-                      />
-                    </div>
 
-                    <div className="space-y-3">
-                      <Label htmlFor="last_name" className="text-sm font-medium text-gray-700">Last Name *</Label>
-                      <Input
-                        id="last_name"
-                        value={form.extra_fields.last_name}
-                        onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, last_name: e.target.value } })}
-                        placeholder="Enter last name"
-                        className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-                      />
-                    </div>
+                    {
+                      extraFields.map((field) => {
+                        return <div className="space-y-3">
+                          <Label htmlFor={field.field_name} className="text-sm font-medium text-gray-700">{field.field_name} *</Label>
+                          <Input
+                            id={field.field_name}
+                            value={form.extra_fields?.[field.field_name]}
+                            onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, [field.field_name]: e.target.value } })}
+                            placeholder={`Enter ${field.field_name}`}
+                            className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
+                          />
+                        </div>
+                      })
+                    }
 
                     <div className="space-y-3">
                       <Label htmlFor="date_of_birth" className="text-sm font-medium text-gray-700">Date Of Birth *</Label>
@@ -568,7 +561,7 @@ export default function DoctorManagement() {
                   {/* Professional Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Professional Information</h3>
-                    
+
                     <div className="space-y-3">
                       <Label htmlFor="department_id" className="text-sm font-medium text-gray-700">Department *</Label>
                       <Select
@@ -582,48 +575,12 @@ export default function DoctorManagement() {
                         popupMatchSelectWidth={false}
                       />
                     </div>
-
-                    <div className="space-y-3">
-                      <Label htmlFor="specialization" className="text-sm font-medium text-gray-700">Specialization *</Label>
-                      <Select
-                        showSearch
-                        placeholder="Select specialization"
-                        optionFilterProp="children"
-                        value={form.extra_fields.specialization || undefined}
-                        onChange={(value) => setForm({ ...form, extra_fields: { ...form.extra_fields, specialization: value } })}
-                        filterOption={(input, option) =>
-                          (option?.children as unknown as string)
-                            .toLowerCase()
-                            .includes(input.toLowerCase())
-                        }
-                        className="w-full [&_.ant-select-selector]:h-11 [&_.ant-select-selection-item]:leading-9"
-                        dropdownStyle={{ minWidth: '250px' }}
-                        popupMatchSelectWidth={false}
-                      >
-                        {SPECIALIZATIONS.map((s) => (
-                          <Option key={s} value={s}>{s}</Option>
-                        ))}
-                      </Select>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label htmlFor="experience" className="text-sm font-medium text-gray-700">Experience (years) *</Label>
-                      <InputNumber
-                        id="experience"
-                        min={0}
-                        max={50}
-                        value={(form as any).extra_fields.experience || 0}
-                        onChange={(value) => setForm({ ...form, extra_fields: { ...form.extra_fields, experience: value || 0 } })}
-                        className="w-full [&_.ant-input-number]:w-full [&_.ant-input-number-input]:h-11"
-                        controls={false}
-                      />
-                    </div>
                   </div>
 
                   {/* Contact Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Contact Information</h3>
-                    
+
                     <div className="space-y-3">
                       <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email *</Label>
                       <Input
@@ -651,7 +608,7 @@ export default function DoctorManagement() {
                   {/* Address Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Address Information</h3>
-                    
+
                     <div className="space-y-3">
                       <Label htmlFor="street" className="text-sm font-medium text-gray-700">Street *</Label>
                       <Input
@@ -717,15 +674,15 @@ export default function DoctorManagement() {
             {/* Footer Actions */}
             <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 sticky bottom-0">
               <div className="flex justify-end gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsModalOpen(false)} 
+                <Button
+                  variant="outline"
+                  onClick={() => setIsModalOpen(false)}
                   className="h-11 px-6 text-base border-gray-300 hover:bg-gray-50"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleSubmit} 
+                <Button
+                  onClick={handleSubmit}
                   disabled={isLoading}
                   className="h-11 px-8 text-base bg-blue-600 hover:bg-blue-700"
                 >

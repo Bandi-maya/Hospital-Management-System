@@ -370,6 +370,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";  // you need DeleteApi or something similar
+import { Ward } from "./WardStatus";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -378,10 +379,10 @@ interface WardAllocation {
   id: number;
   patient_name: string;
   ward_id: number;
-  ward_name?: string;   // optionally included by backend
+  ward: Ward;
   bed_no: number;
   admission_date: string;
-  status: string;
+  status: "AVAILABLE" | "UNAVAILABLE";
   insurance?: {
     policyNumber: string;
     provider: string;
@@ -397,17 +398,24 @@ type ModalInfo = {
 
 export default function WardAllocations() {
   const [data, setData] = useState<WardAllocation[]>([]);
-  const [wards, setWards] = useState<{ id: number; name: string }[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
   const [modalInfo, setModalInfo] = useState<ModalInfo>({
     type: null,
     record: null,
   });
   const [form] = Form.useForm();
 
+
   const [searchText, setSearchText] = useState("");
   const [filterWard, setFilterWard] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState([])
+  const [selectedBeds, setSelectedBeds] = useState([]);
+
+  const handleWardChange = (wardId) => {
+    const selectedWard = wards.find((w) => w.id === wardId);
+    setSelectedBeds((selectedWard?.beds || []).filter((bed) => bed.status === 'AVAILABLE'));
+  };
 
   useEffect(() => {
     loadInitialData();
@@ -430,7 +438,7 @@ export default function WardAllocations() {
 
   const loadPatients = async () => {
     try {
-      const wardRes = await getApi("/users?user_type_id=2");
+      const wardRes = await getApi("/users?user_type=PATIENT");
       if (!wardRes.error) {
         setPatients(wardRes);
       }
@@ -721,7 +729,7 @@ export default function WardAllocations() {
                 label="Ward"
                 rules={[{ required: true }]}
               >
-                <Select>
+                <Select onChange={handleWardChange} >
                   {wards.map((w) => (
                     <Option key={w.id} value={w.id}>
                       {w.name}
@@ -730,11 +738,17 @@ export default function WardAllocations() {
                 </Select>
               </Form.Item>
               <Form.Item
-                name="bed_no"
+                name="bed_id"
                 label="Bed Number"
                 rules={[{ required: true }]}
               >
-                <Input type="number" />
+                <Select placeholder="Select a bed">
+                  {selectedBeds.map((bed) => (
+                    <Option key={bed.id} value={bed.id}>
+                      {bed.bed_no}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
               <Form.Item
                 name="price"

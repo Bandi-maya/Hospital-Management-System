@@ -35,8 +35,8 @@ const { Option } = Select;
 
 interface Token {
   id: number;
-  patient: string;
-  doctor: string;
+  patient: any;
+  doctor: any;
   token_number: number;
   status: "Pending" | "Confirmed" | "Completed" | "Cancelled";
   date: string;
@@ -54,7 +54,7 @@ export default function TokenCalendarView() {
   const [departments, setDepartments] = useState([]);
 
   function getDoctors() {
-    getApi('/users?user_type_id=2')
+    getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
           setDoctors(data);
@@ -326,13 +326,13 @@ export default function TokenCalendarView() {
                               <div className="flex items-center space-x-2">
                                 <UserOutlined className="text-gray-400" />
                                 <span className="text-gray-700">
-                                  <strong>Patient:</strong> {token.patient}
+                                  <strong>Patient:</strong> {token.patient.name}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <UserOutlined className="text-gray-400" />
                                 <span className="text-gray-700">
-                                  <strong>Doctor:</strong> {token.doctor}
+                                  <strong>Doctor:</strong> {token.doctor.name}
                                 </span>
                               </div>
                               {token.department && (

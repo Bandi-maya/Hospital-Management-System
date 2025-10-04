@@ -36,7 +36,7 @@ export default function CreateToken() {
   });
 
   function getPatients() {
-    getApi('/users?user_type_id=2')
+    getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
           setPatients(data)
@@ -52,7 +52,7 @@ export default function CreateToken() {
   }
 
   function getDoctors() {
-    getApi('/users?user_type_id=1')
+    getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
           setDoctors(data)

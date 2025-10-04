@@ -128,8 +128,8 @@ export default function SurgeryList() {
             getApi('/surgery'),
             getApi('/surgery-type'),
             getApi('/operation-theatre'),
-            getApi('/users?user_type_id=2'),
-            getApi('/users?user_type_id=1') // Doctors
+            getApi('/users?user_type=PATIENT'),
+            getApi('/users?user_type=DOCTOR') // Doctors
         ]).then(([surgeriesData, typesData, theatresData, patientsData, doctorsData]) => {
             if (!surgeriesData?.error) setSurgeries(surgeriesData);
             if (!typesData?.error) setSurgeryTypes(typesData);

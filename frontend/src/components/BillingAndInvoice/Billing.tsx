@@ -178,8 +178,8 @@ export default function BillingPage() {
       getApi("/medicines"),
       getApi("/surgery"),
       getApi("/lab-tests"),
-      getApi("/users?user_type_id=2"),
-      getApi("/users?user_type_id=3"),
+      getApi("/users?user_type=PATIENT"),
+      getApi("/users?user_type=DOCTOR"),
     ])
       .then(([meds, surgeriesRes, testsRes, pats, docs]) => {
         if (!meds.error) setInventory(meds);

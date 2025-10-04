@@ -87,23 +87,19 @@ const { Search } = Input;
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
 
-interface Ward {
+export interface Ward {
   id: string;
   name: string;
   type: string;
   capacity: number;
-  occupied: number;
   description?: string;
-  status: "available" | "full" | "critical";
+  status: "ACTIVE" | "INACTIVE";
   location?: string;
+  is_active: boolean;
   phone?: string;
   email?: string;
   beds?: any;
-  headNurse?: string;
   specialization?: string;
-  equipment?: string[];
-  rating?: number;
-  lastCleaned?: string;
   notes?: string;
 }
 
@@ -340,8 +336,8 @@ export default function WardStatus() {
     totalOccupied: wards.reduce((sum, ward) => sum + ward.beds.filter((bed) => bed.status !== "ACTIVE").length, 0),
     availableBeds: wards.reduce((sum, ward) => sum + ward.beds.filter((bed) => bed.status === "ACTIVE").length, 0),
     occupancyRate: wards.reduce((sum, ward) => sum + ward.capacity, 0) > 0 ?
-      (wards.reduce((sum, ward) => sum + ward.occupied, 0) / wards.reduce((sum, ward) => sum + ward.capacity, 0)) * 100 : 0,
-    criticalWards: wards.filter(ward => ward.status === 'critical').length,
+      (wards.reduce((sum, ward) => sum + (ward.beds ?? []).filter((bed) => bed.status === "OCCUPIED").length, 0) / wards.reduce((sum, ward) => sum + ward.capacity, 0)) * 100 : 0,
+    // criticalWards: wards.filter(ward => ward.status === 'critical').length,
     fullWards: wards.filter(ward => ward.capacity === ward.beds.filter((bed) => bed.status === "ACTIVE").length).length
   };
 
@@ -396,10 +392,10 @@ export default function WardStatus() {
       render: (capacity: number, record: Ward) => (
         <Space direction="vertical" size={0}>
           <div>
-            <BellOutlined /> {record.occupied}/{capacity}
+            <BellOutlined /> {(record.beds ?? []).filter((bed) => bed.status === "OCCUPIED").length}/{capacity}
           </div>
           <Progress
-            percent={Math.round((record.occupied / capacity) * 100)}
+            percent={Math.round((((record.beds ?? []).filter((bed) => bed.status === "OCCUPIED").length) / capacity) * 100)}
             size="small"
             showInfo={false}
           />
@@ -450,8 +446,8 @@ export default function WardStatus() {
         <Space>
           {getStatusIcon(record.status)}
           <Tag color={
-            record.status === "available" ? "green" :
-              record.status === "critical" ? "orange" : "red"
+            record.status === "ACTIVE" ? "green" :
+              record.status === "INACTIVE" ? "orange" : "red"
           }>
             {/* {record.status.toUpperCase()} */}
           </Tag>
@@ -485,6 +481,7 @@ export default function WardStatus() {
               icon={<EditOutlined />}
               shape="circle"
               onClick={() => {
+                record.status = record.is_active ? 'ACTIVE' : "INACTIVE"
                 setEditingWard(record);
                 form.setFieldsValue(record);
                 setModalVisible(true);
@@ -606,7 +603,7 @@ export default function WardStatus() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={8} lg={4}>
+        {/* <Col xs={24} sm={12} md={8} lg={4}>
           <Card>
             <Statistic
               title={<Space><WarningOutlined /> Critical Wards</Space>}
@@ -614,7 +611,7 @@ export default function WardStatus() {
               valueStyle={{ color: '#faad14' }}
             />
           </Card>
-        </Col>
+        </Col> */}
         <Col xs={24} sm={12} md={8} lg={4}>
           <Card>
             <Statistic
@@ -710,7 +707,7 @@ export default function WardStatus() {
                         </Option>
                       ))}
                     </Select>
-                    <Select
+                    {/* <Select
                       value={sortOrder}
                       style={{ width: 200 }}
                       onChange={setSortOrder}
@@ -734,7 +731,7 @@ export default function WardStatus() {
                       <Button icon={<ExportOutlined />} onClick={handleExportData}>
                         Export
                       </Button>
-                    </Space>
+                    </Space> */}
                   </div>
                 </Card>
 
@@ -1126,20 +1123,20 @@ export default function WardStatus() {
             }>
               <Space direction="vertical" style={{ width: '100%' }}>
                 <div>
-                  <strong>{viewingWard.occupied}</strong> / <strong>{viewingWard.capacity}</strong> beds occupied
+                  <strong>{(viewingWard.beds ?? []).filter((bed) => bed.status === 'OCCUPIED').length}</strong> / <strong>{viewingWard.capacity}</strong> beds occupied
                 </div>
                 <Progress
-                  percent={Math.round((viewingWard.occupied / viewingWard.capacity) * 100)}
+                  percent={Math.round(((viewingWard.beds ?? []).filter((bed) => bed.status === 'OCCUPIED').length / viewingWard.capacity) * 100)}
                   status={
-                    viewingWard.status === "full"
+                    viewingWard.capacity === (viewingWard.beds ?? []).filter((bed) => bed.status === 'OCCUPIED').length
                       ? "exception"
-                      : viewingWard.status === "critical"
-                        ? "active"
-                        : "normal"
+                      // : viewingWard.status === "critical"
+                      //   ? "active"
+                      : "normal"
                   }
                 />
                 <div>
-                  <Tag color={viewingWard.status === "available" ? "green" : viewingWard.status === "critical" ? "orange" : "red"}>
+                  <Tag color={viewingWard.capacity === (viewingWard.beds ?? []).filter((bed) => bed.status === 'OCCUPIED').length ? "green" : "red"}>
                     {getStatusIcon(viewingWard.status)}
                     {viewingWard.status.toUpperCase()}
                   </Tag>
@@ -1208,7 +1205,7 @@ export default function WardStatus() {
               </Descriptions.Item>
             )}
 
-            {viewingWard.lastCleaned && (
+            {/* {viewingWard.lastCleaned && (
               <Descriptions.Item label={
                 <Space>
                   <CalendarOutlined />
@@ -1217,7 +1214,7 @@ export default function WardStatus() {
               }>
                 {new Date(viewingWard.lastCleaned).toLocaleString()}
               </Descriptions.Item>
-            )}
+            )} */}
           </Descriptions>
         )}
       </Modal>

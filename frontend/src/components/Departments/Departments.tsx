@@ -86,11 +86,9 @@ export interface DepartmentInterface {
   id: number;
   name: string;
   description: string;
-  status?: "ACTIVE" | "INACTIVE";
-  created_at?: string;
-  updated_at?: string;
-  doctorCount?: number;
-  patientCount?: number;
+  is_active: boolean;
+  created_at: any;
+  updated_at: any;
 }
 
 interface DepartmentStats {
@@ -151,7 +149,8 @@ export default function Department() {
         id: department.id,
         name: department.name,
         description: department.description,
-        status: department.status || "ACTIVE"
+        status: department.is_active ? "ACTIVE" : "INACTIVE",
+        is_active: department.is_active || true
       });
     } else {
       setSelectedDepartment(null);
@@ -165,6 +164,8 @@ export default function Department() {
 
   const handleSubmit = async (values: any) => {
     setIsLoading(true);
+    values.is_active = values.status === "ACTIVE";
+    delete values.status;
 
     if (selectedDepartment) {
       PutApi(`/departments`, { ...values, id: selectedDepartment.id })
@@ -220,24 +221,26 @@ export default function Department() {
 
   const stats: DepartmentStats = {
     total: departments.length,
-    active: departments.filter((d) => d.status === "ACTIVE").length,
-    inactive: departments.filter((d) => d.status === "INACTIVE").length,
+    active: departments.filter((d) => d.is_active).length,
+    inactive: departments.filter((d) => !d.is_active).length,
     recentAdded: departments.filter((d) =>
       dayjs(d.created_at).isAfter(dayjs().subtract(7, 'day'))
     ).length,
-    totalDoctors: departments.reduce((acc, d) => acc + (d.doctorCount || 0), 0),
-    totalPatients: departments.reduce((acc, d) => acc + (d.patientCount || 0), 0)
+    totalDoctors: 0,
+    totalPatients: 0
+    // totalDoctors: departments.reduce((acc, d) => acc + (d.doctorCount || 0), 0),
+    // totalPatients: departments.reduce((acc, d) => acc + (d.patientCount || 0), 0)
   };
 
   // UI Helpers
-  const getStatusColor = (status: string) => ({ 'Active': 'green', 'Inactive': 'red' }[status] || 'default');
+  const getStatusColor = (status: string) => ({ 'ACTIVE': 'green', 'INACTIVE': 'red' }[status] || 'default');
   const getStatusIcon = (status: string) => ({ 'Active': <CheckCircleOutlined />, 'Inactive': <CloseCircleOutlined /> }[status]);
 
   const filteredDepartments = departments.filter((department) => {
     const matchesSearch = searchText === "" ||
       department.name.toLowerCase().includes(searchText.toLowerCase()) ||
       department.description.toLowerCase().includes(searchText.toLowerCase());
-    const matchesStatus = statusFilter === "all" || department.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || department.is_active === (statusFilter === "ACTIVE");
     return matchesSearch && matchesStatus;
   });
 
@@ -251,15 +254,15 @@ export default function Department() {
             size="large"
             icon={<ClusterOutlined />}
             style={{
-              backgroundColor: record.status === 'ACTIVE' ? '#52c41a' : '#f5222d'
+              backgroundColor: record.is_active ? '#52c41a' : '#f5222d'
             }}
           />
           <div>
             <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{record.name}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>{record.description}</div>
             <div style={{ fontSize: '12px', color: '#999' }}>
-              <TeamOutlined /> {record.doctorCount || 0} doctors •
-              <UserOutlined style={{ marginLeft: '8px' }} /> {record.patientCount || 0} patients
+              {/* <TeamOutlined /> {record.doctorCount || 0} doctors •
+              <UserOutlined style={{ marginLeft: '8px' }} /> {record.patientCount || 0} patients */}
             </div>
           </div>
         </Flex>
@@ -270,8 +273,8 @@ export default function Department() {
       key: 'status',
       render: (_, record) => (
         <Space direction="vertical">
-          <Tag color={getStatusColor(record.status || 'Active')} icon={getStatusIcon(record.status || 'Active')} style={{ fontWeight: 'bold' }}>
-            {record.status || 'Active'}
+          <Tag color={getStatusColor(record.is_active ? "ACTIVE" : "INACTIVE")} icon={getStatusIcon(record.is_active ? "ACTIVE" : "INACTIVE")} style={{ fontWeight: 'bold' }}>
+            {record.is_active ? "ACTIVE" : "INACTIVE"}
           </Tag>
           {record.created_at && (
             <div style={{ fontSize: '12px', color: '#666' }}>
@@ -458,8 +461,8 @@ export default function Department() {
                   {departments.slice(0, 5).map(department => (
                     <Timeline.Item
                       key={department.id}
-                      color={getStatusColor(department.status || 'Active')}
-                      dot={getStatusIcon(department.status || 'Active')}
+                      color={getStatusColor(department.is_active ? "ACTIVE" : "INACTIVE")}
+                      dot={getStatusIcon(department.is_active ? "ACTIVE" : "INACTIVE")}
                     >
                       <Space direction="vertical" size={0}>
                         <div style={{ fontWeight: 'bold' }}>{department.name}</div>
@@ -467,8 +470,8 @@ export default function Department() {
                           {department.description}
                         </div>
                         <div style={{ color: '#999', fontSize: '12px' }}>
-                          <TeamOutlined /> {department.doctorCount || 0} doctors •
-                          <UserOutlined style={{ marginLeft: '8px' }} /> {department.patientCount || 0} patients
+                          {/* <TeamOutlined /> {department.doctorCount || 0} doctors •
+                          <UserOutlined style={{ marginLeft: '8px' }} /> {department.patientCount || 0} patients */}
                         </div>
                       </Space>
                     </Timeline.Item>

@@ -19,7 +19,7 @@ export default function PatientList() {
   const navigate = useNavigate();
 
   const loadPatients = async () => {
-    await getApi(`/users?user_type_id=4`)
+    await getApi(`/users?DOCTOR=LABTECHNICIAN`)
       .then((data) => {
         if (!data?.error) {
           setPatients(data);
