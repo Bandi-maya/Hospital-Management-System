@@ -1,25 +1,25 @@
 import { useState, useEffect } from "react";
-import { 
-  Table, 
-  Input, 
-  Button, 
-  Modal, 
-  Form, 
-  Select, 
-  Card, 
-  Space, 
-  Tag, 
-  Tooltip, 
+import {
+  Table,
+  Input,
+  Button,
+  Modal,
+  Form,
+  Select,
+  Card,
+  Space,
+  Tag,
+  Tooltip,
   Popconfirm,
   message,
   Descriptions,
   Divider
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { 
-  SearchOutlined, 
-  PlusOutlined, 
-  EditOutlined, 
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
   DeleteOutlined,
   EyeOutlined,
   ReloadOutlined,
@@ -36,7 +36,7 @@ import {
   ExperimentOutlined
 } from "@ant-design/icons";
 import { toast } from "sonner";
-import { getApi, PostApi, PutApi } from "@/ApiService";
+import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 
 const { Option } = Select;
 
@@ -55,6 +55,7 @@ interface Prescription {
   doctor_id: string;
   medicines: MedicineItem[];
   tests: TestItem[];
+  surgeries: TestItem[] | any;
   notes: string;
   patient?: any;
   doctor?: any;
@@ -67,6 +68,7 @@ export default function Prescriptions() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
+  const [surgeries, setSurgeries] = useState<any[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,8 +85,9 @@ export default function Prescriptions() {
     Promise.all([
       getApi('/medicines'),
       getApi('/lab-tests'),
-      getApi("/users?user_type_id=2")
-    ]).then(([data, data1, data2]) => {
+      getApi("/users?user_type_id=2"),
+      getApi('/surgery-type'),
+    ]).then(([data, data1, data2, data3]) => {
       if (!data.error) {
         setInventory(data)
       }
@@ -102,6 +105,12 @@ export default function Prescriptions() {
       }
       else {
         toast.error(data2.error)
+      }
+      if (!data3.error) {
+        setSurgeries(data3)
+      }
+      else {
+        toast.error(data3.error)
       }
     }).catch((err) => {
       console.error("Error: ", err)
@@ -136,19 +145,20 @@ export default function Prescriptions() {
   }
 
   const handleAddOrUpdate = (values: any) => {
-    values.doctor_id = loginData?.id || 1;
-    
-    if (!values.patient_id || !values.doctor_id || !values.medicines || values.medicines.length === 0) {
+    // values.doctor_id = loginData?.id || 1;
+    console.log(values)
+
+    if (!values.patient_id) {
       toast.error("Please fill all required fields");
       return;
     }
 
-    for (let med of values.medicines) {
-      if (!med.medicine_id || med.quantity <= 0) {
-        toast.error("Medicine name and quantity must be valid");
-        return;
-      }
-    }
+    // for (let med of values.medicines) {
+    //   if (!med.medicine_id || med.quantity <= 0) {
+    //     toast.error("Medicine name and quantity must be valid");
+    //     return;
+    //   }
+    // }
 
     if (editingPrescription) {
       PutApi('/prescriptions', { ...editingPrescription, ...values })
@@ -168,14 +178,14 @@ export default function Prescriptions() {
           toast.error("Error occurred while updating prescription.")
         })
     } else {
-      const newPrescription: Prescription|any = {
+      const newPrescription: Prescription | any = {
         patient_id: values.patient_id,
-        doctor_id: 2,
         medicines: values.medicines,
         tests: values.tests || [],
+        surgeries: values.surgeries || [],
         notes: values.notes || "",
       };
-      
+
       PostApi('/prescriptions', newPrescription)
         .then((data) => {
           if (!data.error) {
@@ -195,9 +205,9 @@ export default function Prescriptions() {
   };
 
   const handleAddOrUpdateBilling = (values: any) => {
-    values.doctor_id = loginData?.id || 1;
-    
-    if (!values.patient_id || !values.doctor_id || !values.medicines || values.medicines.length === 0) {
+    // values.doctor_id = loginData?.id || 1;
+
+    if (!values.patient_id || !values.medicines || values.medicines.length === 0) {
       toast.error("Please fill all required fields");
       return;
     }
@@ -212,12 +222,12 @@ export default function Prescriptions() {
     const billingData = {
       prescription_id: selectedPrescription?.id,
       patient_id: values.patient_id,
-      doctor_id: 2,
       medicines: values.medicines,
       tests: values.tests || [],
+      surgeries: values.surgeries || [],
       notes: values.notes || "",
     };
-    
+
     PostApi('/billing', billingData)
       .then((data) => {
         if (!data.error) {
@@ -242,6 +252,7 @@ export default function Prescriptions() {
       patient_id: prescription.patient_id,
       medicines: prescription.medicines || [{ medicine_id: "", quantity: 1 }],
       tests: prescription.tests || [{ test_id: "" }],
+      surgeries: prescription.surgeries ? prescription.surgeries.map((surgery: any) => { return { surgery_id: surgery.surgery.surgery_type_id, id: surgery.id, price: surgery.surgery.price } }) : [{ surgery_id: "" }],
       notes: prescription.notes || "",
     });
     setIsModalOpen(true);
@@ -260,9 +271,19 @@ export default function Prescriptions() {
       cancelText: "No",
       okType: "danger",
       onOk() {
-        // Add delete API call here if available
-        setPrescriptions(prev => prev.filter(p => p.id !== prescription.id));
-        toast.success("Prescription deleted successfully!");
+        DeleteApi("/prescriptions", { id: prescription.id })
+          .then((data) => {
+            if (!data.error) {
+              loadPrescriptions()
+              toast.success("Prescription deleted successfully!");
+            }
+            else {
+              toast.error(data.error)
+            }
+          }).catch(err => {
+            console.error("Error: ", err)
+            toast.error("Error occurred while deleting prescription")
+          })
       }
     });
   };
@@ -477,7 +498,13 @@ export default function Prescriptions() {
             <Button
               type="primary"
               onClick={() => {
-                setSelectedPrescription(record);
+                setSelectedPrescription({
+                  ...record, surgeries: record.surgeries.map((surgery) => {
+                    return {
+                      surgery_id: surgery.surgery.id, id: surgery.id, price: surgery.surgery.price
+                    }
+                  })
+                });
                 setIsBillingModalOpen(true);
               }}
             >
@@ -494,7 +521,7 @@ export default function Prescriptions() {
               okType="danger"
               icon={<CloseCircleOutlined style={{ color: "red" }} />}
             >
-              <Button icon={<DeleteOutlined />} shape="circle" danger />
+              <Button disabled={record?.['is_billed']} icon={<DeleteOutlined />} shape="circle" danger />
             </Popconfirm>
           </Tooltip>
         </Space>
@@ -521,16 +548,14 @@ export default function Prescriptions() {
               <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
                 <SyncOutlined className="w-4 h-4 text-gray-600" />
                 <span className="text-sm text-gray-600">Auto Refresh</span>
-                <div 
-                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
-                    autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                  }`}
+                <div
+                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
                   onClick={() => setAutoRefresh(!autoRefresh)}
                 >
-                  <div 
-                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
-                      autoRefresh ? 'translate-x-4' : 'translate-x-1'
-                    }`}
+                  <div
+                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${autoRefresh ? 'translate-x-4' : 'translate-x-1'
+                      }`}
                   />
                 </div>
               </div>
@@ -543,14 +568,14 @@ export default function Prescriptions() {
             </Tooltip>
 
             <Tooltip title="Add New Prescription">
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />} 
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
                 onClick={() => {
                   setEditingPrescription(null);
                   form.resetFields();
                   setIsModalOpen(true);
-                }} 
+                }}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <RocketOutlined /> Add Prescription
@@ -572,12 +597,12 @@ export default function Prescriptions() {
               </Tag>
             </div>
             <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-              <Input 
-                placeholder="Search by patient, doctor, or notes..." 
-                value={search} 
-                onChange={e => setSearch(e.target.value)} 
-                prefix={<SearchOutlined />} 
-                allowClear 
+              <Input
+                placeholder="Search by patient, doctor, or notes..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                prefix={<SearchOutlined />}
+                allowClear
                 style={{ width: 300 }}
               />
             </div>
@@ -587,18 +612,18 @@ export default function Prescriptions() {
 
       {/* Prescriptions Table */}
       <Card className="shadow-md rounded-lg">
-        <Table 
-          columns={columns} 
-          dataSource={filteredPrescriptions} 
-          rowKey="id" 
-          pagination={{ 
+        <Table
+          columns={columns}
+          dataSource={filteredPrescriptions}
+          rowKey="id"
+          pagination={{
             pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total, range) => 
+            showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} prescriptions`,
-          }} 
-          scroll={{ x: "max-content" }} 
+          }}
+          scroll={{ x: "max-content" }}
           rowClassName="hover:bg-gray-50"
         />
       </Card>
@@ -704,6 +729,43 @@ export default function Prescriptions() {
             )}
           </Form.List>
 
+          <Form.List name="surgeries">
+            {(fields, { add, remove }) => (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-medium">Tests</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                    Add Surgery
+                  </Button>
+                </div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'surgery_id']}
+                    >
+                      <Select placeholder="Select surgery" style={{ width: 200 }}>
+                        {surgeries.map(surgery => (
+                          <Option key={surgery.id} value={surgery.id}>
+                            {surgery.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'price']}
+                      rules={[{ required: true, message: 'Please enter quantity' }]}
+                    >
+                      <Input type="number" placeholder="Price" min={1} />
+                    </Form.Item>
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                  </Space>
+                ))}
+              </>
+            )}
+          </Form.List>
+
           <Form.Item name="notes" label="Notes">
             <Input.TextArea placeholder="Additional notes for the prescription" rows={3} />
           </Form.Item>
@@ -727,9 +789,9 @@ export default function Prescriptions() {
         okText="Add Billing"
         width={700}
       >
-        <Form 
-          form={form} 
-          layout="vertical" 
+        <Form
+          form={form}
+          layout="vertical"
           onFinish={handleAddOrUpdateBilling}
           initialValues={selectedPrescription || {}}
         >
@@ -777,6 +839,43 @@ export default function Prescriptions() {
                     >
                       <Input type="number" placeholder="Quantity" min={1} />
                     </Form.Item>
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                  </Space>
+                ))}
+              </>
+            )}
+          </Form.List>
+          <Form.List name="surgeries">
+            {(fields, { add, remove }) => (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-medium">Medicines</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                    Add Surgery
+                  </Button>
+                </div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'surgery_id']}
+                      rules={[{ required: true, message: 'Please select medicine' }]}
+                    >
+                      <Select placeholder="Select medicine" style={{ width: 200 }}>
+                        {surgeries.map(medicine => (
+                          <Option key={medicine.id} value={medicine.id}>
+                            {medicine.name} - ₹{medicine.price}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    {/* <Form.Item
+                      {...restField}
+                      name={[name, 'price']}
+                      rules={[{ required: true, message: 'Please enter quantity' }]}
+                    >
+                      <Input type="number" disabled placeholder="Price" min={1} />
+                    </Form.Item> */}
                     <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
                   </Space>
                 ))}
