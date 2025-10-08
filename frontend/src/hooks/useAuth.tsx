@@ -118,13 +118,37 @@ export const useAuthProvider = () => {
 
     // Define role-based permissions
     const permissions: Record<UserRole, string[]> = {
-      admin: ['*'], // Admin has all permissions
-      doctor: ['patients:read', 'patients:write', 'nurse:read', 'appointments:read', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write'],
-      nurse: ['patients:read', 'patients:write', 'appointments:read', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write'],
-      patient: ['patients:read'],
-      receptionist: ['patients:read', 'patients:write', 'nurse:read', 'doctor:read', 'lab-technician:read', 'pharmacist:read', 'appointments:read', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write'],
-      pharmacist: ['medicines:read'],
-      lab_technician: ['lab_tests:read']
+      admin: ['*'],
+      doctor: [
+        'patients:read', 'patients:add', 'patients:write', 'nurse:read', "nurse:add", "nurse:read", "receptionist:add", "receptionist:read", "pharmacist:add", "pharmacist:read", "lab-technician:add",
+        'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write',
+        // Added permissions based on menu children
+        'patients:read', 'patients:add', 'patients:write', 'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'tokens:read', 'tokens:write'
+      ],
+      nurse: [
+        'patients:read', 'patients:add', 'patients:write', 'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write',
+        // Added permissions based on menu children
+        'patients:read', 'patients:add', 'patients:write', 'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'tokens:read', 'tokens:write'
+      ],
+      patient: [
+        'patients:read',
+        // Patient does not require any other permissions in the baseItems
+      ],
+      receptionist: [
+        'patients:read', 'patients:add', 'patients:write', 'nurse:read', 'doctor:read', 'lab-technician:read', 'appointments:add', 'pharmacist:read', 'appointments:read', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write',
+        // Added permissions based on menu children
+        'patients:read', 'patients:add', 'patients:write', 'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'tokens:read', 'tokens:write'
+      ],
+      pharmacist: [
+        'medicines:read',
+        // Added permissions based on menu children
+        'medicines:read', 'pharmacy/medicines', 'pharmacy/prescriptions', 'pharmacy/orders'
+      ],
+      lab_technician: [
+        'lab_tests:read',
+        // Added permissions based on menu children
+        'lab_tests:read', 'laboratory/tests', 'laboratory/results', 'laboratory/reports'
+      ]
     };
 
     const userPermissions = permissions[user.user_type.type?.toLowerCase()] || [];

@@ -55,9 +55,9 @@ const createMenuItems = (): MenuItem[] => {
       icon: <UserOutlined />,
       requiredPermission: 'patients:read',
       children: [
-        { key: '/patients', label: 'All Patients', icon: <UserOutlined /> },
-        { key: '/patients/add', label: 'Add Patient', icon: <UserOutlined /> },
-        { key: '/patients/records', label: 'Medical Records', icon: <UserOutlined /> },
+        { key: '/patients', label: 'All Patients', requiredPermission: "patients:read", icon: <UserOutlined /> },
+        { key: '/patients/add', label: 'Add Patient', requiredPermission: "patients:add", icon: <UserOutlined /> },
+        { key: '/patients/records', label: 'Medical Records', requiredPermission: "patients:read", icon: <UserOutlined /> },
       ],
     },
     {
@@ -66,8 +66,8 @@ const createMenuItems = (): MenuItem[] => {
       icon: <UserOutlined />,
       requiredPermission: 'nurse:read',
       children: [
-        { key: '/nurse', label: 'All nurse', icon: <UserOutlined /> },
-        { key: '/nurse/add', label: 'Add Nurse', icon: <UserOutlined /> },
+        { key: '/nurse', label: 'All nurse', requiredPermission: "nurse:read", icon: <UserOutlined /> },
+        { key: '/nurse/add', label: 'Add Nurse', requiredPermission: "nurse:add", icon: <UserOutlined /> },
       ],
     },
     {
@@ -76,8 +76,8 @@ const createMenuItems = (): MenuItem[] => {
       icon: <UserOutlined />,
       requiredPermission: 'receptionist:read',
       children: [
-        { key: '/receptionist', label: 'All reseptionist', icon: <UserOutlined /> },
-        { key: '/receptionist/add', label: 'Add reseptionist', icon: <UserOutlined /> },
+        { key: '/receptionist', label: 'All reseptionist', requiredPermission: "receptionist:read", icon: <UserOutlined /> },
+        { key: '/receptionist/add', label: 'Add reseptionist', requiredPermission: "receptionist:add", icon: <UserOutlined /> },
       ],
     },
     {
@@ -86,8 +86,8 @@ const createMenuItems = (): MenuItem[] => {
       icon: <UserOutlined />,
       requiredPermission: 'lab-technician:read',
       children: [
-        { key: '/lab-technician', label: 'All Lab Technician', icon: <UserOutlined /> },
-        { key: '/lab-technician/add', label: 'Add Lab Technician', icon: <UserOutlined /> },
+        { key: '/lab-technician', label: 'All Lab Technician', requiredPermission: "lab-technician:read", icon: <UserOutlined /> },
+        { key: '/lab-technician/add', label: 'Add Lab Technician', requiredPermission: "lab-technician:add", icon: <UserOutlined /> },
       ],
     },
     {
@@ -96,8 +96,8 @@ const createMenuItems = (): MenuItem[] => {
       icon: <UserOutlined />,
       requiredPermission: 'pharmacist:read',
       children: [
-        { key: '/pharmacist', label: 'All Pharmacist', icon: <UserOutlined /> },
-        { key: '/pharmacist/add', label: 'Add Pharmacist', icon: <UserOutlined /> },
+        { key: '/pharmacist', label: 'All Pharmacist', requiredPermission: "pharmacist:read", icon: <UserOutlined /> },
+        { key: '/pharmacist/add', label: 'Add Pharmacist', requiredPermission: "pharmacist:add", icon: <UserOutlined /> },
       ],
     },
     {
@@ -106,7 +106,7 @@ const createMenuItems = (): MenuItem[] => {
       icon: <TeamOutlined />,
       requiredPermission: 'doctors:read',
       children: [
-        { key: '/doctors', label: 'All Doctors', icon: <TeamOutlined /> },
+        { key: '/doctors', label: 'All Doctors', requiredPermission: "doctor:read", icon: <TeamOutlined /> },
         { key: '/doctors/schedules', label: 'Schedules', icon: <CalendarOutlined /> },
         // { key: '/doctors/specializations', label: 'Specializations', icon: <TeamOutlined /> },
       ],
@@ -117,9 +117,9 @@ const createMenuItems = (): MenuItem[] => {
       icon: <CalendarOutlined />,
       requiredPermission: 'appointments:read',
       children: [
-        { key: '/appointments', label: 'All Appointments', icon: <CalendarOutlined /> },
-        { key: '/appointments/calendar', label: 'Calendar View', icon: <CalendarOutlined /> },
-        { key: '/appointments/book', label: 'Book Appointment', icon: <CalendarOutlined /> },
+        { key: '/appointments', label: 'All Appointments', requiredPermission: "appointments:read", icon: <CalendarOutlined /> },
+        { key: '/appointments/calendar', label: 'Calendar View', requiredPermission: "appointments:read", icon: <CalendarOutlined /> },
+        { key: '/appointments/book', label: 'Book Appointment', requiredPermission: "appointments:add", icon: <CalendarOutlined /> },
       ],
     },
     {
@@ -128,9 +128,9 @@ const createMenuItems = (): MenuItem[] => {
       icon: <CalendarOutlined />,
       requiredPermission: 'tokens:read',
       children: [
-        { key: '/tokens', label: 'All Tokens', icon: <CalendarOutlined /> },
-        { key: '/tokens/calendar', label: 'Calendar View', icon: <CalendarOutlined /> },
-        { key: '/tokens/create', label: 'Create Token', icon: <CalendarOutlined /> },
+        { key: '/tokens', label: 'All Tokens', requiredPermission: "tokens:read", icon: <CalendarOutlined /> },
+        { key: '/tokens/calendar', label: 'Calendar View', requiredPermission: "tokens:read", icon: <CalendarOutlined /> },
+        { key: '/tokens/create', label: 'Create Token', requiredPermission: "tokens:add", icon: <CalendarOutlined /> },
       ],
     },
     {
@@ -139,9 +139,9 @@ const createMenuItems = (): MenuItem[] => {
       icon: <MedicineBoxOutlined />,
       requiredPermission: 'medicines:read',
       children: [
-        { key: '/pharmacy/medicines', label: 'Medicine Inventory', icon: <MedicineBoxOutlined /> },
-        { key: '/pharmacy/prescriptions', label: 'Prescriptions', icon: <FileTextOutlined /> },
-        { key: '/pharmacy/orders', label: 'Purchase Orders', icon: <FileTextOutlined /> },
+        { key: '/pharmacy/medicines', label: 'Medicine Inventory', requiredPermission: "medicines:read", icon: <MedicineBoxOutlined /> },
+        { key: '/pharmacy/prescriptions', label: 'Prescriptions', requiredPermission: "medicines:read", icon: <FileTextOutlined /> },
+        { key: '/pharmacy/orders', label: 'Purchase Orders', requiredPermission: "medicines:read", icon: <FileTextOutlined /> },
       ],
     },
     {
@@ -150,9 +150,9 @@ const createMenuItems = (): MenuItem[] => {
       icon: <ExperimentOutlined />,
       requiredPermission: 'lab_tests:read',
       children: [
-        { key: '/laboratory/tests', label: 'Lab Tests', icon: <ExperimentOutlined /> },
-        { key: '/laboratory/results', label: 'Test Results', icon: <ExperimentOutlined /> },
-        { key: '/laboratory/reports', label: 'Lab Reports', icon: <FileTextOutlined /> },
+        { key: '/laboratory/tests', label: 'Lab Tests', requiredPermission: "lab_tests:read", icon: <ExperimentOutlined /> },
+        { key: '/laboratory/results', label: 'Test Results', requiredPermission: "lab_tests:read", icon: <ExperimentOutlined /> },
+        { key: '/laboratory/reports', label: 'Lab Reports', requiredPermission: "lab_tests:read", icon: <FileTextOutlined /> },
       ],
     },
     {
@@ -161,9 +161,9 @@ const createMenuItems = (): MenuItem[] => {
       icon: <ExperimentOutlined />,
       requiredPermission: 'surgery:read',
       children: [
-        { key: '/surgery/list', label: 'Surgeries', icon: <ExperimentOutlined /> },
-        { key: '/surgery/types', label: 'Surgery Types', icon: <ExperimentOutlined /> },
-        { key: '/surgery/operation-theatres', label: 'Operation Theatres', icon: <FileTextOutlined /> },
+        { key: '/surgery/list', label: 'Surgeries', requiredPermission: "surgery:read", icon: <ExperimentOutlined /> },
+        { key: '/surgery/types', label: 'Surgery Types', requiredPermission: "surgery:read", icon: <ExperimentOutlined /> },
+        { key: '/surgery/operation-theatres', label: 'Operation Theatres', requiredPermission: "surgery:read", icon: <FileTextOutlined /> },
       ],
     },
     {
@@ -172,9 +172,9 @@ const createMenuItems = (): MenuItem[] => {
       icon: <FileTextOutlined />,
       requiredPermission: 'billing:read',
       children: [
-        { key: '/billing', label: 'Billing', icon: <FileTextOutlined /> },
-        { key: '/billing/payments', label: 'Payments', icon: <FileTextOutlined /> },
-        { key: '/billing/insurance', label: 'Insurance Claims', icon: <FileTextOutlined /> },
+        { key: '/billing', label: 'Billing', requiredPermission: "billing:read", icon: <FileTextOutlined /> },
+        { key: '/billing/payments', label: 'Payments', requiredPermission: "billing:read", icon: <FileTextOutlined /> },
+        // { key: '/billing/insurance', label: 'Insurance Claims', requiredPermission: "billing:read", icon: <FileTextOutlined /> },
       ],
     },
     {
@@ -262,6 +262,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
   const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
     return items.filter(item => {
       if (!item.requiredPermission) return true;
+      if (Array.isArray(item?.children ?? [])) {
+        if (item.children) {
+
+          item.children = item.children.filter((child) => hasPermission(child.requiredPermission))
+        }
+      }
       // if (item.requiredPermission === '*') return hasRole('admin');
       return hasPermission(item.requiredPermission);
     }).map(item => ({

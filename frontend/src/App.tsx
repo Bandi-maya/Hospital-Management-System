@@ -48,6 +48,10 @@ import AddReseptionist from "./components/Receptionist/AddReseptionist";
 import ReseptionistList from "./components/Receptionist/ReseptionistList";
 import NurseList from "./components/Nurse/NurseList";
 import AddNurse from "./components/Nurse/AddNurse";
+import TechnicianList from "./components/LabTechnicians/TechnicianList";
+import AddTechnician from "./components/LabTechnicians/AddLabTechnician";
+import PharmacistList from "./components/Pharmacist/PharmacistList";
+import AddPharmacist from "./components/Pharmacist/AddPharmacist";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -193,6 +197,52 @@ const App = () => (
                       <Layout>
                         {/* ✅ No more onAddPatient prop */}
                         <AddReseptionist />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/lab-technician"
+                  element={
+                    <AuthGuard requiredPermission="lab-technician:read">
+                      <Layout>
+                        <TechnicianList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                  <Route
+                  path="/lab-technician/add"
+                  element={
+                    <AuthGuard requiredPermission="lab-technician:read">
+                      <Layout>
+                        {/* ✅ No more onAddPatient prop */}
+                        <AddTechnician />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/pharmacist"
+                  element={
+                    <AuthGuard requiredPermission="pharmacist:read">
+                      <Layout>
+                        <PharmacistList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                  <Route
+                  path="/pharmacist/add"
+                  element={
+                    <AuthGuard requiredPermission="pharmacist:read">
+                      <Layout>
+                        {/* ✅ No more onAddPatient prop */}
+                        <AddPharmacist />
                       </Layout>
                     </AuthGuard>
                   }
