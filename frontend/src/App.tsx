@@ -44,6 +44,10 @@ import Billing from "./components/BillingAndInvoice/Billing";
 import SurgeryList from "./components/Surgery/SurgeriesList";
 import SurgeryType from "./components/Surgery/SurgeryTypes";
 import OperationTheatres from "./components/Surgery/OperationTheatres";
+import AddReseptionist from "./components/Receptionist/AddReseptionist";
+import ReseptionistList from "./components/Receptionist/ReseptionistList";
+import NurseList from "./components/Nurse/NurseList";
+import AddNurse from "./components/Nurse/AddNurse";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -148,6 +152,52 @@ const App = () => (
                     </AuthGuard>
                   }
                 />
+
+                <Route
+                  path="/nurse"
+                  element={
+                    <AuthGuard requiredPermission="nurse:read">
+                      <Layout>
+                        <NurseList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                  <Route
+                  path="/nurse/add"
+                  element={
+                    <AuthGuard requiredPermission="nurse:read">
+                      <Layout>
+                        <AddNurse />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/receptionist"
+                  element={
+                    <AuthGuard requiredPermission="receptionist:read">
+                      <Layout>
+                        <ReseptionistList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                  <Route
+                  path="/receptionist/add"
+                  element={
+                    <AuthGuard requiredPermission="receptionist:read">
+                      <Layout>
+                        {/* ✅ No more onAddPatient prop */}
+                        <AddReseptionist />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
 
                 <Route
                   path="/appointments"

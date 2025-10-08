@@ -61,6 +61,46 @@ const createMenuItems = (): MenuItem[] => {
       ],
     },
     {
+      key: '/nurse',
+      label: 'Nurse Management',
+      icon: <UserOutlined />,
+      requiredPermission: 'nurse:read',
+      children: [
+        { key: '/nurse', label: 'All nurse', icon: <UserOutlined /> },
+        { key: '/nurse/add', label: 'Add Nurse', icon: <UserOutlined /> },
+      ],
+    },
+    {
+      key: '/receptionist',
+      label: 'Reseptionist Management',
+      icon: <UserOutlined />,
+      requiredPermission: 'receptionist:read',
+      children: [
+        { key: '/receptionist', label: 'All reseptionist', icon: <UserOutlined /> },
+        { key: '/receptionist/add', label: 'Add reseptionist', icon: <UserOutlined /> },
+      ],
+    },
+    {
+      key: '/lab-technician',
+      label: 'Lab Technician Management',
+      icon: <UserOutlined />,
+      requiredPermission: 'lab-technician:read',
+      children: [
+        { key: '/lab-technician', label: 'All Lab Technician', icon: <UserOutlined /> },
+        { key: '/lab-technician/add', label: 'Add Lab Technician', icon: <UserOutlined /> },
+      ],
+    },
+    {
+      key: '/pharmacist',
+      label: 'Pharmacist Management',
+      icon: <UserOutlined />,
+      requiredPermission: 'pharmacist:read',
+      children: [
+        { key: '/pharmacist', label: 'All Pharmacist', icon: <UserOutlined /> },
+        { key: '/pharmacist/add', label: 'Add Pharmacist', icon: <UserOutlined /> },
+      ],
+    },
+    {
       key: '/doctors',
       label: 'Doctor Management',
       icon: <TeamOutlined />,
@@ -119,7 +159,7 @@ const createMenuItems = (): MenuItem[] => {
       key: '/surgery',
       label: 'Surgery',
       icon: <ExperimentOutlined />,
-      requiredPermission: 'lab_tests:read',
+      requiredPermission: 'surgery:read',
       children: [
         { key: '/surgery/list', label: 'Surgeries', icon: <ExperimentOutlined /> },
         { key: '/surgery/types', label: 'Surgery Types', icon: <ExperimentOutlined /> },
@@ -176,9 +216,9 @@ const createMenuItems = (): MenuItem[] => {
       icon: <SettingOutlined />,
       requiredPermission: '*',
       children: [
-        { key: '/admin/users', label: 'User Management', icon: <UserOutlined /> },
-        { key: '/admin/roles', label: 'Role Permissions', icon: <SettingOutlined /> },
-        { key: '/admin/settings', label: 'System Settings', icon: <SettingOutlined /> },
+        // { key: '/admin/users', label: 'User Management', icon: <UserOutlined /> },
+        // { key: '/admin/roles', label: 'Role Permissions', icon: <SettingOutlined /> },
+        // { key: '/admin/settings', label: 'System Settings', icon: <SettingOutlined /> },
         { key: '/admin/audit', label: 'Audit Logs', icon: <SettingOutlined /> },
         { key: '/admin/user-types', label: 'User Types', icon: <SettingOutlined /> },
         { key: '/admin/user-fields', label: 'User Fields', icon: <SettingOutlined /> },

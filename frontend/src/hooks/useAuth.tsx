@@ -119,12 +119,12 @@ export const useAuthProvider = () => {
     // Define role-based permissions
     const permissions: Record<UserRole, string[]> = {
       admin: ['*'], // Admin has all permissions
-      doctor: ['patients:read', 'patients:write', 'appointments:read', 'appointments:write', 'prescriptions:write', 'tokens:read', 'tokens:write'],
-      nurse: ['patients:read', 'patients:write', 'vitals:write', 'appointments:read', 'tokens:read', 'tokens:write'],
-      patient: ['appointments:read', 'medical_records:read', 'tokens:read'],
-      receptionist: ['appointments:read', 'appointments:write', 'patients:read', 'patients:write', 'tokens:read', 'tokens:write'],
-      pharmacist: ['prescriptions:read', 'medicines:read', 'medicines:write'],
-      lab_technician: ['lab_tests:read', 'lab_tests:write', 'lab_reports:write']
+      doctor: ['patients:read', 'patients:write', 'nurse:read', 'appointments:read', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write'],
+      nurse: ['patients:read', 'patients:write', 'appointments:read', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write'],
+      patient: ['patients:read'],
+      receptionist: ['patients:read', 'patients:write', 'nurse:read', 'doctor:read', 'lab-technician:read', 'pharmacist:read', 'appointments:read', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write'],
+      pharmacist: ['medicines:read'],
+      lab_technician: ['lab_tests:read']
     };
 
     const userPermissions = permissions[user.user_type.type?.toLowerCase()] || [];
