@@ -182,7 +182,7 @@ export default function Prescriptions() {
         patient_id: values.patient_id,
         medicines: values.medicines,
         tests: values.tests || [],
-        surgeries: values.surgeries || [],
+        surgeries: values.surgeries ?? [],
         notes: values.notes || "",
       };
 

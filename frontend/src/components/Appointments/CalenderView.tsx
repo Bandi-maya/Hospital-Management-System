@@ -38,7 +38,11 @@ export default function CalendarView() {
 
   function loadData(doctorId: string, date: Date) {
     setLoading(true);
-    const dateString = date.toISOString().split("T")[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Add 1 and pad
+    const day = String(date.getDate()).padStart(2, '0');
+
+    const dateString = `${year}-${month}-${day}`;
     getApi(`/appointment?doctor_id=${doctorId}&date=${dateString}`)
       .then((data) => {
         if (!data.error) {
@@ -106,8 +110,8 @@ export default function CalendarView() {
                 View and manage appointments by date
               </CardDescription>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => navigate('/appointments')}
               className="border-gray-300"
             >
@@ -216,7 +220,7 @@ export default function CalendarView() {
                             </span>
                           </div>
                         </div>
-                        <Badge 
+                        <Badge
                           variant={getStatusVariant(app.status || "Pending")}
                           className={`font-medium ${getStatusColor(app.status || "Pending")}`}
                         >

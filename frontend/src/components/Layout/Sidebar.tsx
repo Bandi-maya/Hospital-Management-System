@@ -220,8 +220,9 @@ const createMenuItems = (): MenuItem[] => {
         // { key: '/admin/roles', label: 'Role Permissions', icon: <SettingOutlined /> },
         // { key: '/admin/settings', label: 'System Settings', icon: <SettingOutlined /> },
         { key: '/admin/audit', label: 'Audit Logs', icon: <SettingOutlined /> },
-        { key: '/admin/user-types', label: 'User Types', icon: <SettingOutlined /> },
+        // { key: '/admin/user-types', label: 'User Types', icon: <SettingOutlined /> },
         { key: '/admin/user-fields', label: 'User Fields', icon: <SettingOutlined /> },
+        { key: '/admin/settings', label: 'Settings', icon: <SettingOutlined /> },
       ],
     },
   ];

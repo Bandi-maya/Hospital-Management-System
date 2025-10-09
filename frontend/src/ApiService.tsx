@@ -70,6 +70,50 @@ export function PutApi(urlEndPoint, data: any, options: any = {}) {
     });
 }
 
+export function PostFormDataApi(urlEndPoint, data: any, options: any = {}) {
+    const token = localStorage.getItem('auth_token');
+    return fetch(baseUrl + urlEndPoint, {
+        ...options,
+        method: 'POST',
+        headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+            ...(options.headers || {}),
+        },
+        body: data,
+    }).then(async response => {
+        let data = await response.json()
+        if (data?.['msg'] === 'Token has expired') {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('authTimestamp');
+            localStorage.removeItem('userRole');
+        }
+        return data;
+    });
+}
+
+export function PutFormDataApi(urlEndPoint, data: any, options: any = {}) {
+    const token = localStorage.getItem('auth_token');
+    return fetch(baseUrl + urlEndPoint, {
+        ...options,
+        method: 'PUT',
+        headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+            ...(options.headers || {}),
+        },
+        body: data,
+    }).then(async response => {
+        let data = await response.json()
+        if (data?.['msg'] === 'Token has expired') {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('authTimestamp');
+            localStorage.removeItem('userRole');
+        }
+        return data;
+    });
+}
+
 export function PatchApi(urlEndPoint, data: any, options: any = {}) {
     const token = localStorage.getItem('auth_token');
     return fetch(baseUrl + urlEndPoint, {

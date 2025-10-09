@@ -174,6 +174,7 @@ export default function DoctorManagement() {
   const handleSubmit = () => {
     simulateLoading();
 
+    console.log(!form.gender , !form.date_of_birth , !form.address.city , !form.address.state , !form.address.zip_code , !form.address.country , !form.email , !form.phone_no)
     if (!form.gender || !form.date_of_birth || !form.address.city || !form.address.state || !form.address.zip_code || !form.address.country || !form.email || !form.phone_no) {
       toast.error("Please fill in all fields");
       setIsLoading(false);

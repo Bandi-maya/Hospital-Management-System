@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { 
-  Card, 
-  Space, 
-  Tag, 
-  Select, 
+import {
+  Card,
+  Space,
+  Tag,
+  Select,
   Divider,
   Row,
   Col,
@@ -14,7 +14,7 @@ import {
 } from "antd";
 import Calendar from "react-calendar";
 import 'react-calendar/dist/Calendar.css';
-import { 
+import {
   CalendarOutlined,
   TeamOutlined,
   UserOutlined,
@@ -87,12 +87,16 @@ export default function TokenCalendarView() {
       params.push(`doctor_id=${doctorId}`);
     }
     if (date) {
-      params.push(`date=${date.toISOString().split('T')[0]}`);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+
+      params.push(`date=${year}-${month}-${day}`);
     }
     if (departmentId) {
       params.push(`department_id=${departmentId}`);
     }
-    
+
     if (params.length > 0) {
       getApi(`/tokens?${params.join('&')}`)
         .then((data) => {
@@ -181,16 +185,14 @@ export default function TokenCalendarView() {
               <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
                 <SyncOutlined className="w-4 h-4 text-gray-600" />
                 <span className="text-sm text-gray-600">Auto Refresh</span>
-                <div 
-                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
-                    autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                  }`}
+                <div
+                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
                   onClick={() => setAutoRefresh(!autoRefresh)}
                 >
-                  <div 
-                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
-                      autoRefresh ? 'translate-x-4' : 'translate-x-1'
-                    }`}
+                  <div
+                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${autoRefresh ? 'translate-x-4' : 'translate-x-1'
+                      }`}
                   />
                 </div>
               </div>
@@ -208,7 +210,7 @@ export default function TokenCalendarView() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           {/* Calendar Card */}
-          <Card 
+          <Card
             title={
               <Space>
                 <CalendarOutlined />
@@ -235,7 +237,7 @@ export default function TokenCalendarView() {
 
         <Col xs={24} lg={12}>
           {/* Filters and Tokens Card */}
-          <Card 
+          <Card
             title={
               <Space>
                 <DashboardOutlined />
@@ -294,16 +296,16 @@ export default function TokenCalendarView() {
                 </h3>
 
                 {tokens.length === 0 ? (
-                  <Empty 
+                  <Empty
                     description="No tokens scheduled for this day"
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                   />
                 ) : (
                   <Space direction="vertical" size="middle" className="w-full">
                     {tokens.map((token) => (
-                      <Card 
-                        key={token.id} 
-                        size="small" 
+                      <Card
+                        key={token.id}
+                        size="small"
                         className="hover:shadow-md transition-shadow"
                       >
                         <div className="flex justify-between items-start">
@@ -321,18 +323,18 @@ export default function TokenCalendarView() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 gap-1 text-sm">
                               <div className="flex items-center space-x-2">
                                 <UserOutlined className="text-gray-400" />
                                 <span className="text-gray-700">
-                                  <strong>Patient:</strong> {token.patient.name}
+                                  <strong>Patient:</strong> {token.patient?.name}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <UserOutlined className="text-gray-400" />
                                 <span className="text-gray-700">
-                                  <strong>Doctor:</strong> {token.doctor.name}
+                                  <strong>Doctor:</strong> {token.doctor?.name}
                                 </span>
                               </div>
                               {token.department && (
@@ -345,9 +347,9 @@ export default function TokenCalendarView() {
                               )}
                             </div>
                           </div>
-                          
-                          <Tag 
-                            color={getStatusColor(token.status)} 
+
+                          <Tag
+                            color={getStatusColor(token.status)}
                             icon={getStatusIcon(token.status)}
                             className="ml-2"
                           >

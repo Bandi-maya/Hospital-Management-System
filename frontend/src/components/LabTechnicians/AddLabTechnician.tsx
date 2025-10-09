@@ -212,7 +212,7 @@ export default function AddTechnician({ onAddPatient }: AddPatientProps) {
         const newPatient: any = {
             extra_fields: values.extra_fields,
             department_id: values.department_id,
-            user_type_id: 7,
+            user_type_id: 6,
             username: values.email,
             name: `${values?.extra_fields?.first_name} ${values?.extra_fields?.last_name}`,
             date_of_birth: formattedDate,
@@ -233,8 +233,8 @@ export default function AddTechnician({ onAddPatient }: AddPatientProps) {
         await PostApi(`/users`, newPatient)
             .then((data) => {
                 if (!data?.error) {
-                    toast.success("Nurse added successfully!");
-                    navigate("/nurse");
+                    toast.success("Lab Technician added successfully!");
+                    navigate("/lab-technician");
                 }
                 else {
                     toast.error(data.error)

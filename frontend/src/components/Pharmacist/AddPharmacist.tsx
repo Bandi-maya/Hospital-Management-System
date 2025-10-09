@@ -212,7 +212,7 @@ export default function AddPharmacist({ onAddPatient }: AddPatientProps) {
         const newPatient: any = {
             extra_fields: values.extra_fields,
             department_id: values.department_id,
-            user_type_id: 8,
+            user_type_id: 7,
             username: values.email,
             name: `${values?.extra_fields?.first_name} ${values?.extra_fields?.last_name}`,
             date_of_birth: formattedDate,
