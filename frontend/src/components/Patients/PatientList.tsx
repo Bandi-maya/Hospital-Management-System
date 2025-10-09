@@ -12,6 +12,7 @@ import { DepartmentInterface } from "@/components/Departments/Departments";
 import { Search, PlusCircle, User, Stethoscope, Mail, Phone, MapPin, Calendar, Edit, Trash2, Filter, Download } from "lucide-react";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 
 const { Option } = Select;
 
@@ -233,6 +234,50 @@ export default function PatientList() {
       </div>
 
       <Table dataSource={patients} columns={columns} rowKey="id" />
+
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          setForm({});
+        }
+      }}>
+        <DialogTrigger asChild>
+          <Button>{"New Record"}</Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {"New Record"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Notes</Label>
+              <Input
+                value={form['notes'] || ""}
+                onChange={(e) =>
+                  setForm({ ...form, notes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setForm({});
+                setIsDialogOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAddRecord}>
+              Add Record
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
