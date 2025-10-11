@@ -7,7 +7,9 @@ import {
   Button,
   theme,
   Typography,
-  Avatar
+  Avatar,
+  Drawer,
+  Grid
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -22,12 +24,31 @@ import {
   AlertOutlined,
   SettingOutlined,
   HeartOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined
+  SafetyCertificateOutlined,
+  SolutionOutlined,
+  ApartmentOutlined,
+  ContainerOutlined,
+  AuditOutlined,
+  ToolOutlined,
+  ShopOutlined,
+  ClusterOutlined,
+  RocketOutlined,
+  InsuranceOutlined,
+  HomeOutlined,
+  BuildOutlined,
+  PlusCircleOutlined,
+  ScheduleOutlined,
+  FormOutlined,
+  BarChartOutlined,
+  DollarOutlined,
+  CreditCardOutlined,
+  DesktopOutlined,
+  UsergroupAddOutlined
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 interface MenuItem {
   key: string;
@@ -40,6 +61,8 @@ interface MenuItem {
 interface AppSidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 const createMenuItems = (): MenuItem[] => {
@@ -52,63 +75,62 @@ const createMenuItems = (): MenuItem[] => {
     {
       key: '/patients',
       label: 'Patient Management',
-      icon: <UserOutlined />,
+      icon: <HeartOutlined />,
       requiredPermission: 'patients:read',
       children: [
         { key: '/patients', label: 'All Patients', requiredPermission: "patients:read", icon: <UserOutlined /> },
-        { key: '/patients/add', label: 'Add Patient', requiredPermission: "patients:add", icon: <UserOutlined /> },
-        { key: '/patients/records', label: 'Medical Records', requiredPermission: "patients:read", icon: <UserOutlined /> },
+        { key: '/patients/add', label: 'Add Patient', requiredPermission: "patients:add", icon: <PlusCircleOutlined /> },
+        { key: '/patients/records', label: 'Medical Records', requiredPermission: "patients:read", icon: <FormOutlined /> },
       ],
     },
     {
       key: '/nurse',
       label: 'Nurse Management',
-      icon: <UserOutlined />,
+      icon: <SafetyCertificateOutlined />,
       requiredPermission: 'nurse:read',
       children: [
-        { key: '/nurse', label: 'All nurse', requiredPermission: "nurse:read", icon: <UserOutlined /> },
-        { key: '/nurse/add', label: 'Add Nurse', requiredPermission: "nurse:add", icon: <UserOutlined /> },
+        { key: '/nurse', label: 'All Nurses', requiredPermission: "nurse:read", icon: <TeamOutlined /> },
+        { key: '/nurse/add', label: 'Add Nurse', requiredPermission: "nurse:add", icon: <UsergroupAddOutlined /> },
       ],
     },
     {
       key: '/receptionist',
-      label: 'Reseptionist Management',
-      icon: <UserOutlined />,
+      label: 'Receptionist Management',
+      icon: <SolutionOutlined />,
       requiredPermission: 'receptionist:read',
       children: [
-        { key: '/receptionist', label: 'All reseptionist', requiredPermission: "receptionist:read", icon: <UserOutlined /> },
-        { key: '/receptionist/add', label: 'Add reseptionist', requiredPermission: "receptionist:add", icon: <UserOutlined /> },
+        { key: '/receptionist', label: 'All Receptionists', requiredPermission: "receptionist:read", icon: <TeamOutlined /> },
+        { key: '/receptionist/add', label: 'Add Receptionist', requiredPermission: "receptionist:add", icon: <UsergroupAddOutlined /> },
       ],
     },
     {
       key: '/lab-technician',
       label: 'Lab Technician Management',
-      icon: <UserOutlined />,
+      icon: <ExperimentOutlined />,
       requiredPermission: 'lab-technician:read',
       children: [
-        { key: '/lab-technician', label: 'All Lab Technician', requiredPermission: "lab-technician:read", icon: <UserOutlined /> },
-        { key: '/lab-technician/add', label: 'Add Lab Technician', requiredPermission: "lab-technician:add", icon: <UserOutlined /> },
+        { key: '/lab-technician', label: 'All Lab Technicians', requiredPermission: "lab-technician:read", icon: <TeamOutlined /> },
+        { key: '/lab-technician/add', label: 'Add Lab Technician', requiredPermission: "lab-technician:add", icon: <UsergroupAddOutlined /> },
       ],
     },
     {
       key: '/pharmacist',
       label: 'Pharmacist Management',
-      icon: <UserOutlined />,
+      icon: <MedicineBoxOutlined />,
       requiredPermission: 'pharmacist:read',
       children: [
-        { key: '/pharmacist', label: 'All Pharmacist', requiredPermission: "pharmacist:read", icon: <UserOutlined /> },
-        { key: '/pharmacist/add', label: 'Add Pharmacist', requiredPermission: "pharmacist:add", icon: <UserOutlined /> },
+        { key: '/pharmacist', label: 'All Pharmacists', requiredPermission: "pharmacist:read", icon: <TeamOutlined /> },
+        { key: '/pharmacist/add', label: 'Add Pharmacist', requiredPermission: "pharmacist:add", icon: <UsergroupAddOutlined /> },
       ],
     },
     {
       key: '/doctors',
       label: 'Doctor Management',
-      icon: <TeamOutlined />,
+      icon: <UserOutlined />,
       requiredPermission: 'doctors:read',
       children: [
         { key: '/doctors', label: 'All Doctors', requiredPermission: "doctor:read", icon: <TeamOutlined /> },
-        { key: '/doctors/schedules', label: 'Schedules', icon: <CalendarOutlined /> },
-        // { key: '/doctors/specializations', label: 'Specializations', icon: <TeamOutlined /> },
+        { key: '/doctors/schedules', label: 'Schedules', icon: <ScheduleOutlined /> },
       ],
     },
     {
@@ -117,31 +139,31 @@ const createMenuItems = (): MenuItem[] => {
       icon: <CalendarOutlined />,
       requiredPermission: 'appointments:read',
       children: [
-        { key: '/appointments', label: 'All Appointments', requiredPermission: "appointments:read", icon: <CalendarOutlined /> },
+        { key: '/appointments', label: 'All Appointments', requiredPermission: "appointments:read", icon: <BarChartOutlined /> },
         { key: '/appointments/calendar', label: 'Calendar View', requiredPermission: "appointments:read", icon: <CalendarOutlined /> },
-        { key: '/appointments/book', label: 'Book Appointment', requiredPermission: "appointments:add", icon: <CalendarOutlined /> },
+        { key: '/appointments/book', label: 'Book Appointment', requiredPermission: "appointments:add", icon: <PlusCircleOutlined /> },
       ],
     },
     {
       key: '/tokens',
       label: 'Tokens',
-      icon: <CalendarOutlined />,
+      icon: <ContainerOutlined />,
       requiredPermission: 'tokens:read',
       children: [
-        { key: '/tokens', label: 'All Tokens', requiredPermission: "tokens:read", icon: <CalendarOutlined /> },
+        { key: '/tokens', label: 'All Tokens', requiredPermission: "tokens:read", icon: <ContainerOutlined /> },
         { key: '/tokens/calendar', label: 'Calendar View', requiredPermission: "tokens:read", icon: <CalendarOutlined /> },
-        { key: '/tokens/create', label: 'Create Token', requiredPermission: "tokens:add", icon: <CalendarOutlined /> },
+        { key: '/tokens/create', label: 'Create Token', requiredPermission: "tokens:add", icon: <PlusCircleOutlined /> },
       ],
     },
     {
       key: '/pharmacy',
       label: 'Pharmacy',
-      icon: <MedicineBoxOutlined />,
+      icon: <ShopOutlined />,
       requiredPermission: 'medicines:read',
       children: [
         { key: '/pharmacy/medicines', label: 'Medicine Inventory', requiredPermission: "medicines:read", icon: <MedicineBoxOutlined /> },
         { key: '/pharmacy/prescriptions', label: 'Prescriptions', requiredPermission: "medicines:read", icon: <FileTextOutlined /> },
-        { key: '/pharmacy/orders', label: 'Purchase Orders', requiredPermission: "medicines:read", icon: <FileTextOutlined /> },
+        { key: '/pharmacy/orders', label: 'Purchase Orders', requiredPermission: "medicines:read", icon: <ContainerOutlined /> },
       ],
     },
     {
@@ -151,50 +173,49 @@ const createMenuItems = (): MenuItem[] => {
       requiredPermission: 'lab_tests:read',
       children: [
         { key: '/laboratory/tests', label: 'Lab Tests', requiredPermission: "lab_tests:read", icon: <ExperimentOutlined /> },
-        { key: '/laboratory/results', label: 'Test Results', requiredPermission: "lab_tests:read", icon: <ExperimentOutlined /> },
-        { key: '/laboratory/reports', label: 'Lab Reports', requiredPermission: "lab_tests:read", icon: <FileTextOutlined /> },
+        { key: '/laboratory/results', label: 'Test Results', requiredPermission: "lab_tests:read", icon: <FileTextOutlined /> },
+        { key: '/laboratory/reports', label: 'Lab Reports', requiredPermission: "lab_tests:read", icon: <BarChartOutlined /> },
       ],
     },
     {
       key: '/surgery',
       label: 'Surgery',
-      icon: <ExperimentOutlined />,
+      icon: <RocketOutlined />,
       requiredPermission: 'surgery:read',
       children: [
-        { key: '/surgery/list', label: 'Surgeries', requiredPermission: "surgery:read", icon: <ExperimentOutlined /> },
-        { key: '/surgery/types', label: 'Surgery Types', requiredPermission: "surgery:read", icon: <ExperimentOutlined /> },
-        { key: '/surgery/operation-theatres', label: 'Operation Theatres', requiredPermission: "surgery:read", icon: <FileTextOutlined /> },
+        { key: '/surgery/list', label: 'Surgeries', requiredPermission: "surgery:read", icon: <RocketOutlined /> },
+        { key: '/surgery/types', label: 'Surgery Types', requiredPermission: "surgery:read", icon: <ToolOutlined /> },
+        { key: '/surgery/operation-theatres', label: 'Operation Theatres', requiredPermission: "surgery:read", icon: <HomeOutlined /> },
       ],
     },
     {
       key: '/billing',
       label: 'Billing',
-      icon: <FileTextOutlined />,
+      icon: <DollarOutlined />,
       requiredPermission: 'billing:read',
       children: [
         { key: '/billing', label: 'Billing', requiredPermission: "billing:read", icon: <FileTextOutlined /> },
-        { key: '/billing/payments', label: 'Payments', requiredPermission: "billing:read", icon: <FileTextOutlined /> },
-        // { key: '/billing/insurance', label: 'Insurance Claims', requiredPermission: "billing:read", icon: <FileTextOutlined /> },
+        { key: '/billing/payments', label: 'Payments', requiredPermission: "billing:read", icon: <CreditCardOutlined /> },
       ],
     },
     {
       key: '/wards',
       label: 'Ward Management',
-      icon: <BankOutlined />,
+      icon: <HomeOutlined />,
       requiredPermission: 'wards:read',
       children: [
-        { key: '/wards', label: 'Ward Status', icon: <BankOutlined /> },
-        { key: '/wards/beds', label: 'Bed Allocation', icon: <BankOutlined /> },
+        { key: '/wards', label: 'Ward Status', icon: <ClusterOutlined /> },
+        { key: '/wards/beds', label: 'Bed Allocation', icon: <ApartmentOutlined /> },
       ],
     },
     {
       key: '/departments',
       label: 'Department Management',
-      icon: <BankOutlined />,
-      requiredPermission: 'wards:read',
+      icon: <ApartmentOutlined />,
+      requiredPermission: 'departments:read',
       children: [
-        { key: '/departments', label: 'Departments', icon: <BankOutlined /> },
-        { key: '/departments/users', label: 'Users', icon: <BankOutlined /> },
+        { key: '/departments', label: 'Departments', icon: <ClusterOutlined /> },
+        { key: '/departments/users', label: 'Users', icon: <UsergroupAddOutlined /> },
       ],
     },
     {
@@ -204,7 +225,7 @@ const createMenuItems = (): MenuItem[] => {
       requiredPermission: 'emergency:read',
       children: [
         { key: '/emergency/cases', label: 'Emergency Cases', icon: <AlertOutlined /> },
-        { key: '/emergency/triage', label: 'Triage', icon: <AlertOutlined /> },
+        { key: '/emergency/triage', label: 'Triage', icon: <InsuranceOutlined /> },
       ],
     },
   ];
@@ -214,15 +235,11 @@ const createMenuItems = (): MenuItem[] => {
       key: '/admin',
       label: 'System Administration',
       icon: <SettingOutlined />,
-      requiredPermission: '*',
+      requiredPermission: 'admin:access',
       children: [
-        // { key: '/admin/users', label: 'User Management', icon: <UserOutlined /> },
-        // { key: '/admin/roles', label: 'Role Permissions', icon: <SettingOutlined /> },
-        // { key: '/admin/settings', label: 'System Settings', icon: <SettingOutlined /> },
-        { key: '/admin/audit', label: 'Audit Logs', icon: <SettingOutlined /> },
-        { key: '/admin/user-types', label: 'User Types', icon: <SettingOutlined /> },
-        { key: '/admin/user-fields', label: 'User Fields', icon: <SettingOutlined /> },
-        { key: '/admin/settings', label: 'Settings', icon: <SettingOutlined /> },
+        { key: '/admin/audit', label: 'Audit Logs', icon: <AuditOutlined /> },
+        { key: '/admin/user-fields', label: 'User Fields', icon: <BuildOutlined /> },
+        { key: '/admin/settings', label: 'Settings', icon: <ToolOutlined /> },
       ],
     },
   ];
@@ -240,12 +257,20 @@ const convertToAntdMenuItems = (items: MenuItem[]): MenuProps['items'] => {
   }));
 };
 
-export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onToggle }) => {
+export const AppSidebar: React.FC<AppSidebarProps> = ({ 
+  collapsed = false, 
+  onToggle,
+  mobileOpen = false,
+  onMobileClose
+}) => {
   const [internalCollapsed, setInternalCollapsed] = useState(collapsed);
-  const { hasPermission, hasRole, user } = useAuth();
+  const { hasPermission, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { token: { colorBgContainer } } = theme.useToken();
+  const screens = useBreakpoint();
+  
+  const isMobile = !screens.md;
 
   // Sync internal state with prop changes
   useEffect(() => {
@@ -260,21 +285,30 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
     }
   };
 
+  const handleDrawerClose = () => {
+    if (onMobileClose) {
+      onMobileClose();
+    }
+  };
+
+  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    navigate(key);
+    // Close mobile drawer when menu item is clicked
+    if (isMobile) {
+      handleDrawerClose();
+    }
+  };
+
   const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
     return items.filter(item => {
       if (!item.requiredPermission) return true;
-      if (Array.isArray(item?.children ?? [])) {
-        if (item.children) {
-
-          item.children = item.children.filter((child) => hasPermission(child.requiredPermission))
-        }
+      if (item.children) {
+        item.children = item.children.filter((child) => 
+          !child.requiredPermission || hasPermission(child.requiredPermission)
+        );
       }
-      // if (item.requiredPermission === '*') return hasRole('admin');
       return hasPermission(item.requiredPermission);
-    }).map(item => ({
-      ...item,
-      children: item.children ? filterMenuItems(item.children) : undefined
-    })).filter(item => {
+    }).filter(item => {
       // Remove items that have children but all children were filtered out
       if (item.children && item.children.length === 0) {
         return false;
@@ -286,10 +320,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
   const menuItems = filterMenuItems(createMenuItems());
   const antdMenuItems = convertToAntdMenuItems(menuItems);
 
-  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
-    navigate(key);
-  };
-
   const selectedKeys = [location.pathname];
   const openKeys = menuItems
     .filter(item => item.children?.some(child => child.key === location.pathname))
@@ -297,14 +327,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
 
   const getUserInitials = (name: string) => {
     return name
-      .split(' ')
+      ?.split(' ')
       .map(n => n[0])
       .join('')
       .toUpperCase()
-      .slice(0, 2);
+      .slice(0, 2) || 'U';
   };
 
-  return (
+  // Desktop Sidebar
+  const DesktopSidebar = () => (
     <Sider
       trigger={null}
       collapsible
@@ -316,57 +347,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
         height: '100vh',
         position: 'fixed',
         left: 0,
-        top: 0, // Changed from top: 0 to remove gap
+        top: 64, // Start below header
         bottom: 0,
-        zIndex: 40,
+        zIndex: 30,
       }}
     >
-      {/* Header Section with Collapse Button */}
-      <div style={{
-        padding: '16px',
-        borderBottom: '1px solid #f0f0f0',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        height: '64px' // Match header height
-      }}>
-        {/* Collapse Button */}
-        <Button
-          type="text"
-          icon={internalCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={handleToggle}
-          style={{
-            fontSize: '16px',
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        />
-
-        {/* Logo and User Info - Hidden when collapsed */}
-        {!internalCollapsed && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-            <Avatar
-              size="small"
-              style={{ backgroundColor: '#1890ff' }}
-              src={user?.avatar}
-            >
-              {user?.name ? getUserInitials(user.name) : 'U'}
-            </Avatar>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Text strong style={{ fontSize: '12px', display: 'block', color: '#000' }}>
-                {user?.name || 'User'}
-              </Text>
-              <Text type="secondary" style={{ fontSize: '10px', display: 'block' }}>
-                {user.user_type.type ? user.user_type.type.replace('_', ' ').toUpperCase() : 'USER'}
-              </Text>
-            </div>
-          </div>
-        )}
-      </div>
-
+      
       {/* Menu */}
       <Menu
         mode="inline"
@@ -376,12 +362,81 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false, onTog
         onClick={handleMenuClick}
         style={{
           border: 'none',
-          height: 'calc(100vh - 64px)', // Adjusted to account for header height
+          height: 'calc(100vh - 128px)', // Adjust for header and sidebar header
           overflowY: 'auto',
         }}
         inlineCollapsed={internalCollapsed}
       />
     </Sider>
+  );
+
+  // Mobile Drawer
+  const MobileDrawer = () => (
+    <Drawer
+      placement="left"
+      onClose={handleDrawerClose}
+      open={mobileOpen}
+      width={280}
+      bodyStyle={{
+        padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+      style={{
+        zIndex: 1001,
+      }}
+    >
+      {/* Drawer Header */}
+      <div style={{
+        padding: '16px',
+        borderBottom: '1px solid #f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        height: '64px'
+      }}>
+        <Avatar
+          size="small"
+          style={{ backgroundColor: '#1890ff' }}
+          src={user?.avatar}
+        >
+          {getUserInitials(user?.name)}
+        </Avatar>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Text strong style={{ fontSize: '14px', display: 'block', color: '#000' }}>
+            {user?.name || 'User'}
+          </Text>
+          <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>
+            {user?.user_type?.type ? user.user_type.type.replace('_', ' ').toUpperCase() : 'USER'}
+          </Text>
+        </div>
+      </div>
+
+      {/* Drawer Menu */}
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <Menu
+          mode="inline"
+          selectedKeys={selectedKeys}
+          defaultOpenKeys={openKeys}
+          items={antdMenuItems}
+          onClick={handleMenuClick}
+          style={{
+            border: 'none',
+            height: '100%',
+          }}
+        />
+      </div>
+    </Drawer>
+  );
+
+  return (
+    <>
+      {isMobile ? (
+        <MobileDrawer />
+      ) : (
+        <DesktopSidebar />
+      )}
+    </>
   );
 };
 

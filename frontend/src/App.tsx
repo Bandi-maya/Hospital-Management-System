@@ -1,12 +1,11 @@
 import React, { Suspense, lazy } from "react";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import AuthGuard from "@/components/Auth/AuthGuard";
+import { AuthProvider } from "./hooks/useAuth";
+import AuthGuard from "./components/Auth/AuthGuard";
 import Layout from "@/components/Layout/Layout";
-import Login from "@/components/Auth/Login";
 import NotFound from "./pages/NotFound";
 import AddPatient from "./components/Patients/AddPatient";
 import MedicalRecords from "./components/Patients/MedicalRecords";
@@ -52,7 +51,8 @@ import TechnicianList from "./components/LabTechnicians/TechnicianList";
 import AddTechnician from "./components/LabTechnicians/AddLabTechnician";
 import PharmacistList from "./components/Pharmacist/PharmacistList";
 import AddPharmacist from "./components/Pharmacist/AddPharmacist";
-import LogoUploader from "./components/LogoUploader";
+import LogoUploader from "./components/Patients/LogoUploader";
+import Login from "./components/Auth/Login";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
