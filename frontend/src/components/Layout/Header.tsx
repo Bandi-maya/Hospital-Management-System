@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  SearchResultType,
+  useSearch,
+  type SearchResult,
+} from "@/hooks/useSearch";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,33 +16,69 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Bell,
-  Search,
-  Settings,
-  LogOut,
-  User,
-  Shield,
-  Heart,
-  Menu,
-  X
-} from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Bell, Search, User, LogOut, Menu, X, Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
+  onMobileSidebarToggle?: () => void;
   sidebarCollapsed?: boolean;
+  isMobile?: boolean;
+  mobileSidebarOpen?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ 
-  onToggleSidebar, 
-  sidebarCollapsed = false 
+export const Header: React.FC<HeaderProps> = ({
+  onToggleSidebar,
+  onMobileSidebarToggle,
+  sidebarCollapsed = false,
+  isMobile = false,
+  mobileSidebarOpen = false,
 }) => {
-  const { user, logout, hasRole } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { user, logout }: any = useAuth();
+  const {
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    isSearching,
+    performSearch,
+    clearSearch,
+  } = useSearch();
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  /** Auto focus input when mobile search is opened */
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  /** Close search if user clicks outside (mobile only) */
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isMobile &&
+        isSearchOpen &&
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        handleSearchClose();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMobile, isSearchOpen]);
+
+  /** Toggle visibility of dropdown results */
+  useEffect(() => {
+    setShowResults(searchQuery.trim().length > 0);
+  }, [searchQuery]);
 
   const handleLogout = () => {
     logout();
@@ -50,219 +90,351 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      // Implement search functionality
-      toast({
-        title: "Search",
-        description: `Searching for: ${searchQuery}`,
-      });
+    if (searchQuery.trim()) performSearch(searchQuery);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    if (value.trim()) performSearch(value);
+    else {
+      clearSearch();
+      setShowResults(false);
     }
   };
 
-  const handleProfileSettings = () => {
-    navigate('/settings');
+  const handleSearchItemClick = (item: SearchResult) => {
+    switch (item.type) {
+      case "patient":
+        navigate(`/patients/${item.id}`);
+        break;
+      case "doctor":
+        navigate(`/doctors/${item.id}`);
+        break;
+      case "appointment":
+        navigate(`/appointments/${item.id}`);
+        break;
+      case "medicine":
+        navigate(`/medicines/${item.id}`);
+        break;
+      default:
+        navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+    handleSearchClose();
+    clearSearch();
   };
 
-  const handleAdminPanel = () => {
-    navigate('/admin');
-  };
+  const handleProfileSettings = () => navigate("/settings");
 
-  const handleSystemSettings = () => {
-    navigate('/system-settings');
-  };
+  const handleMobileMenuToggle = () => onMobileSidebarToggle?.();
 
-  const handleToggleSidebar = () => {
-    if (onToggleSidebar) {
-      onToggleSidebar();
+  const handleToggleSidebar = () => onToggleSidebar?.();
+
+  const handleSearchToggle = () => {
+    if (isMobile) {
+      setIsSearchOpen((prev) => !prev);
+      if (isSearchOpen) {
+        clearSearch();
+        setShowResults(false);
+      }
     }
   };
+
+  const handleSearchClose = () => {
+    setIsSearchOpen(false);
+    setShowResults(false);
+    clearSearch();
+  };
+
+  const handleViewAllResults = () => {
+    navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+    handleSearchClose();
+    clearSearch();
+  };
+
+  const handleSearchContainerClick = (e: React.MouseEvent) => e.stopPropagation();
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-red-100 text-red-800 border-red-200';
-      case 'doctor': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'nurse': return 'bg-green-100 text-green-800 border-green-200';
-      case 'patient': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'receptionist': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'pharmacist': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'lab_technician': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case "admin":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "doctor":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "nurse":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "patient":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const getInitials = (name: string) =>
+    name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "U";
+
+  const getItemIcon = (type: SearchResultType) => {
+    switch (type) {
+      case "patient":
+        return "👤";
+      case "doctor":
+        return "👨‍⚕️";
+      case "appointment":
+        return "📅";
+      case "medicine":
+        return "💊";
+      default:
+        return "📄";
+    }
   };
 
+  /** Search Results Component (for both desktop & mobile) */
+  const SearchResultsList = () => (
+    <div className="max-h-80 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg animate-fade-in">
+      {isSearching ? (
+        <div className="flex items-center justify-center p-4">
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          <span className="text-sm text-gray-600">Searching...</span>
+        </div>
+      ) : searchResults.length > 0 ? (
+        <>
+          <div className="p-2">
+            {searchResults.slice(0, 6).map((item, index) => (
+              <div
+                key={item.id || index}
+                onClick={() => handleSearchItemClick(item)}
+                className="flex items-center gap-3 p-3 rounded-md hover:bg-gray-50 cursor-pointer transition-all duration-200 active:bg-gray-100"
+              >
+                <span>{getItemIcon(item.type)}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {item.name || item.title}
+                  </p>
+                  <p className="text-xs text-gray-500 capitalize">
+                    {item.type} • {item.subtitle}
+                  </p>
+                </div>
+                {item.badge && (
+                  <Badge variant="outline" className="text-xs">
+                    {item.badge}
+                  </Badge>
+                )}
+              </div>
+            ))}
+          </div>
+          {searchResults.length > 6 && (
+            <div
+              onClick={handleViewAllResults}
+              className="p-3 text-center text-sm text-blue-600 hover:bg-blue-50 cursor-pointer rounded-b-lg"
+            >
+              View all {searchResults.length} results
+            </div>
+          )}
+        </>
+      ) : searchQuery.trim() ? (
+        <div className="p-4 text-center text-sm text-gray-500">
+          No results found for "{searchQuery}"
+        </div>
+      ) : (
+        <div className="p-4 text-center text-sm text-gray-500">
+          Start typing to search...
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-background/80 backdrop-blur-sm">
-      <div className="flex h-16 items-center justify-between px-6">
-        {/* Left Section - Collapse Button, Logo and Sidebar Trigger */}
-        <div className="flex items-center gap-4">
+    <>
+      <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+          {/* Left: Logo + Sidebar Toggle */}
           <div className="flex items-center gap-3">
-            {/* Collapse Button */}
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleToggleSidebar}
-              className="h-10 w-10 border border-gray-200 hover:bg-gray-50 rounded-lg flex items-center justify-center"
+              onClick={handleMobileMenuToggle}
+              className="h-9 w-9 border border-gray-200 rounded-lg md:hidden hover:bg-gray-50"
             >
-              {sidebarCollapsed ? (
-                <Menu className="h-5 w-5 text-gray-600" />
-              ) : (
-                <X className="h-5 w-5 text-gray-600" />
-              )}
+              {mobileSidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
-            
-            <h1 className="text-xl font-bold text-gray-900 hidden sm:block">MediCare HMS</h1>
-          </div>
-        </div>
 
-        {/* Center Section - Search Bar */}
-        <div className="flex-1 max-w-2xl mx-8">
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="search"
-              placeholder="Search patients, doctors, appointments..."
-              className="pl-10 pr-4 border-gray-300 focus:border-blue-500 transition-colors"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
-        </div>
-
-        {/* Right Section - Notifications and User Menu */}
-        <div className="flex items-center gap-3">
-          {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            {!isMobile && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-10 w-10 border border-gray-200 hover:bg-gray-50 rounded-lg"
+                onClick={handleToggleSidebar}
+                className="hidden md:flex h-9 w-9 border border-gray-200 rounded-lg hover:bg-gray-50"
               >
-                <Bell className="h-5 w-5 text-gray-600" />
-                <Badge
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-red-500 text-white border-2 border-white flex items-center justify-center"
-                >
-                  3
-                </Badge>
+                {sidebarCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 border border-gray-200">
-              <DropdownMenuLabel className="font-semibold text-gray-900 border-b border-gray-100 pb-2">
-                Notifications
-              </DropdownMenuLabel>
-              <div className="space-y-3 p-3 max-h-80 overflow-y-auto">
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm text-gray-900">New appointment request</p>
-                    <p className="text-gray-600 text-sm mt-1">John Smith requested an appointment</p>
-                    <p className="text-xs text-gray-400 mt-2">2 minutes ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <div className="w-2 h-2 rounded-full bg-yellow-500 mt-2 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm text-gray-900">Lab results ready</p>
-                    <p className="text-gray-600 text-sm mt-1">Blood test results for Patient ID: P001</p>
-                    <p className="text-xs text-gray-400 mt-2">1 hour ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm text-gray-900">Discharge completed</p>
-                    <p className="text-gray-600 text-sm mt-1">Mary Johnson has been discharged</p>
-                    <p className="text-xs text-gray-400 mt-2">3 hours ago</p>
-                  </div>
-                </div>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
 
-          {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="relative h-10 w-10 rounded-lg border border-gray-200 hover:bg-gray-50 p-0"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
-                  <AvatarFallback className="bg-blue-600 text-white font-medium">
-                    {user?.name ? getInitials(user.name) : 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-64 border border-gray-200 rounded-lg"
-              align="end"
-              forceMount
+            <span className="text-lg font-bold text-blue-600">HMS</span>
+          </div>
+
+          {/* Center: Desktop Search */}
+          <div className="hidden md:block w-full max-w-lg relative">
+            <form onSubmit={handleSearch}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="search"
+                  placeholder="Search patients, doctors, appointments..."
+                  className="pl-10 pr-8 w-full border-gray-300 focus:border-blue-500 transition-all"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onFocus={() => setShowResults(true)}
+                />
+                {searchQuery && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSearchQuery("");
+                      clearSearch();
+                      setShowResults(false);
+                    }}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 hover:bg-gray-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            </form>
+            {showResults && (
+              <div className="absolute top-full left-0 right-0 mt-1 z-50">
+                <SearchResultsList />
+              </div>
+            )}
+          </div>
+
+          {/* Right: Notification + Profile */}
+          <div className="flex items-center gap-2">
+            {/* Mobile Search Icon */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSearchToggle}
+              className="md:hidden h-9 w-9 border border-gray-200 rounded-lg hover:bg-gray-50"
             >
-              <DropdownMenuLabel className="font-normal p-4 border-b border-gray-100">
-                <div className="flex flex-col space-y-2">
-                  <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* Notifications */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative h-9 w-9 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <Bell className="h-4 w-4 text-gray-600" />
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 text-[10px] bg-red-500 text-white border-2 border-white">
+                    3
+                  </Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 border animate-fade-in">
+                <DropdownMenuLabel className="font-semibold border-b pb-2">
+                  Notifications
+                </DropdownMenuLabel>
+                <div className="p-3">
+                  <div className="flex items-start gap-3 p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">New appointment request</p>
+                      <p className="text-xs text-gray-500">John Smith requested an appointment</p>
+                      <p className="text-[10px] text-gray-400 mt-1">2 minutes ago</p>
+                    </div>
+                  </div>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-9 w-9 border border-gray-200 rounded-lg p-0"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={user?.avatar} />
+                    <AvatarFallback className="bg-blue-600 text-white text-xs font-medium">
+                      {getInitials(user?.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 border rounded-lg animate-fade-in">
+                <DropdownMenuLabel className="p-4 border-b">
+                  <p className="text-sm font-semibold">{user?.name}</p>
                   <p className="text-xs text-gray-600">{user?.email}</p>
                   <Badge
                     variant="outline"
-                    className={`w-fit text-xs border ${getRoleColor(user?.role || '')}`}
+                    className={`mt-2 ${getRoleColor(user?.role || "")}`}
                   >
-                    {user?.role?.replace('_', ' ').toUpperCase()}
+                    {user?.role?.toUpperCase()}
                   </Badge>
-                </div>
-              </DropdownMenuLabel>
+                </DropdownMenuLabel>
 
-              <div className="p-1">
-                <DropdownMenuItem
-                  onClick={handleProfileSettings}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer"
-                >
-                  <User className="h-4 w-4" />
+                <DropdownMenuItem onClick={handleProfileSettings}>
+                  <User className="h-4 w-4 mr-2" />
                   Profile Settings
                 </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={handleSystemSettings}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer"
-                >
-                  <Settings className="h-4 w-4" />
-                  System Settings
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log out
                 </DropdownMenuItem>
-
-                {hasRole('admin') && (
-                  <DropdownMenuItem
-                    onClick={handleAdminPanel}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer"
-                  >
-                    <Shield className="h-4 w-4" />
-                    Admin Panel
-                  </DropdownMenuItem>
-                )}
-              </div>
-
-              <DropdownMenuSeparator className="bg-gray-100" />
-
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 rounded-md hover:bg-red-50 cursor-pointer"
-              >
-                <LogOut className="h-4 w-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
-    </header>
+
+        {/* Mobile Search Bar */}
+        {isMobile && isSearchOpen && (
+          <div
+            ref={searchContainerRef}
+            onClick={handleSearchContainerClick}
+            className="absolute top-full left-0 right-0 bg-white shadow-lg border-t animate-fade-in"
+          >
+            <div className="p-4 flex items-center gap-2 border-b">
+              <Search className="h-4 w-4 text-gray-400" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Search..."
+                className="flex-1 border-gray-300 focus:border-blue-500"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSearchClose}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </Button>
+            </div>
+
+            {showResults && (
+              <div className="max-h-96 overflow-y-auto">
+                <SearchResultsList />
+              </div>
+            )}
+          </div>
+        )}
+      </header>
+
+      {/* Overlay when mobile search is active */}
+      {isMobile && isSearchOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden animate-fade-in"
+          onClick={handleSearchClose}
+        />
+      )}
+    </>
   );
 };
 
