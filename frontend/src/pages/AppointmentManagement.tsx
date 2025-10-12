@@ -375,7 +375,7 @@ export default function AppointmentManagement() {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => navigate("/calendar")}
+                onClick={() => navigate("/appointments/calendar")}
                 className="h-12 px-6"
               >
                 <Calendar className="w-4 h-4 mr-2" />

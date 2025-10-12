@@ -165,34 +165,6 @@ export const Login: React.FC = () => {
               </Button>
             </form>
 
-            {/* Demo Credentials */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <p className="text-sm font-semibold text-gray-800 text-center mb-3">
-                Demo Credentials
-              </p>
-              <div className="grid grid-cols-1 gap-2 text-xs">
-                <div className="flex justify-between items-center p-2 bg-white rounded border">
-                  <span className="font-medium">Admin</span>
-                  <span className="text-gray-600">admin@hospital.com</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-white rounded border">
-                  <span className="font-medium">Doctor</span>
-                  <span className="text-gray-600">doctor@hospital.com</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-white rounded border">
-                  <span className="font-medium">Nurse</span>
-                  <span className="text-gray-600">nurse@hospital.com</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-white rounded border">
-                  <span className="font-medium">Patient</span>
-                  <span className="text-gray-600">patient@hospital.com</span>
-                </div>
-                <div className="text-center mt-2">
-                  <span className="font-semibold text-blue-600">Password: password123</span>
-                </div>
-              </div>
-            </div>
-
             {/* Sign Up Link */}
             <div className="text-center pt-4 border-t border-gray-200">
               <p className="text-gray-600">

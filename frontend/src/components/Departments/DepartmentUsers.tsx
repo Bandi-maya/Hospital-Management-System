@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   Row,
@@ -12,21 +12,27 @@ import {
   Tabs,
   Timeline,
   Alert,
-  Divider,
   Typography,
   Flex,
   List,
-  Descriptions,
-  Spin,
   Select,
-  message
+  message,
+  Skeleton,
+  Dropdown,
+  Menu,
+  Switch,
+  Tooltip,
+  Empty,
+  Drawer,
+  FloatButton,
+  Progress,
+  Input
 } from "antd";
 import {
   TeamOutlined,
   UserOutlined,
   MailOutlined,
   PhoneOutlined,
-  EnvironmentOutlined,
   CalendarOutlined,
   SafetyCertificateOutlined,
   DashboardOutlined,
@@ -37,11 +43,23 @@ import {
   PieChartOutlined,
   TableOutlined,
   ApartmentOutlined,
-  IdcardOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined
-} from "@ant-design/icons";
+  CloseCircleOutlined,
+  MoreOutlined,
+  CloudDownloadOutlined,
+  CloudUploadOutlined,
+  SettingOutlined,
+  SearchOutlined,
+  BarChartOutlined,
+  EyeOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SyncOutlined,
+  QuestionCircleOutlined,
+  ImportOutlined,
+  UserAddOutlined,
+  UsergroupAddOutlined} from "@ant-design/icons";
 import { getApi } from "@/ApiService";
 import { toast } from "sonner";
 import { DepartmentInterface } from "./Departments";
@@ -49,6 +67,7 @@ import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
+const { TabPane } = Tabs;
 
 interface User {
   id: number;
@@ -80,12 +99,35 @@ export default function DepartmentUsers() {
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentInterface | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("users");
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  // Skeleton components
+  const StatisticSkeleton = () => (
+    <Card>
+      <Skeleton active paragraph={{ rows: 1 }} />
+    </Card>
+  );
+
+  const TableSkeleton = () => (
+    <Card>
+      <Skeleton active paragraph={{ rows: 6 }} />
+    </Card>
+  );
+
+  const CardSkeleton = () => (
+    <Card>
+      <Skeleton active avatar paragraph={{ rows: 3 }} />
+    </Card>
+  );
 
   function getUsersByDepartment(departmentId: number) {
-    setLoading(true);
+    setTableLoading(true);
     getApi(`/users?department_id=${departmentId}`)
       .then((data) => {
         if (!data.error) {
@@ -99,19 +141,20 @@ export default function DepartmentUsers() {
         toast.error("Failed to fetch users");
         console.error("Error fetching users:", error);
       })
-      .finally(() => setLoading(false));
+      .finally(() => setTableLoading(false));
   }
 
   useEffect(() => {
     try {
       setLoading(true);
+      setStatsLoading(true);
       getApi(`/departments`)
         .then((data) => {
           if (!data.error) {
-            setDepartments(data);
-            if (data.length > 0) {
-              setSelectedDepartment(data[0]);
-              getUsersByDepartment(data[0].id);
+            setDepartments(data.data || data);
+            if ((data.data || data).length > 0) {
+              setSelectedDepartment((data.data || data)[0]);
+              getUsersByDepartment((data.data || data)[0].id);
             }
           } else {
             console.error(data.error);
@@ -122,11 +165,15 @@ export default function DepartmentUsers() {
           toast.error("Failed to fetch departments");
           console.error("Error fetching departments:", error);
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          setLoading(false);
+          setStatsLoading(false);
+        });
     } catch (error) {
       console.error("Error fetching departments:", error);
       toast.error("Failed to fetch departments");
       setLoading(false);
+      setStatsLoading(false);
     }
   }, []);
 
@@ -141,24 +188,63 @@ export default function DepartmentUsers() {
     }
   }, [autoRefresh, selectedDepartment]);
 
+  // More actions menu
+  const moreActionsMenu = (
+    <Menu
+      items={[
+        {
+          key: 'export',
+          icon: <ExportOutlined />,
+          label: 'Export Users',
+        },
+        {
+          key: 'import',
+          icon: <ImportOutlined />,
+          label: 'Import Users',
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'settings',
+          icon: <SettingOutlined />,
+          label: 'User Settings',
+        },
+        {
+          key: 'help',
+          icon: <QuestionCircleOutlined />,
+          label: 'Help & Support',
+        },
+      ]}
+    />
+  );
+
   // Statistics
   const stats: DepartmentStats = {
     totalUsers: users.length,
     activeUsers: users.filter(user => user.status === "ACTIVE").length,
     inactiveUsers: users.filter(user => user.status === "INACTIVE").length,
-    doctors: users.filter(user => user.user_type.id === 1).length,
-    nurses: users.filter(user => user.user_type.id === 3).length,
-    patients: users.filter(user => user.user_type.id === 2).length,
-    staff: users.filter(user => user.user_type.id !== 1 && user.user_type.id !== 2 && user.user_type.id !== 3).length,
+    doctors: users.filter(user => user.user_type?.id === 1).length,
+    nurses: users.filter(user => user.user_type?.id === 3).length,
+    patients: users.filter(user => user.user_type?.id === 2).length,
+    staff: users.filter(user => user.user_type?.id !== 1 && user.user_type?.id !== 2 && user.user_type?.id !== 3).length,
     recentJoined: users.filter(user =>
       dayjs(user.joinDate).isAfter(dayjs().subtract(30, 'day'))
     ).length
   };
 
+  // Filtered users based on search
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(searchText.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchText.toLowerCase()) ||
+    user.role.toLowerCase().includes(searchText.toLowerCase()) ||
+    (user.specialization && user.specialization.toLowerCase().includes(searchText.toLowerCase()))
+  );
+
   // UI Helpers
-  const getStatusColor = (status: string) => ({ 'Active': 'green', 'Inactive': 'red' }[status] || 'default');
-  const getStatusIcon = (status: string) => ({ 'Active': <CheckCircleOutlined />, 'Inactive': <CloseCircleOutlined /> }[status]);
-  const getRoleColor = (role: string) => ({ 'Doctor': 'blue', 'Nurse': 'green', 'Staff': 'orange', 'Admin': 'red' }[role] || 'default');
+  const getStatusColor = (status: string) => ({ 'ACTIVE': 'green', 'INACTIVE': 'red' }[status] || 'default');
+  const getStatusIcon = (status: string) => ({ 'ACTIVE': <CheckCircleOutlined />, 'INACTIVE': <CloseCircleOutlined /> }[status]);
+  const getRoleColor = (role: string) => ({ 'Doctor': 'blue', 'Nurse': 'green', 'Staff': 'orange', 'Admin': 'red', 'Patient': 'purple' }[role] || 'default');
 
   const handleDepartmentChange = (dept: DepartmentInterface) => {
     setSelectedDepartment(dept);
@@ -172,25 +258,57 @@ export default function DepartmentUsers() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+        {/* Header Skeleton */}
+        <CardSkeleton />
+        
+        {/* Statistics Skeleton */}
+        <Row gutter={[16, 16]}>
+          {[...Array(6)].map((_, i) => (
+            <Col key={i} xs={24} sm={12} md={8} lg={4}>
+              <StatisticSkeleton />
+            </Col>
+          ))}
+        </Row>
+
+        {/* Table Skeleton */}
+        <TableSkeleton />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="p-6 space-y-6" >
       {/* Header */}
-      <Card style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+      <Card style={{color: 'black' }}>
         <Flex justify="space-between" align="center">
           <div>
             <Space size="large">
-              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '10px' }}>
-                <TeamOutlined style={{ fontSize: '36px' }} />
-              </div>
+              <Avatar size={64} icon={<TeamOutlined />} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
               <div>
-                <Title level={2} style={{ color: 'white', margin: 0 }}>👥 Department Users</Title>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', margin: 0 }}>
+                <Title level={2} style={{ color: 'black', margin: 0 }}>👥 Department Users</Title>
+                <Text style={{ color: 'rgba(0, 0, 0, 0.8)', margin: 0 }}>
                   <DashboardOutlined /> Manage and view users by department
                 </Text>
               </div>
             </Space>
           </div>
           <Space>
+            <Tooltip title="Auto Refresh">
+              <Switch
+                checkedChildren={<SyncOutlined />}
+                unCheckedChildren={<CloseCircleOutlined />}
+                checked={autoRefresh}
+                onChange={setAutoRefresh}
+              />
+            </Tooltip>
+            <Dropdown overlay={moreActionsMenu} placement="bottomRight">
+              <Button icon={<SettingOutlined />} style={{color:"black"}} size="large" ghost>
+                Settings
+              </Button>
+            </Dropdown>
             <Button
               type="primary"
               icon={<ReloadOutlined />}
@@ -198,7 +316,7 @@ export default function DepartmentUsers() {
               size="large"
               style={{ background: '#fff', color: '#667eea', border: 'none', fontWeight: 'bold' }}
             >
-              <RocketOutlined /> Refresh
+              <RocketOutlined /> Refresh Data
             </Button>
           </Space>
         </Flex>
@@ -207,7 +325,9 @@ export default function DepartmentUsers() {
       {/* Department Selection */}
       <Card>
         <Flex wrap="wrap" gap="middle" align="center">
-          <Text strong style={{ fontSize: '16px' }}>Select Department:</Text>
+          <Text strong style={{ fontSize: '16px' }}>
+            <ApartmentOutlined /> Select Department:
+          </Text>
           <Space wrap>
             {departments.map((dept) => (
               <Button
@@ -240,13 +360,144 @@ export default function DepartmentUsers() {
       {/* Statistics Cards */}
       {selectedDepartment && (
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><TeamOutlined /> Total Users</Space>} value={stats.totalUsers} valueStyle={{ color: '#667eea' }} /></Card></Col>
-          <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><CheckCircleOutlined /> Active</Space>} value={stats.activeUsers} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-          <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><UserOutlined /> Doctors</Space>} value={stats.doctors} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-          <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><TeamOutlined /> Nurses</Space>} value={stats.nurses} valueStyle={{ color: '#722ed1' }} /></Card></Col>
-          <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><ClockCircleOutlined /> Recent Joined</Space>} value={stats.recentJoined} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
-          <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><DashboardOutlined /> Utilization</Space>} value={Math.round((stats.activeUsers / (stats.totalUsers || 1)) * 100)} suffix="%" valueStyle={{ color: '#36cfc9' }} /></Card></Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><TeamOutlined /> Total Users</Space>} 
+                  value={stats.totalUsers} 
+                  valueStyle={{ color: '#667eea' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><CheckCircleOutlined /> Active</Space>} 
+                  value={stats.activeUsers} 
+                  valueStyle={{ color: '#52c41a' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><UserOutlined /> Doctors</Space>} 
+                  value={stats.doctors} 
+                  valueStyle={{ color: '#1890ff' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><TeamOutlined /> Nurses</Space>} 
+                  value={stats.nurses} 
+                  valueStyle={{ color: '#722ed1' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><ClockCircleOutlined /> Recent Joined</Space>} 
+                  value={stats.recentJoined} 
+                  valueStyle={{ color: '#fa8c16' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><DashboardOutlined /> Utilization</Space>} 
+                  value={Math.round((stats.activeUsers / (stats.totalUsers || 1)) * 100)} 
+                  suffix="%" 
+                  valueStyle={{ color: '#36cfc9' }} 
+                />
+              )}
+            </Card>
+          </Col>
         </Row>
+      )}
+
+      {/* Search and Filter Section */}
+      {selectedDepartment && (
+        <Card>
+          <Flex wrap="wrap" gap="middle" align="center">
+            <Input
+              placeholder="🔍 Search users by name, email, or role..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 300 }}
+              size="large"
+              allowClear
+            />
+            <Select 
+              placeholder="Filter by Role" 
+              style={{ width: 150 }} 
+              size="large"
+            >
+              <Option value="all">All Roles</Option>
+              <Option value="Doctor">Doctors</Option>
+              <Option value="Nurse">Nurses</Option>
+              <Option value="Patient">Patients</Option>
+              <Option value="Staff">Staff</Option>
+            </Select>
+            <Select 
+              placeholder="Filter by Status" 
+              style={{ width: 150 }} 
+              size="large"
+            >
+              <Option value="all">All Status</Option>
+              <Option value="ACTIVE">Active</Option>
+              <Option value="INACTIVE">Inactive</Option>
+            </Select>
+            <Space>
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={() => setSearchText('')}
+              >
+                Reset
+              </Button>
+              <Button 
+                icon={<ExportOutlined />}
+                onClick={() => setDrawerVisible(true)}
+              >
+                Export
+              </Button>
+              <Button 
+                icon={<CloudDownloadOutlined />}
+                type="primary" 
+                ghost
+              >
+                Quick Actions
+              </Button>
+            </Space>
+          </Flex>
+        </Card>
       )}
 
       {/* Tabs for Different Views */}
@@ -255,20 +506,17 @@ export default function DepartmentUsers() {
           key="users"
           tab={
             <Space>
-              <TeamOutlined /> Users List <Badge count={users.length} overflowCount={99} />
+              <TeamOutlined /> Users List <Badge count={filteredUsers.length} overflowCount={99} />
             </Space>
           }
         >
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '50px' }}>
-              <Spin size="large" />
-              <div style={{ marginTop: 16 }}>Loading users...</div>
-            </div>
-          ) : (
+          {tableLoading ? (
+            <TableSkeleton />
+          ) : selectedDepartment ? (
             <Card
               title={
                 <Space>
-                  <TableOutlined /> {selectedDepartment?.name} Users ({users.length})
+                  <TableOutlined /> {selectedDepartment?.name} Users ({filteredUsers.length})
                 </Space>
               }
               extra={
@@ -276,106 +524,247 @@ export default function DepartmentUsers() {
                   <Tag color="green">{stats.activeUsers} Active</Tag>
                   <Tag color="blue">{stats.doctors} Doctors</Tag>
                   <Tag color="purple">{stats.nurses} Nurses</Tag>
+                  <Tag color="orange">{stats.patients} Patients</Tag>
                 </Space>
               }
             >
-              <List
-                dataSource={users}
-                renderItem={(user) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      avatar={
-                        <Avatar
-                          size="large"
-                          icon={<UserOutlined />}
-                          style={{
-                            backgroundColor: getRoleColor(user.role) === 'blue' ? '#1890ff' :
-                              getRoleColor(user.role) === 'green' ? '#52c41a' :
-                                getRoleColor(user.role) === 'orange' ? '#fa8c16' : '#722ed1'
-                          }}
-                        />
-                      }
-                      title={
-                        <Space>
-                          <Text strong>{user.name}</Text>
-                          <Tag color={getRoleColor(user.role)}>{user.role}</Tag>
-                          <Tag color={getStatusColor(user.status)} icon={getStatusIcon(user.status)}>
-                            {user.status}
-                          </Tag>
-                        </Space>
-                      }
-                      description={
-                        <Space direction="vertical" size={0}>
-                          <div><MailOutlined /> {user.email}</div>
-                          {user.phone && <div><PhoneOutlined /> {user.phone}</div>}
-                          {user.specialization && <div><SafetyCertificateOutlined /> {user.specialization}</div>}
-                          <div style={{ fontSize: '12px', color: '#666' }}>
-                            <CalendarOutlined /> Joined {dayjs(user.joinDate).format('MMM D, YYYY')}
-                            {user.lastLogin && (
-                              <>
-                                {' • '}
-                                <ClockCircleOutlined /> Last login {dayjs(user.lastLogin).fromNow()}
-                              </>
-                            )}
-                          </div>
-                        </Space>
-                      }
-                    />
-                  </List.Item>
-                )}
+              {filteredUsers.length > 0 ? (
+                <List
+                  dataSource={filteredUsers}
+                  renderItem={(user) => (
+                    <List.Item
+                      actions={[
+                        <Tooltip title="View Details">
+                          <Button 
+                            icon={<EyeOutlined />} 
+                            type="primary" 
+                            ghost 
+                            shape="circle"
+                          />
+                        </Tooltip>,
+                        <Tooltip title="Edit User">
+                          <Button 
+                            icon={<EditOutlined />} 
+                            shape="circle"
+                          />
+                        </Tooltip>,
+                        <Tooltip title="Delete User">
+                          <Button 
+                            icon={<DeleteOutlined />} 
+                            danger 
+                            shape="circle"
+                          />
+                        </Tooltip>,
+                        <Dropdown overlay={moreActionsMenu} trigger={['click']}>
+                          <Button 
+                            icon={<MoreOutlined />} 
+                            shape="circle"
+                          />
+                        </Dropdown>
+                      ]}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <Avatar
+                            size="large"
+                            icon={<UserOutlined />}
+                            style={{
+                              backgroundColor: getRoleColor(user.role) === 'blue' ? '#1890ff' :
+                                getRoleColor(user.role) === 'green' ? '#52c41a' :
+                                  getRoleColor(user.role) === 'orange' ? '#fa8c16' : 
+                                  getRoleColor(user.role) === 'purple' ? '#722ed1' : '#666'
+                            }}
+                          />
+                        }
+                        title={
+                          <Space>
+                            <Text strong>{user.name}</Text>
+                            <Tag color={getRoleColor(user.role)}>{user.user_type?.name || user.role}</Tag>
+                            <Tag color={getStatusColor(user.status)} icon={getStatusIcon(user.status)}>
+                              {user.status}
+                            </Tag>
+                          </Space>
+                        }
+                        description={
+                          <Space direction="vertical" size={0}>
+                            <div><MailOutlined /> {user.email}</div>
+                            {user.phone && <div><PhoneOutlined /> {user.phone}</div>}
+                            {user.specialization && <div><SafetyCertificateOutlined /> {user.specialization}</div>}
+                            <div style={{ fontSize: '12px', color: '#666' }}>
+                              <CalendarOutlined /> Joined {dayjs(user.joinDate).format('MMM D, YYYY')}
+                              {user.lastLogin && (
+                                <>
+                                  {' • '}
+                                  <ClockCircleOutlined /> Last login {dayjs(user.lastLogin).fromNow()}
+                                </>
+                              )}
+                            </div>
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No users found in this department"
+                >
+                  <Button type="primary" icon={<UserAddOutlined />}>
+                    Add New User
+                  </Button>
+                </Empty>
+              )}
+            </Card>
+          ) : (
+            <Card>
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Please select a department to view users"
               />
             </Card>
           )}
         </Tabs.TabPane>
 
-        <Tabs.TabPane key="activity" tab={<Space><DashboardOutlined /> Department Activity</Space>}>
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <Card title="User Distribution">
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                  <PieChartOutlined style={{ fontSize: '48px', color: '#667eea' }} />
-                  <div style={{ marginTop: '16px' }}>
-                    <div style={{ marginBottom: '16px' }}>
-                      <Tag color="blue">Doctors: {stats.doctors}</Tag>
-                      <Tag color="green">Nurses: {stats.nurses}</Tag>
-                      <Tag color="orange">Staff: {stats.staff}</Tag>
-                      <Tag color="orange">Patients: {stats.patients}</Tag>
+        <Tabs.TabPane key="activity" tab={<Space><DashboardOutlined /> Department Analytics</Space>}>
+          {selectedDepartment ? (
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card title="User Distribution">
+                  {statsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      <Skeleton active paragraph={{ rows: 4 }} />
                     </div>
-                    <div>
-                      <Tag color="green">Active: {stats.activeUsers}</Tag>
-                      <Tag color="red">Inactive: {stats.inactiveUsers}</Tag>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      <PieChartOutlined style={{ fontSize: '48px', color: '#667eea' }} />
+                      <div style={{ marginTop: '16px' }}>
+                        <Progress
+                          type="circle"
+                          percent={Math.round((stats.activeUsers / (stats.totalUsers || 1)) * 100)}
+                          strokeColor="#52c41a"
+                        />
+                        <div style={{ marginTop: '16px' }}>
+                          <Tag color="blue">Doctors: {stats.doctors}</Tag>
+                          <Tag color="green">Nurses: {stats.nurses}</Tag>
+                          <Tag color="orange">Staff: {stats.staff}</Tag>
+                          <Tag color="purple">Patients: {stats.patients}</Tag>
+                        </div>
+                        <div style={{ marginTop: '8px' }}>
+                          <Tag color="green">Active: {stats.activeUsers}</Tag>
+                          <Tag color="red">Inactive: {stats.inactiveUsers}</Tag>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="Recent User Activity">
-                <Timeline>
-                  {users.slice(0, 5).map(user => (
-                    <Timeline.Item
-                      key={user.id}
-                      color={getStatusColor(user.status)}
-                      dot={getStatusIcon(user.status)}
-                    >
-                      <Space direction="vertical" size={0}>
-                        <div style={{ fontWeight: 'bold' }}>{user.name}</div>
-                        <div style={{ color: '#666', fontSize: '12px' }}>
-                          <Tag color={getRoleColor(user.role)}>{user.role}</Tag>
-                          {user.specialization && ` • ${user.specialization}`}
-                        </div>
-                        <div style={{ color: '#999', fontSize: '12px' }}>
-                          <MailOutlined /> {user.email}
-                        </div>
-                      </Space>
-                    </Timeline.Item>
-                  ))}
-                </Timeline>
-              </Card>
-            </Col>
-          </Row>
+                  )}
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card title="Recent User Activity">
+                  {statsLoading ? (
+                    <Skeleton active paragraph={{ rows: 5 }} />
+                  ) : users.length > 0 ? (
+                    <Timeline>
+                      {users.slice(0, 5).map(user => (
+                        <Timeline.Item
+                          key={user.id}
+                          color={getStatusColor(user.status)}
+                          dot={getStatusIcon(user.status)}
+                        >
+                          <Space direction="vertical" size={0}>
+                            <div style={{ fontWeight: 'bold' }}>{user.name}</div>
+                            <div style={{ color: '#666', fontSize: '12px' }}>
+                              <Tag color={getRoleColor(user.role)}>{user.user_type?.name || user.role}</Tag>
+                              {user.specialization && ` • ${user.specialization}`}
+                            </div>
+                            <div style={{ color: '#999', fontSize: '12px' }}>
+                              <MailOutlined /> {user.email}
+                            </div>
+                            <div style={{ color: '#999', fontSize: '12px' }}>
+                              <CalendarOutlined /> Joined {dayjs(user.joinDate).format('MMM D, YYYY')}
+                            </div>
+                          </Space>
+                        </Timeline.Item>
+                      ))}
+                    </Timeline>
+                  ) : (
+                    <Empty description="No user activity recorded" />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          ) : (
+            <Card>
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Please select a department to view analytics"
+              />
+            </Card>
+          )}
         </Tabs.TabPane>
       </Tabs>
+
+      {/* Quick Actions Drawer */}
+      <Drawer
+        title="Quick Actions"
+        placement="right"
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        width={400}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <Card size="small" title="Data Management">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Button icon={<CloudDownloadOutlined />} block>
+                Download Report
+              </Button>
+              <Button icon={<CloudUploadOutlined />} block>
+                Upload Data
+              </Button>
+              <Button icon={<SyncOutlined />} block onClick={handleRefresh}>
+                Refresh Data
+              </Button>
+            </Space>
+          </Card>
+          
+          <Card size="small" title="User Operations">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Button icon={<UserAddOutlined />} type="primary" block>
+                Add New User
+              </Button>
+              <Button icon={<UsergroupAddOutlined />} block>
+                Bulk Import
+              </Button>
+              <Button icon={<BarChartOutlined />} block>
+                View Analytics
+              </Button>
+            </Space>
+          </Card>
+        </Space>
+      </Drawer>
+
+      {/* Floating Action Button */}
+      {/* <FloatButton.Group
+        shape="circle"
+        style={{ right: 24 }}
+        icon={<ThunderboltOutlined />}
+      >
+        <FloatButton
+          icon={<ReloadOutlined />}
+          tooltip="Refresh"
+          onClick={handleRefresh}
+        />
+        <FloatButton
+          icon={<UserAddOutlined />}
+          tooltip="Add User"
+        />
+        <FloatButton
+          icon={<SettingOutlined />}
+          tooltip="Settings"
+          onClick={() => setDrawerVisible(true)}
+        />
+        <FloatButton.BackTop visibilityHeight={0} />
+      </FloatButton.Group> */}
     </div>
   );
 }

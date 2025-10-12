@@ -1,31 +1,70 @@
-import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import {
-  Users,
-  UserCheck,
+import React, { useState, useEffect } from 'react';
+import { 
+  Card, 
+  Statistic, 
+  Tag, 
+  Button, 
+  Progress, 
+  Skeleton, 
+  List, 
+  Avatar,
+  Row,
+  Col,
+  Divider,
+  Space,
+  Badge,
+  Grid,
+  Timeline,
   Calendar,
-  Activity,
-  TrendingUp,
-  TrendingDown,
-  Heart,
-  Stethoscope,
-  Building2,
-  AlertTriangle,
-  Clock,
-  DollarSign,
-} from 'lucide-react';
+  Alert,
+  Select,
+  DatePicker,
+  Typography
+} from 'antd';
+import { 
+  UserOutlined,
+  TeamOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
+  BankOutlined,
+  WarningOutlined,
+  ClockCircleOutlined,
+  DollarOutlined,
+  HeartOutlined,
+  MedicineBoxOutlined,
+  CarOutlined,
+  BellOutlined,
+  SettingOutlined,
+  FileTextOutlined,
+  SearchOutlined,
+  FilterOutlined,
+  PlusOutlined,
+  RightOutlined,
+  LineChartOutlined,
+  EnvironmentOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  DashboardOutlined,
+  MedicineBoxFilled,
+  StarOutlined,
+  SafetyCertificateOutlined
+} from '@ant-design/icons';
+import { useAuth } from '@/hooks/useAuth';
+import { UserRole } from '@/types/common';
+
+const { useBreakpoint } = Grid;
+const { Option } = Select;
+const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 interface StatsCardProps {
   title: string;
-  value: string;
+  value: string | number;
   change?: string;
   changeType?: 'increase' | 'decrease';
-  icon: React.ComponentType<any>;
+  icon: React.ReactNode;
   description?: string;
+  loading?: boolean;
 }
 
 const StatsCard: React.FC<StatsCardProps> = ({
@@ -33,31 +72,52 @@ const StatsCard: React.FC<StatsCardProps> = ({
   value,
   change,
   changeType,
-  icon: Icon,
-  description
+  icon,
+  description,
+  loading = false
 }) => (
-  <Card className="medical-card">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{value}</div>
-      {change && (
-        <div className="flex items-center text-xs text-muted-foreground">
-          {changeType === 'increase' ? (
-            <TrendingUp className="mr-1 h-3 w-3 text-success" />
-          ) : (
-            <TrendingDown className="mr-1 h-3 w-3 text-destructive" />
+  <Card 
+    className="medical-card" 
+    style={{ height: '100%', borderRadius: '12px' }}
+    bodyStyle={{ padding: '16px' }}
+  >
+    {loading ? (
+      <Skeleton active paragraph={{ rows: 2 }} />
+    ) : (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>{title}</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1890ff', marginBottom: '4px' }}>
+            {value}
+          </div>
+          {change && (
+            <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px', color: '#666' }}>
+              {changeType === 'increase' ? (
+                <span style={{ color: '#52c41a', marginRight: '4px' }}>↗</span>
+              ) : (
+                <span style={{ color: '#ff4d4f', marginRight: '4px' }}>↘</span>
+              )}
+              <span style={{ color: changeType === 'increase' ? '#52c41a' : '#ff4d4f' }}>
+                {change}
+              </span>
+              <span style={{ marginLeft: '4px' }}>from last month</span>
+            </div>
           )}
-          <span className={changeType === 'increase' ? 'text-success' : 'text-destructive'}>
-            {change}
-          </span>
-          <span className="ml-1">from last month</span>
+          {description && (
+            <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>{description}</div>
+          )}
         </div>
-      )}
-      {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
-    </CardContent>
+        <div style={{ 
+          color: '#1890ff', 
+          fontSize: '24px',
+          background: 'linear-gradient(135deg, #f0f8ff, #e6f7ff)',
+          padding: '12px',
+          borderRadius: '8px'
+        }}>
+          {icon}
+        </div>
+      </div>
+    )}
   </Card>
 );
 
@@ -71,8 +131,42 @@ interface RecentActivity {
   status?: 'pending' | 'completed' | 'in_progress' | 'cancelled';
 }
 
+interface QuickAction {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  type?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
+  role?: UserRole[];
+}
+
 export const Dashboard: React.FC = () => {
   const { user, hasRole } = useAuth();
+  const screens = useBreakpoint();
+  const [loading, setLoading] = useState(true);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string>('today');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+      setActivitiesLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Get current date and time information
+  const currentDate = new Date();
+  const formattedDate = currentDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  const formattedTime = currentDate.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 
   const stats = [
     {
@@ -80,7 +174,7 @@ export const Dashboard: React.FC = () => {
       value: '2,847',
       change: '+12.5%',
       changeType: 'increase' as const,
-      icon: Users,
+      icon: <TeamOutlined />,
       description: 'Active registered patients'
     },
     {
@@ -88,7 +182,7 @@ export const Dashboard: React.FC = () => {
       value: '58',
       change: '+5.2%',
       changeType: 'increase' as const,
-      icon: Calendar,
+      icon: <CalendarOutlined />,
       description: '12 pending, 46 scheduled'
     },
     {
@@ -96,7 +190,7 @@ export const Dashboard: React.FC = () => {
       value: '24',
       change: '-2.1%',
       changeType: 'decrease' as const,
-      icon: UserCheck,
+      icon: <CheckCircleOutlined />,
       description: '3 on leave, 5 in surgery'
     },
     {
@@ -104,7 +198,7 @@ export const Dashboard: React.FC = () => {
       value: '87%',
       change: '+3.8%',
       changeType: 'increase' as const,
-      icon: Building2,
+      icon: <BankOutlined />,
       description: '174 of 200 beds occupied'
     },
     {
@@ -112,7 +206,7 @@ export const Dashboard: React.FC = () => {
       value: '12',
       change: '-8.3%',
       changeType: 'decrease' as const,
-      icon: AlertTriangle,
+      icon: <WarningOutlined />,
       description: '3 critical, 9 moderate'
     },
     {
@@ -120,7 +214,7 @@ export const Dashboard: React.FC = () => {
       value: '$124,750',
       change: '+15.3%',
       changeType: 'increase' as const,
-      icon: DollarSign,
+      icon: <DollarOutlined />,
       description: 'Current month earnings'
     }
   ];
@@ -173,183 +267,565 @@ export const Dashboard: React.FC = () => {
     }
   ];
 
+  const quickActions: QuickAction[] = [
+    {
+      id: '1',
+      title: 'Register New Patient',
+      description: 'Add patient to system',
+      icon: <UserOutlined />,
+      type: 'primary'
+    },
+    {
+      id: '2',
+      title: 'Schedule Appointment',
+      description: 'Book patient consultation',
+      icon: <CalendarOutlined />,
+      type: 'default'
+    },
+    {
+      id: '3',
+      title: 'Lab Test Request',
+      description: 'Order diagnostic tests',
+      icon: <LineChartOutlined />,
+      type: 'default'
+    },
+    {
+      id: '4',
+      title: 'Emergency Admission',
+      description: 'Urgent patient admission',
+      icon: <CarOutlined />,
+      type: 'primary',
+      role: ['doctor', 'admin']
+    },
+    {
+      id: '5',
+      title: 'Ward Management',
+      description: 'Manage bed allocation',
+      icon: <BellOutlined />,
+      type: 'default'
+    },
+    {
+      id: '6',
+      title: 'Pharmacy Orders',
+      description: 'Manage medications',
+      icon: <MedicineBoxOutlined />,
+      type: 'default'
+    },
+    {
+      id: '7',
+      title: 'Medical Records',
+      description: 'Access patient history',
+      icon: <FileTextOutlined />,
+      type: 'default'
+    },
+    {
+      id: '8',
+      title: 'System Settings',
+      description: 'Configure hospital settings',
+      icon: <SettingOutlined />,
+      type: 'default',
+      role: ['admin']
+    }
+  ];
+
   const getActivityIcon = (type: RecentActivity['type']) => {
     switch (type) {
-      case 'appointment': return Calendar;
-      case 'admission': return Building2;
-      case 'discharge': return Users;
-      case 'emergency': return AlertTriangle;
-      case 'lab': return Activity;
-      case 'prescription': return Heart;
-      default: return Clock;
+      case 'appointment': return <CalendarOutlined style={{ color: '#1890ff' }} />;
+      case 'admission': return <BankOutlined style={{ color: '#1890ff' }} />;
+      case 'discharge': return <UserOutlined style={{ color: '#1890ff' }} />;
+      case 'emergency': return <WarningOutlined style={{ color: '#1890ff' }} />;
+      case 'lab': return <LineChartOutlined style={{ color: '#1890ff' }} />;
+      case 'prescription': return <HeartOutlined style={{ color: '#1890ff' }} />;
+      default: return <ClockCircleOutlined style={{ color: '#1890ff' }} />;
     }
   };
 
   const getStatusColor = (status?: RecentActivity['status']) => {
     switch (status) {
-      case 'pending': return 'status-warning';
-      case 'completed': return 'status-success';
-      case 'in_progress': return 'bg-accent/10 text-accent';
-      case 'cancelled': return 'status-critical';
-      default: return 'status-success';
+      case 'pending': return 'orange';
+      case 'completed': return 'green';
+      case 'in_progress': return 'blue';
+      case 'cancelled': return 'red';
+      default: return 'green';
     }
   };
 
+  const getStatusText = (status?: RecentActivity['status']) => {
+    switch (status) {
+      case 'pending': return 'Pending';
+      case 'completed': return 'Completed';
+      case 'in_progress': return 'In Progress';
+      case 'cancelled': return 'Cancelled';
+      default: return 'Completed';
+    }
+  };
+
+  const filteredQuickActions = quickActions.filter(action => 
+    !action.role || action.role.some(role => hasRole(role))
+  );
+
+  const capacityData = [
+    { label: 'ICU Capacity', value: 80, current: '12/15 beds', color: '#ff4d4f' },
+    { label: 'General Ward', value: 75, current: '45/60 beds', color: '#1890ff' },
+    { label: 'Emergency Room', value: 37.5, current: '3/8 beds', color: '#faad14' },
+    { label: 'Operating Rooms', value: 60, current: '3/5 rooms', color: '#722ed1' },
+  ];
+
+  // Timeline data for today's events
+  const timelineData = [
+    {
+      color: 'green',
+      children: (
+        <div>
+          <Text strong>Morning Rounds</Text>
+          <div style={{ fontSize: '12px', color: '#666' }}>8:00 AM - General Ward</div>
+        </div>
+      ),
+    },
+    {
+      color: 'blue',
+      children: (
+        <div>
+          <Text strong>Surgery - Room 3</Text>
+          <div style={{ fontSize: '12px', color: '#666' }}>10:30 AM - Appendectomy</div>
+        </div>
+      ),
+    },
+    {
+      color: 'orange',
+      children: (
+        <div>
+          <Text strong>Lunch Break</Text>
+          <div style={{ fontSize: '12px', color: '#666' }}>12:30 PM - 1:30 PM</div>
+        </div>
+      ),
+    },
+    {
+      color: 'purple',
+      children: (
+        <div>
+          <Text strong>Patient Consultations</Text>
+          <div style={{ fontSize: '12px', color: '#666' }}>2:00 PM - Follow-up checks</div>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-primary">
-          Welcome back, {user?.name?.split(' ')[0] || 'Doctor'}
-        </h1>
-        <p className="text-muted-foreground">
-          Here's what's happening at MediCare Hospital today.
-        </p>
-      </div>
+    <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Header Section with Date and Time */}
+      <Card 
+        style={{ 
+          marginBottom: '24px', 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          borderRadius: '12px'
+        }}
+        bodyStyle={{ padding: '20px' }}
+      >
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Title level={2} style={{ color: 'white', margin: 0 }}>
+              Welcome back, {user?.name?.split(' ')[0] || 'Doctor'}! 👋
+            </Title>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '16px' }}>
+              {formattedDate} • {formattedTime}
+            </Text>
+          </Col>
+          <Col>
+            <Space>
+              <Select 
+                defaultValue="today" 
+                style={{ width: 120 }}
+                onChange={setSelectedDate}
+              >
+                <Option value="today">Today</Option>
+                <Option value="week">This Week</Option>
+                <Option value="month">This Month</Option>
+              </Select>
+              <DatePicker />
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Alert Banner */}
+      <Alert
+        message="System Maintenance Notice"
+        description="Scheduled maintenance will occur this Saturday from 2:00 AM to 4:00 AM. Some services may be temporarily unavailable."
+        type="info"
+        showIcon
+        closable
+        style={{ marginBottom: '24px', borderRadius: '8px' }}
+      />
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
         {stats.map((stat, index) => (
-          <StatsCard key={index} {...stat} />
+          <Col xs={24} sm={12} lg={8} key={index}>
+            <StatsCard {...stat} loading={loading} />
+          </Col>
         ))}
-      </div>
+      </Row>
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <Row gutter={[16, 16]}>
         {/* Recent Activities */}
-        <Card className="medical-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" />
-              Recent Activities
-            </CardTitle>
-            <CardDescription>Latest hospital activities and updates</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recentActivities.map((activity) => {
-              const ActivityIcon = getActivityIcon(activity.type);
-              return (
-                <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                    <ActivityIcon className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium">{activity.title}</h4>
-                      {activity.status && (
-                        <Badge className={`status-badge ${getStatusColor(activity.status)}`}>
-                          {activity.status.replace('_', ' ')}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{activity.description}</p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Patient: {activity.patient}</span>
-                      <span>{activity.time}</span>
-                    </div>
-                  </div>
+        <Col xs={24} lg={16}>
+          <Card 
+            title={
+              <Space>
+                <LineChartOutlined style={{ color: '#1890ff' }} />
+                Recent Activities
+              </Space>
+            }
+            extra={
+              <Space>
+                <Button icon={<FilterOutlined />}>Filter</Button>
+                <Button icon={<SearchOutlined />}>Search</Button>
+                <RangePicker />
+              </Space>
+            }
+            style={{ height: '100%', borderRadius: '12px' }}
+          >
+            {activitiesLoading ? (
+              <List
+                dataSource={[1, 2, 3, 4, 5]}
+                renderItem={() => (
+                  <List.Item>
+                    <Skeleton active avatar paragraph={{ rows: 1 }} />
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <>
+                <List
+                  dataSource={recentActivities}
+                  renderItem={(activity) => (
+                    <List.Item 
+                      style={{ 
+                        padding: '12px 0', 
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f0f0f0'
+                      }}
+                      className="activity-item"
+                      actions={[<RightOutlined key="arrow" style={{ color: '#ccc' }} />]}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <Avatar 
+                            icon={getActivityIcon(activity.type)} 
+                            style={{ 
+                              backgroundColor: '#f0f8ff',
+                              borderRadius: '8px'
+                            }}
+                            size="large"
+                          />
+                        }
+                        title={
+                          <Space>
+                            <span>{activity.title}</span>
+                            {activity.status && (
+                              <Tag color={getStatusColor(activity.status)}>
+                                {getStatusText(activity.status)}
+                              </Tag>
+                            )}
+                          </Space>
+                        }
+                        description={
+                          <div>
+                            <div>{activity.description}</div>
+                            <div style={{ marginTop: '4px', fontSize: '12px', color: '#999' }}>
+                              <UserOutlined /> Patient: {activity.patient} • <ClockCircleOutlined /> {activity.time}
+                            </div>
+                          </div>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+                <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                  <Button type="primary" icon={<RightOutlined />}>
+                    View All Activities
+                  </Button>
                 </div>
-              );
-            })}
-            <Button variant="outline" className="w-full">
-              View All Activities
-            </Button>
-          </CardContent>
-        </Card>
+              </>
+            )}
+          </Card>
+        </Col>
 
-        {/* Quick Actions */}
-        <Card className="medical-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Stethoscope className="h-5 w-5 text-primary" />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>Frequently used hospital functions</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3">
-              <Button className="medical-button bg-primary hover:bg-primary-dark text-primary-foreground justify-start">
-                <Users className="mr-2 h-4 w-4" />
-                Register New Patient
-              </Button>
-              <Button className="medical-button bg-secondary hover:bg-secondary/90 text-secondary-foreground justify-start">
-                <Calendar className="mr-2 h-4 w-4" />
-                Schedule Appointment
-              </Button>
-              <Button className="medical-button bg-accent hover:bg-accent/90 text-accent-foreground justify-start">
-                <Activity className="mr-2 h-4 w-4" />
-                Lab Test Request
-              </Button>
-              <Button className="medical-button bg-warning hover:bg-warning/90 text-warning-foreground justify-start">
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Emergency Admission
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <Building2 className="mr-2 h-4 w-4" />
-                Ward Management
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <Heart className="mr-2 h-4 w-4" />
-                Pharmacy Orders
-              </Button>
-            </div>
+        {/* Quick Actions & Status */}
+        <Col xs={24} lg={8}>
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {/* Quick Actions */}
+            <Card
+              title={
+                <Space>
+                  <MedicineBoxOutlined style={{ color: '#1890ff' }} />
+                  Quick Actions
+                </Space>
+              }
+              style={{ borderRadius: '12px' }}
+            >
+              <Space direction="vertical" style={{ width: '100%' }} size="small">
+                {filteredQuickActions.map((action) => (
+                  <Button
+                    key={action.id}
+                    type={action.type}
+                    icon={action.icon}
+                    style={{ 
+                      width: '100%', 
+                      height: 'auto', 
+                      padding: '12px',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      borderRadius: '8px'
+                    }}
+                  >
+                    <div style={{ flex: 1, textAlign: 'left' }}>
+                      <div style={{ fontWeight: '500' }}>{action.title}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>{action.description}</div>
+                    </div>
+                    <PlusOutlined style={{ opacity: 0.7 }} />
+                  </Button>
+                ))}
+              </Space>
+            </Card>
+
+            {/* Today's Timeline */}
+            <Card
+              title={
+                <Space>
+                  <ClockCircleOutlined style={{ color: '#1890ff' }} />
+                  Today's Schedule
+                </Space>
+              }
+              style={{ borderRadius: '12px' }}
+            >
+              <Timeline items={timelineData} />
+            </Card>
 
             {/* Hospital Status */}
-            <div className="space-y-3 pt-4 border-t">
-              <h4 className="text-sm font-medium">Hospital Status</h4>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>ICU Capacity</span>
-                  <span>12/15 beds</span>
-                </div>
-                <Progress value={80} className="h-2" />
-                <div className="flex items-center justify-between text-sm">
-                  <span>General Ward</span>
-                  <span>45/60 beds</span>
-                </div>
-                <Progress value={75} className="h-2" />
-                <div className="flex items-center justify-between text-sm">
-                  <span>Emergency Room</span>
-                  <span>3/8 beds</span>
-                </div>
-                <Progress value={37.5} className="h-2" />
+            <Card
+              title={
+                <Space>
+                  <BankOutlined style={{ color: '#1890ff' }} />
+                  Hospital Status
+                </Space>
+              }
+              style={{ borderRadius: '12px' }}
+            >
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                {capacityData.map((item, index) => (
+                  <div key={index}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>{item.label}</span>
+                      <span style={{ fontSize: '14px', color: '#666' }}>{item.current}</span>
+                    </div>
+                    <Progress 
+                      percent={item.value} 
+                      strokeColor={item.color}
+                      size="small"
+                      showInfo={false}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                      <span>0%</span>
+                      <span>{item.value}%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+                ))}
+              </Space>
+            </Card>
+          </Space>
+        </Col>
+      </Row>
+
+      {/* Additional Features Row */}
+      <Row gutter={[16, 16]} style={{ marginTop: '24px' }}>
+        {/* Hospital Metrics */}
+        <Col xs={24} md={12}>
+          <Card 
+            title={
+              <Space>
+                <DashboardOutlined style={{ color: '#1890ff' }} />
+                Hospital Metrics
+              </Space>
+            }
+            style={{ borderRadius: '12px' }}
+          >
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Statistic 
+                  title="Average Wait Time" 
+                  value={18} 
+                  suffix="minutes" 
+                  prefix={<ClockCircleOutlined />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic 
+                  title="Patient Satisfaction" 
+                  value={94.5} 
+                  suffix="%" 
+                  prefix={<StarOutlined />}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic 
+                  title="Cleanliness Score" 
+                  value={98} 
+                  suffix="%" 
+                  prefix={<SafetyCertificateOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic 
+                  title="Staff On Duty" 
+                  value={47} 
+                  prefix={<TeamOutlined />}
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        {/* Emergency Contacts */}
+        <Col xs={24} md={12}>
+          <Card 
+            title={
+              <Space>
+                <PhoneOutlined style={{ color: '#ff4d4f' }} />
+                Emergency Contacts
+              </Space>
+            }
+            style={{ borderRadius: '12px' }}
+          >
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space>
+                  <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#ff4d4f' }} />
+                  <div>
+                    <Text strong>Dr. Sarah Wilson</Text>
+                    <div style={{ fontSize: '12px', color: '#666' }}>Chief Medical Officer</div>
+                  </div>
+                </Space>
+                <Button type="link" icon={<PhoneOutlined />} style={{ color: '#52c41a' }}>
+                  Call
+                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space>
+                  <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+                  <div>
+                    <Text strong>Emergency Dept.</Text>
+                    <div style={{ fontSize: '12px', color: '#666' }}>24/7 Emergency Line</div>
+                  </div>
+                </Space>
+                <Button type="link" icon={<PhoneOutlined />} style={{ color: '#52c41a' }}>
+                  Call
+                </Button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space>
+                  <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#faad14' }} />
+                  <div>
+                    <Text strong>Security</Text>
+                    <div style={{ fontSize: '12px', color: '#666' }}>Hospital Security</div>
+                  </div>
+                </Space>
+                <Button type="link" icon={<PhoneOutlined />} style={{ color: '#52c41a' }}>
+                  Call
+                </Button>
+              </div>
+            </Space>
+          </Card>
+        </Col>
+      </Row>
 
       {/* Role-specific sections */}
       {hasRole('doctor') && (
-        <Card className="medical-card">
-          <CardHeader>
-            <CardTitle>My Schedule Today</CardTitle>
-            <CardDescription>Your upcoming appointments and tasks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">Surgery - Room 3</p>
-                    <p className="text-xs text-muted-foreground">Appendectomy procedure</p>
-                  </div>
-                </div>
-                <Badge className="status-badge status-warning">10:30 AM</Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50">
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-secondary" />
-                  <div>
-                    <p className="text-sm font-medium">Patient Consultation</p>
-                    <p className="text-xs text-muted-foreground">Follow-up checkup</p>
-                  </div>
-                </div>
-                <Badge className="status-badge bg-accent/10 text-accent">2:00 PM</Badge>
-              </div>
-            </div>
-          </CardContent>
+        <Card 
+          style={{ marginTop: '24px', borderRadius: '12px' }}
+          title={
+            <Space>
+              <CalendarOutlined style={{ color: '#1890ff' }} />
+              My Schedule Today
+            </Space>
+          }
+          extra={
+            <Button type="primary" icon={<CalendarOutlined />}>
+              View Full Schedule
+            </Button>
+          }
+        >
+          {loading ? (
+            <List
+              dataSource={[1, 2]}
+              renderItem={() => (
+                <List.Item>
+                  <Skeleton active avatar paragraph={{ rows: 1 }} />
+                </List.Item>
+              )}
+            />
+          ) : (
+            <List
+              dataSource={[
+                {
+                  time: '10:30 AM',
+                  title: 'Surgery - Room 3',
+                  description: 'Appendectomy procedure • Dr. Smith',
+                  icon: <ClockCircleOutlined style={{ color: '#1890ff' }} />,
+                  status: 'upcoming'
+                },
+                {
+                  time: '2:00 PM',
+                  title: 'Patient Consultation',
+                  description: 'Follow-up checkup • Sarah Johnson',
+                  icon: <CalendarOutlined style={{ color: '#52c41a' }} />,
+                  status: 'scheduled'
+                },
+                {
+                  time: '4:30 PM',
+                  title: 'Chart Review',
+                  description: 'Patient records assessment',
+                  icon: <FileTextOutlined style={{ color: '#faad14' }} />,
+                  status: 'scheduled'
+                }
+              ]}
+              renderItem={(item) => (
+                <List.Item 
+                  style={{ 
+                    padding: '16px',
+                    border: item.status === 'upcoming' ? '1px solid #1890ff' : '1px solid #f0f0f0',
+                    backgroundColor: item.status === 'upcoming' ? '#f0f8ff' : 'transparent',
+                    borderRadius: '8px',
+                    marginBottom: '8px'
+                  }}
+                  className="schedule-item"
+                >
+                  <List.Item.Meta
+                    avatar={<Avatar icon={item.icon} style={{ backgroundColor: '#f0f8ff' }} size="large" />}
+                    title={<Text strong>{item.title}</Text>}
+                    description={item.description}
+                  />
+                  <Badge 
+                    count={item.time}
+                    style={{ 
+                      backgroundColor: item.status === 'upcoming' ? '#faad14' : '#d9d9d9',
+                      fontSize: '12px'
+                    }}
+                  />
+                </List.Item>
+              )}
+            />
+          )}
         </Card>
       )}
     </div>

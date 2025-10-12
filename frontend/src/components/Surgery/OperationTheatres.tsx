@@ -1,18 +1,55 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { 
+  Card, 
+  Input, 
+  Button, 
+  Tag, 
+  Select, 
+  Table, 
+  Space, 
+  Modal, 
+  Form, 
+  Row, 
+  Col,
+  Statistic,
+  Skeleton,
+  Avatar,
+  Descriptions,
+  Tooltip,
+  Dropdown,
+  Menu,
+  Badge,
+  Popconfirm,
+  message,
+  Spin,
+  Switch
+} from "antd";
+import { 
+  SearchOutlined, 
+  PlusOutlined, 
+  BuildOutlined, 
+  EnvironmentOutlined, 
+  EditOutlined, 
+  DeleteOutlined, 
+  EyeOutlined,
+  DownloadOutlined,
+  FileTextOutlined,
+  CalendarOutlined,
+  MoreOutlined,
+  ReloadOutlined,
+  FilterOutlined,
+  ToolOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined
+} from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Select, Table, Space, Modal, Form } from "antd";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
-import { Search, PlusCircle, Building, MapPin, Edit, Trash2, Eye, Activity, Wrench, Download } from "lucide-react";
-import TextArea from "antd/es/input/TextArea";
 
 const { Option } = Select;
-// const { TextArea } = Input;
+const { TextArea } = Input;
 
 interface OperationTheatre {
   id: number;
@@ -40,7 +77,7 @@ interface Department {
 }
 
 const THEATRE_STATUS = {
-  AVAILABLE: "AVAILABLE",
+  AVAILABLE: "Available",
   IN_USE: "In Use",
   UNDER_MAINTENANCE: "Under Maintenance",
   CLEANING: "Cleaning",
@@ -56,11 +93,11 @@ const STATUS_COLORS = {
 };
 
 const STATUS_ICONS = {
-  AVAILABLE: Activity,
-  IN_USE: Building,
-  UNDER_MAINTENANCE: Wrench,
-//   CLEANING: Cleaning,
-  OUT_OF_SERVICE: Wrench
+  AVAILABLE: CheckCircleOutlined,
+  IN_USE: PlayCircleOutlined,
+  UNDER_MAINTENANCE: ToolOutlined,
+  CLEANING: EnvironmentOutlined,
+  OUT_OF_SERVICE: CloseCircleOutlined
 };
 
 export default function OperationTheatreManagement() {
@@ -74,6 +111,7 @@ export default function OperationTheatreManagement() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [form] = Form.useForm();
+  const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -146,35 +184,35 @@ export default function OperationTheatreManagement() {
   const handleSubmit = () => {
     form.validateFields().then(values => {
       if (selectedTheatre) {
-        // Update operation theatre
+        setLoadingActionId(selectedTheatre.id);
         PutApi(`/operation-theatre/${selectedTheatre.id}`, formData)
           .then(data => {
             if (!data?.error) {
-              toast.success("Operation theatre updated successfully!");
+              message.success("Operation theatre updated successfully!");
               loadData();
               setIsModalOpen(false);
             } else {
-              toast.error(data.error);
+              message.error(data.error);
             }
           })
           .catch(error => {
-            toast.error("Error updating operation theatre");
+            message.error("Error updating operation theatre");
             console.error("Error updating operation theatre:", error);
-          });
+          })
+          .finally(() => setLoadingActionId(null));
       } else {
-        // Create new operation theatre
         PostApi('/operation-theatre', formData)
           .then(data => {
             if (!data?.error) {
-              toast.success("Operation theatre created successfully!");
+              message.success("Operation theatre created successfully!");
               loadData();
               setIsModalOpen(false);
             } else {
-              toast.error(data.error);
+              message.error(data.error);
             }
           })
           .catch(error => {
-            toast.error("Error creating operation theatre");
+            message.error("Error creating operation theatre");
             console.error("Error creating operation theatre:", error);
           });
       }
@@ -182,53 +220,127 @@ export default function OperationTheatreManagement() {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this operation theatre? This action cannot be undone.")) {
-      DeleteApi(`/operation-theatres/${id}`)
-        .then(data => {
-          if (!data?.error) {
-            toast.success("Operation theatre deleted successfully!");
-            loadData();
-          } else {
-            toast.error(data.error);
-          }
-        })
-        .catch(error => {
-          toast.error("Error deleting operation theatre");
-          console.error("Error deleting operation theatre:", error);
-        });
-    }
+    setLoadingActionId(id);
+    DeleteApi(`/operation-theatres/${id}`)
+      .then(data => {
+        if (!data?.error) {
+          message.success("Operation theatre deleted successfully!");
+          loadData();
+        } else {
+          message.error(data.error);
+        }
+      })
+      .catch(error => {
+        message.error("Error deleting operation theatre");
+        console.error("Error deleting operation theatre:", error);
+      })
+      .finally(() => setLoadingActionId(null));
   };
 
   const handleStatusChange = (theatreId: number, newStatus: string) => {
+    setLoadingActionId(theatreId);
     PutApi(`/operation-theatre/${theatreId}`, { status: newStatus })
       .then(data => {
         if (!data?.error) {
-          toast.success(`Operation theatre status updated to ${THEATRE_STATUS[newStatus as keyof typeof THEATRE_STATUS]}`);
+          message.success(`Operation theatre status updated to ${THEATRE_STATUS[newStatus as keyof typeof THEATRE_STATUS]}`);
           loadData();
         } else {
-          toast.error(data.error);
+          message.error(data.error);
         }
       })
       .catch(error => {
-        toast.error("Error updating operation theatre status");
+        message.error("Error updating operation theatre status");
         console.error("Error updating operation theatre status:", error);
-      });
+      })
+      .finally(() => setLoadingActionId(null));
   };
 
   const handleActiveToggle = (theatreId: number, isActive: boolean) => {
+    setLoadingActionId(theatreId);
     PutApi(`/operation-theatres/${theatreId}`, { is_active: isActive })
       .then(data => {
         if (!data?.error) {
-          toast.success(`Operation theatre ${isActive ? 'activated' : 'deactivated'} successfully!`);
+          message.success(`Operation theatre ${isActive ? 'activated' : 'deactivated'} successfully!`);
           loadData();
         } else {
-          toast.error(data.error);
+          message.error(data.error);
         }
       })
       .catch(error => {
-        toast.error("Error updating operation theatre status");
+        message.error("Error updating operation theatre status");
         console.error("Error updating operation theatre status:", error);
-      });
+      })
+      .finally(() => setLoadingActionId(null));
+  };
+
+  // Enhanced Action Button Component
+  const ActionButton = ({
+    icon,
+    label,
+    type = "default",
+    danger = false,
+    onClick,
+    loading = false,
+    confirm = false,
+    confirmAction
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    type?: "primary" | "default" | "dashed" | "link" | "text";
+    danger?: boolean;
+    onClick?: () => void;
+    loading?: boolean;
+    confirm?: boolean;
+    confirmAction?: () => void;
+  }) => {
+    const button = (
+      <motion.div
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      >
+        <Tooltip title={label} placement="top">
+          <Button
+            type={type}
+            danger={danger}
+            icon={icon}
+            loading={loading}
+            onClick={onClick}
+            className={`
+              flex items-center justify-center 
+              transition-all duration-300 ease-in-out
+              ${!danger && !type.includes('primary') ?
+                'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
+              }
+              ${danger ?
+                'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
+              }
+              w-10 h-10 rounded-full
+            `}
+            style={{
+              minWidth: '40px',
+              border: '1px solid #d9d9d9'
+            }}
+          />
+        </Tooltip>
+      </motion.div>
+    );
+
+    return confirm ? (
+      <Popconfirm
+        title="Delete Operation Theatre"
+        description="Are you sure you want to delete this operation theatre?"
+        onConfirm={confirmAction}
+        okText="Yes"
+        cancelText="No"
+        okType="danger"
+        placement="top"
+      >
+        {button}
+      </Popconfirm>
+    ) : (
+      button
+    );
   };
 
   const filteredTheatres = operationTheatres.filter(theatre => {
@@ -254,8 +366,8 @@ export default function OperationTheatreManagement() {
   };
 
   const getStatusIcon = (status: string) => {
-    const IconComponent = STATUS_ICONS[status as keyof typeof STATUS_ICONS] || Activity;
-    return <IconComponent className="w-4 h-4" />;
+    const IconComponent = STATUS_ICONS[status as keyof typeof STATUS_ICONS] || CheckCircleOutlined;
+    return <IconComponent className="text-sm" />;
   };
 
   const columns = [
@@ -264,12 +376,19 @@ export default function OperationTheatreManagement() {
       dataIndex: "name",
       key: "name",
       render: (text: string, record: OperationTheatre) => (
-        <div className="flex items-center gap-2">
-          <Building className="w-4 h-4 text-blue-500" />
+        <div className="flex items-center gap-3">
+          <Avatar 
+            icon={<BuildOutlined />} 
+            size="small" 
+            style={{ 
+              backgroundColor: '#1890ff',
+              borderRadius: '8px'
+            }} 
+          />
           <div>
-            <div className="font-medium">{text}</div>
+            <div className="font-medium text-gray-900">{text}</div>
             {record.room_number && (
-              <div className="text-sm text-gray-500">Room {record.room_number}</div>
+              <div className="text-xs text-gray-500">Room {record.room_number}</div>
             )}
           </div>
         </div>
@@ -281,13 +400,13 @@ export default function OperationTheatreManagement() {
       render: (record: OperationTheatre) => (
         <div className="space-y-1">
           {record.building && (
-            <div className="flex items-center gap-1 text-sm text-gray-600">
-              <MapPin className="w-3 h-3" />
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <EnvironmentOutlined className="text-gray-400" />
               <span>{record.building}</span>
             </div>
           )}
           {(record.floor || record.wing) && (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 ml-6">
               {[record.floor, record.wing].filter(Boolean).join(' • ')}
             </div>
           )}
@@ -299,9 +418,9 @@ export default function OperationTheatreManagement() {
       dataIndex: ["department", "name"],
       key: "department",
       render: (text: string) => (
-        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+        <Tag color="blue" className="px-2 py-1 rounded-full">
           {text}
-        </Badge>
+        </Tag>
       ),
     },
     {
@@ -312,17 +431,10 @@ export default function OperationTheatreManagement() {
         <div className="flex items-center gap-2">
           {getStatusIcon(status)}
           <Badge 
-            variant="outline"
-            className={`
-              ${status === "AVAILABLE" ? "bg-green-50 text-green-700 border-green-200" : ""}
-              ${status === "IN_USE" ? "bg-blue-50 text-blue-700 border-blue-200" : ""}
-              ${status === "UNDER_MAINTENANCE" ? "bg-orange-50 text-orange-700 border-orange-200" : ""}
-              ${status === "CLEANING" ? "bg-purple-50 text-purple-700 border-purple-200" : ""}
-              ${status === "OUT_OF_SERVICE" ? "bg-red-50 text-red-700 border-red-200" : ""}
-            `}
-          >
-            {THEATRE_STATUS[status as keyof typeof THEATRE_STATUS]}
-          </Badge>
+            color={STATUS_COLORS[status as keyof typeof STATUS_COLORS]}
+            text={THEATRE_STATUS[status as keyof typeof THEATRE_STATUS]}
+            className="px-2 py-1"
+          />
         </div>
       ),
     },
@@ -331,48 +443,125 @@ export default function OperationTheatreManagement() {
       dataIndex: "is_active",
       key: "is_active",
       render: (isActive: boolean, record: OperationTheatre) => (
-        <Switch
-          checked={isActive}
-          onCheckedChange={(checked) => handleActiveToggle(record.id, checked)}
-        />
+        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+          <Switch
+            checked={isActive}
+            onChange={(checked) => handleActiveToggle(record.id, checked)}
+            loading={loadingActionId === record.id}
+            checkedChildren={<CheckCircleOutlined />}
+            unCheckedChildren={<CloseCircleOutlined />}
+          />
+        </motion.div>
       ),
     },
     {
       title: "Actions",
       key: "actions",
-      render: (record: OperationTheatre) => (
+      width: 200,
+      render: (_: any, record: OperationTheatre) => (
         <Space size="small">
-          <Button 
-            size="sm" 
-            variant="outline" 
+          <ActionButton
+            icon={<EyeOutlined />}
+            label="View Details"
+            type="default"
             onClick={() => handleViewTheatre(record)}
-            className="h-8 w-8 p-0"
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline" 
+          />
+
+          <ActionButton
+            icon={<EditOutlined />}
+            label="Edit Theatre"
+            type="default"
+            loading={loadingActionId === record.id}
             onClick={() => handleOpenModal(record)}
-            className="h-8 w-8 p-0"
+          />
+
+          <ActionButton
+            icon={<DeleteOutlined />}
+            label="Delete Theatre"
+            danger
+            loading={loadingActionId === record.id}
+            confirm
+            confirmAction={() => handleDelete(record.id)}
+          />
+
+          <Dropdown
+            overlay={
+              <Menu>
+                <Menu.Item 
+                  key="available" 
+                  icon={<CheckCircleOutlined />}
+                  onClick={() => handleStatusChange(record.id, "AVAILABLE")}
+                >
+                  Mark Available
+                </Menu.Item>
+                <Menu.Item 
+                  key="in_use" 
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => handleStatusChange(record.id, "IN_USE")}
+                >
+                  Mark In Use
+                </Menu.Item>
+                <Menu.Item 
+                  key="maintenance" 
+                  icon={<ToolOutlined />}
+                  onClick={() => handleStatusChange(record.id, "UNDER_MAINTENANCE")}
+                >
+                  Mark Under Maintenance
+                </Menu.Item>
+                <Menu.Item 
+                  key="out_of_service" 
+                  icon={<CloseCircleOutlined />}
+                  onClick={() => handleStatusChange(record.id, "OUT_OF_SERVICE")}
+                >
+                  Mark Out of Service
+                </Menu.Item>
+              </Menu>
+            }
+            trigger={['click']}
+            placement="bottomRight"
           >
-            <Edit className="w-3.5 h-3.5" />
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => handleDelete(record.id)}
-            className="h-8 w-8 p-0 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Tooltip title="Change Status" placement="top">
+                <Button 
+                  type="text" 
+                  icon={<MoreOutlined />}
+                  className="w-10 h-10 rounded-full border border-gray-300 hover:border-blue-300 hover:bg-blue-50"
+                />
+              </Tooltip>
+            </motion.div>
+          </Dropdown>
         </Space>
       ),
     },
   ];
 
+  const SkeletonTable = () => (
+    <div className="space-y-4">
+      {[1, 2, 3, 4, 5].map((item) => (
+        <Card key={item} className="p-4 border-0 shadow-sm">
+          <Skeleton active paragraph={{ rows: 1 }} />
+        </Card>
+      ))}
+    </div>
+  );
+
+  const SkeletonStats = () => (
+    <Row gutter={[16, 16]}>
+      {[1, 2, 3, 4, 5].map((item) => (
+        <Col xs={24} sm={12} lg={6} key={item}>
+          <Card className="border-0 shadow-sm">
+            <Skeleton active paragraph={{ rows: 1 }} />
+          </Card>
+        </Col>
+      ))}
+    </Row>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6">
       {/* Header Section */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
@@ -380,111 +569,102 @@ export default function OperationTheatreManagement() {
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Operation Theatre Management</h1>
             <p className="text-gray-600 mt-1 text-base">Manage operating rooms and their availability</p>
           </div>
-          <Button 
-            onClick={() => handleOpenModal()}
-            className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700 shrink-0"
-            size="lg"
-          >
-            <PlusCircle className="w-5 h-5 mr-2" />
-            Add Operation Theatre
-          </Button>
+          <Space>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button 
+                icon={<ReloadOutlined />}
+                onClick={loadData}
+                loading={loading}
+                className="h-12 px-4 border-gray-300"
+              >
+                Refresh
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button 
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => handleOpenModal()}
+                size="large"
+                className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
+              >
+                Add Operation Theatre
+              </Button>
+            </motion.div>
+          </Space>
         </div>
       </div>
 
       {/* Statistics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <Card className="bg-white border-0 shadow-sm rounded-xl">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total Theatres</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Building className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-0 shadow-sm rounded-xl">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Available</p>
-                <p className="text-2xl font-bold text-green-600">{stats.available}</p>
-              </div>
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Activity className="w-5 h-5 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-0 shadow-sm rounded-xl">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">In Use</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.inUse}</p>
-              </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Building className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-0 shadow-sm rounded-xl">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Maintenance</p>
-                <p className="text-2xl font-bold text-orange-600">{stats.underMaintenance}</p>
-              </div>
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Wrench className="w-5 h-5 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-0 shadow-sm rounded-xl">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Active</p>
-                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-              </div>
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Activity className="w-5 h-5 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {loading ? (
+        <SkeletonStats />
+      ) : (
+        <Row gutter={[16, 16]} className="mb-6">
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-300">
+              <Statistic
+                title="Total Theatres"
+                value={stats.total}
+                prefix={<BuildOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-300">
+              <Statistic
+                title="Available"
+                value={stats.available}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-300">
+              <Statistic
+                title="In Use"
+                value={stats.inUse}
+                prefix={<PlayCircleOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-300">
+              <Statistic
+                title="Active"
+                value={stats.active}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {/* Filters Card */}
       <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
-        <CardContent className="p-5">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-            <div className="flex-1 w-full">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input
-                  placeholder="Search operation theatres by name, building, room number, or department..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 h-12 w-full text-base border-gray-300 focus:border-blue-500"
-                />
-              </div>
-            </div>
-            <div className="w-full lg:w-48">
+        <div className="p-5">
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} sm={12} md={8}>
+              <Input
+                placeholder="Search operation theatres by name, building, room number, or department..."
+                prefix={<SearchOutlined />}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                size="large"
+                className="hover:border-blue-400 focus:border-blue-500"
+              />
+            </Col>
+            <Col xs={24} sm={12} md={4}>
               <Select 
                 value={statusFilter} 
                 onChange={setStatusFilter}
-                className="w-full h-12 [&_.ant-select-selector]:h-12 [&_.ant-select-selection-item]:leading-10"
                 placeholder="All Status"
+                size="large"
+                className="w-full"
+                suffixIcon={<FilterOutlined />}
               >
                 <Option value="all">All Status</Option>
                 <Option value="AVAILABLE">Available</Option>
@@ -493,48 +673,68 @@ export default function OperationTheatreManagement() {
                 <Option value="CLEANING">Cleaning</Option>
                 <Option value="OUT_OF_SERVICE">Out of Service</Option>
               </Select>
-            </div>
-            <div className="w-full lg:w-48">
+            </Col>
+            <Col xs={24} sm={12} md={4}>
               <Select 
                 value={departmentFilter} 
                 onChange={setDepartmentFilter}
-                className="w-full h-12 [&_.ant-select-selector]:h-12 [&_.ant-select-selection-item]:leading-10"
                 placeholder="All Departments"
+                size="large"
+                className="w-full"
+                suffixIcon={<FilterOutlined />}
               >
                 <Option value="all">All Departments</Option>
                 {departments.map(dept => (
                   <Option key={dept.id} value={dept.id.toString()}>{dept.name}</Option>
                 ))}
               </Select>
-            </div>
-            <Button variant="outline" className="h-12 px-6 border-gray-300 hover:bg-gray-50 w-full lg:w-auto">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </CardContent>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button 
+                  icon={<DownloadOutlined />} 
+                  size="large"
+                  className="w-full border-gray-300 hover:border-blue-400"
+                >
+                  Export
+                </Button>
+              </motion.div>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button 
+                  icon={<FileTextOutlined />} 
+                  size="large"
+                  className="w-full border-gray-300 hover:border-blue-400"
+                >
+                  Report
+                </Button>
+              </motion.div>
+            </Col>
+          </Row>
+        </div>
       </Card>
 
       {/* Operation Theatres Table */}
-      <Card className="bg-white border-0 shadow-sm rounded-xl">
-        <CardHeader className="px-6 py-5 border-b border-gray-200">
+      <Card 
+        className="bg-white border-0 shadow-sm rounded-xl"
+        title={
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-xl font-semibold text-gray-900">Operation Theatres</CardTitle>
-              <CardDescription className="text-gray-600 mt-1">
+              <h2 className="text-xl font-semibold text-gray-900">Operation Theatres</h2>
+              <p className="text-gray-600 mt-1">
                 {filteredTheatres.length} theatre{filteredTheatres.length !== 1 ? 's' : ''} found
-              </CardDescription>
+              </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-6">
+        }
+      >
+        <div className="p-6">
           {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
+            <SkeletonTable />
           ) : filteredTheatres.length === 0 ? (
             <div className="text-center py-12">
-              <Building className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <BuildOutlined className="text-4xl text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg font-medium mb-2">No operation theatres found</p>
               <p className="text-gray-400 text-sm max-w-sm mx-auto">
                 {search || statusFilter !== "all" || departmentFilter !== "all"
@@ -542,24 +742,48 @@ export default function OperationTheatreManagement() {
                   : "Get started by adding your first operation theatre"
                 }
               </p>
+              {(search || statusFilter !== "all" || departmentFilter !== "all") && (
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    type="primary" 
+                    onClick={() => {
+                      setSearch("");
+                      setStatusFilter("all");
+                      setDepartmentFilter("all");
+                    }}
+                    className="mt-4"
+                  >
+                    Clear Filters
+                  </Button>
+                </motion.div>
+              )}
             </div>
           ) : (
             <Table
               dataSource={filteredTheatres}
               columns={columns}
               rowKey="id"
-              pagination={{ pageSize: 10 }}
+              pagination={{ 
+                pageSize: 10,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => 
+                  `${range[0]}-${range[1]} of ${total} items`
+              }}
+              scroll={{ x: 800 }}
             />
           )}
-        </CardContent>
+        </div>
       </Card>
 
       {/* Add/Edit Operation Theatre Modal */}
       <Modal
         title={
           <div className="flex items-center gap-3">
-            <Building className="w-5 h-5 text-blue-600" />
-            <span>{selectedTheatre ? "Edit Operation Theatre" : "Add New Operation Theatre"}</span>
+            <BuildOutlined className="text-blue-600 text-lg" />
+            <span className="text-lg font-semibold">
+              {selectedTheatre ? "Edit Operation Theatre" : "Add New Operation Theatre"}
+            </span>
           </div>
         }
         open={isModalOpen}
@@ -568,209 +792,235 @@ export default function OperationTheatreManagement() {
         width={700}
         okText={selectedTheatre ? "Update Theatre" : "Add Theatre"}
         cancelText="Cancel"
+        okButtonProps={{ 
+          size: 'large',
+          loading: loadingActionId !== null,
+          icon: selectedTheatre ? <EditOutlined /> : <PlusOutlined />
+        }}
+        cancelButtonProps={{ size: 'large' }}
+        confirmLoading={loadingActionId !== null}
       >
-        <Form form={form} layout="vertical" className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <Spin spinning={loading}>
+          <Form form={form} layout="vertical" className="space-y-4 mt-4">
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Theatre Name"
+                  name="name"
+                  rules={[
+                    { required: true, message: "Please enter theatre name" },
+                    { max: 50, message: "Name must be at most 50 characters" }
+                  ]}
+                >
+                  <Input
+                    placeholder="Enter theatre name"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Department"
+                  name="department_id"
+                  rules={[{ required: true, message: "Please select a department" }]}
+                >
+                  <Select
+                    placeholder="Select department"
+                    value={formData.department_id}
+                    onChange={(value) => setFormData(prev => ({ ...prev, department_id: value }))}
+                    size="large"
+                  >
+                    {departments.map(dept => (
+                      <Option key={dept.id} value={dept.id.toString()}>
+                        {dept.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Building"
+                  name="building"
+                  rules={[{ max: 100, message: "Building must be at most 100 characters" }]}
+                >
+                  <Input
+                    placeholder="Enter building name"
+                    value={formData.building}
+                    onChange={(e) => setFormData(prev => ({ ...prev, building: e.target.value }))}
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Floor"
+                  name="floor"
+                  rules={[{ max: 20, message: "Floor must be at most 20 characters" }]}
+                >
+                  <Input
+                    placeholder="Enter floor number"
+                    value={formData.floor}
+                    onChange={(e) => setFormData(prev => ({ ...prev, floor: e.target.value }))}
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Wing"
+                  name="wing"
+                  rules={[{ max: 50, message: "Wing must be at most 50 characters" }]}
+                >
+                  <Input
+                    placeholder="Enter wing/section"
+                    value={formData.wing}
+                    onChange={(e) => setFormData(prev => ({ ...prev, wing: e.target.value }))}
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Room Number"
+                  name="room_number"
+                  rules={[{ max: 20, message: "Room number must be at most 20 characters" }]}
+                >
+                  <Input
+                    placeholder="Enter room number"
+                    value={formData.room_number}
+                    onChange={(e) => setFormData(prev => ({ ...prev, room_number: e.target.value }))}
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Status"
+                  name="status"
+                >
+                  <Select
+                    value={formData.status}
+                    onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                    size="large"
+                  >
+                    <Option value="AVAILABLE">Available</Option>
+                    <Option value="IN_USE">In Use</Option>
+                    <Option value="UNDER_MAINTENANCE">Under Maintenance</Option>
+                    <Option value="CLEANING">Cleaning</Option>
+                    <Option value="OUT_OF_SERVICE">Out of Service</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Active Status"
+                  name="is_active"
+                >
+                  <div className="flex items-center space-x-3 pt-2">
+                    <Switch
+                      checked={formData.is_active}
+                      onChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
+                      checkedChildren="Active"
+                      unCheckedChildren="Inactive"
+                    />
+                    <span className="text-gray-600">
+                      {formData.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </Form.Item>
+              </Col>
+            </Row>
+
             <Form.Item
-              label="Theatre Name"
-              name="name"
-              rules={[
-                { required: true, message: "Please enter theatre name" },
-                { max: 50, message: "Name must be at most 50 characters" }
-              ]}
+              label="Notes"
+              name="notes"
             >
-              <Input
-                placeholder="Enter theatre name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              <TextArea
+                rows={3}
+                placeholder="Additional notes about this operation theatre..."
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                size="large"
               />
             </Form.Item>
-
-            <Form.Item
-              label="Department"
-              name="department_id"
-              rules={[{ required: true, message: "Please select a department" }]}
-            >
-              <Select
-                placeholder="Select department"
-                value={formData.department_id}
-                onChange={(value) => setFormData(prev => ({ ...prev, department_id: value }))}
-              >
-                {departments.map(dept => (
-                  <Option key={dept.id} value={dept.id.toString()}>
-                    {dept.name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item
-              label="Building"
-              name="building"
-              rules={[{ max: 100, message: "Building must be at most 100 characters" }]}
-            >
-              <Input
-                placeholder="Enter building name"
-                value={formData.building}
-                onChange={(e) => setFormData(prev => ({ ...prev, building: e.target.value }))}
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="Floor"
-              name="floor"
-              rules={[{ max: 20, message: "Floor must be at most 20 characters" }]}
-            >
-              <Input
-                placeholder="Enter floor number"
-                value={formData.floor}
-                onChange={(e) => setFormData(prev => ({ ...prev, floor: e.target.value }))}
-              />
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item
-              label="Wing"
-              name="wing"
-              rules={[{ max: 50, message: "Wing must be at most 50 characters" }]}
-            >
-              <Input
-                placeholder="Enter wing/section"
-                value={formData.wing}
-                onChange={(e) => setFormData(prev => ({ ...prev, wing: e.target.value }))}
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="Room Number"
-              name="room_number"
-              rules={[{ max: 20, message: "Room number must be at most 20 characters" }]}
-            >
-              <Input
-                placeholder="Enter room number"
-                value={formData.room_number}
-                onChange={(e) => setFormData(prev => ({ ...prev, room_number: e.target.value }))}
-              />
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item
-              label="Status"
-              name="status"
-            >
-              <Select
-                value={formData.status}
-                onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-              >
-                <Option value="AVAILABLE">Available</Option>
-                <Option value="IN_USE">In Use</Option>
-                <Option value="UNDER_MAINTENANCE">Under Maintenance</Option>
-                <Option value="CLEANING">Cleaning</Option>
-                <Option value="OUT_OF_SERVICE">Out of Service</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              label="Active"
-              name="is_active"
-            >
-              <div className="flex items-center space-x-2 pt-2">
-                <Switch
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
-                />
-                <Label>{formData.is_active ? "Active" : "Inactive"}</Label>
-              </div>
-            </Form.Item>
-          </div>
-
-          <Form.Item
-            label="Notes"
-            name="notes"
-          >
-            <TextArea
-              rows={3}
-              placeholder="Additional notes about this operation theatre..."
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-            />
-          </Form.Item>
-        </Form>
+          </Form>
+        </Spin>
       </Modal>
 
       {/* View Operation Theatre Modal */}
       <Modal
-        title="Operation Theatre Details"
+        title={
+          <div className="flex items-center gap-3">
+            <BuildOutlined className="text-blue-600 text-lg" />
+            <span className="text-lg font-semibold">Operation Theatre Details</span>
+          </div>
+        }
         open={isViewModalOpen}
         onCancel={() => setIsViewModalOpen(false)}
         footer={[
-          <Button key="close" onClick={() => setIsViewModalOpen(false)}>
+          <Button key="close" onClick={() => setIsViewModalOpen(false)} size="large">
             Close
           </Button>,
-          <Button 
-            key="edit" 
-            // type="primary"
-            onClick={() => {
-              setIsViewModalOpen(false);
-              handleOpenModal(selectedTheatre);
-            }}
-          >
-            Edit
-          </Button>
+          <motion.div key="edit" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button 
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => {
+                setIsViewModalOpen(false);
+                handleOpenModal(selectedTheatre);
+              }}
+              size="large"
+            >
+              Edit
+            </Button>
+          </motion.div>
         ]}
         width={600}
       >
         {selectedTheatre && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="font-semibold text-gray-700">Name</Label>
-                <p className="mt-1 text-gray-900">{selectedTheatre.name}</p>
+          <Descriptions bordered column={1} size="default">
+            <Descriptions.Item label="Name">
+              <div className="flex items-center gap-2">
+                <BuildOutlined />
+                <span className="font-medium">{selectedTheatre.name}</span>
               </div>
-              <div>
-                <Label className="font-semibold text-gray-700">Department</Label>
-                <p className="mt-1">
-                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                    {selectedTheatre.department?.name}
-                  </Badge>
-                </p>
+            </Descriptions.Item>
+            <Descriptions.Item label="Department">
+              <div className="flex items-center gap-2">
+                <EnvironmentOutlined />
+                <Tag color="blue">{selectedTheatre.department?.name}</Tag>
               </div>
-              <div>
-                <Label className="font-semibold text-gray-700">Status</Label>
-                <div className="mt-1 flex items-center gap-2">
-                  {getStatusIcon(selectedTheatre.status)}
-                  <Badge 
-                    variant="outline"
-                    className={`
-                      ${selectedTheatre.status === "AVAILABLE" ? "bg-green-50 text-green-700 border-green-200" : ""}
-                      ${selectedTheatre.status === "IN_USE" ? "bg-blue-50 text-blue-700 border-blue-200" : ""}
-                      ${selectedTheatre.status === "UNDER_MAINTENANCE" ? "bg-orange-50 text-orange-700 border-orange-200" : ""}
-                      ${selectedTheatre.status === "CLEANING" ? "bg-purple-50 text-purple-700 border-purple-200" : ""}
-                      ${selectedTheatre.status === "OUT_OF_SERVICE" ? "bg-red-50 text-red-700 border-red-200" : ""}
-                    `}
-                  >
-                    {THEATRE_STATUS[selectedTheatre.status as keyof typeof THEATRE_STATUS]}
-                  </Badge>
-                </div>
+            </Descriptions.Item>
+            <Descriptions.Item label="Status">
+              <div className="flex items-center gap-2">
+                {getStatusIcon(selectedTheatre.status)}
+                <Badge 
+                  color={STATUS_COLORS[selectedTheatre.status as keyof typeof STATUS_COLORS]}
+                  text={THEATRE_STATUS[selectedTheatre.status as keyof typeof THEATRE_STATUS]}
+                />
               </div>
-              <div>
-                <Label className="font-semibold text-gray-700">Active</Label>
-                <p className="mt-1">
-                  <Badge variant={selectedTheatre.is_active ? "default" : "secondary"}>
-                    {selectedTheatre.is_active ? "Active" : "Inactive"}
-                  </Badge>
-                </p>
-              </div>
-            </div>
-
+            </Descriptions.Item>
+            <Descriptions.Item label="Active Status">
+              <Tag color={selectedTheatre.is_active ? "green" : "red"}>
+                {selectedTheatre.is_active ? "Active" : "Inactive"}
+              </Tag>
+            </Descriptions.Item>
+            
             {(selectedTheatre.building || selectedTheatre.floor || selectedTheatre.wing || selectedTheatre.room_number) && (
-              <div>
-                <Label className="font-semibold text-gray-700">Location Details</Label>
-                <div className="mt-2 space-y-2">
+              <Descriptions.Item label="Location Details">
+                <div className="space-y-2">
                   {selectedTheatre.building && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Building:</span>
@@ -796,33 +1046,30 @@ export default function OperationTheatreManagement() {
                     </div>
                   )}
                 </div>
-              </div>
+              </Descriptions.Item>
             )}
 
             {selectedTheatre.notes && (
-              <div>
-                <Label className="font-semibold text-gray-700">Notes</Label>
-                <p className="mt-1 p-2 bg-gray-50 rounded text-gray-700 whitespace-pre-wrap">
-                  {selectedTheatre.notes}
-                </p>
-              </div>
+              <Descriptions.Item label="Notes">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-gray-700 whitespace-pre-wrap">{selectedTheatre.notes}</p>
+                </div>
+              </Descriptions.Item>
             )}
 
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-              <div>
-                <Label className="font-semibold text-gray-700">Created</Label>
-                <p className="mt-1 text-sm text-gray-600">
-                  {new Date(selectedTheatre.created_at).toLocaleDateString()}
-                </p>
+            <Descriptions.Item label="Created Date">
+              <div className="flex items-center gap-2">
+                <CalendarOutlined />
+                {new Date(selectedTheatre.created_at).toLocaleDateString()}
               </div>
-              <div>
-                <Label className="font-semibold text-gray-700">Last Updated</Label>
-                <p className="mt-1 text-sm text-gray-600">
-                  {new Date(selectedTheatre.updated_at).toLocaleDateString()}
-                </p>
+            </Descriptions.Item>
+            <Descriptions.Item label="Last Updated">
+              <div className="flex items-center gap-2">
+                <CalendarOutlined />
+                {new Date(selectedTheatre.updated_at).toLocaleDateString()}
               </div>
-            </div>
-          </div>
+            </Descriptions.Item>
+          </Descriptions>
         )}
       </Modal>
     </div>

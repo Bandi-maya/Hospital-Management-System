@@ -240,7 +240,7 @@ export default function BookAppointment() {
                 <div className="p-2 bg-blue-50 rounded-lg">
                   <Calendar className="w-6 h-6 text-blue-600" />
                 </div>
-                Appointment Management
+               Book Appointment Management
               </CardTitle>
               <CardDescription className="text-base mt-2">
                 Schedule new patient appointments

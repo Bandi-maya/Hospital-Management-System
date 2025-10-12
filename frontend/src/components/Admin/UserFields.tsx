@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Modal,
   Button,
@@ -11,29 +11,30 @@ import {
   Statistic,
   Tag,
   Form,
-  InputNumber,
-  DatePicker,
   Space,
   Tooltip,
   Popconfirm,
-  Descriptions,
   message,
   Progress,
   Avatar,
   Badge,
   Tabs,
   Timeline,
-  Alert,
-  Divider,
   Switch,
   Collapse,
   Typography,
   Flex,
-  Checkbox
-} from "antd";
+  Checkbox,
+  Skeleton,
+  Dropdown,
+  Menu,
+  Steps,
+  FloatButton,
+  Watermark,
+  Drawer,
+  theme,
+  Empty} from "antd";
 import {
-  UserOutlined,
-  TeamOutlined,
   UserSwitchOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -43,38 +44,25 @@ import {
   EyeOutlined,
   SearchOutlined,
   SafetyCertificateOutlined,
-  MedicineBoxOutlined,
-  ExperimentOutlined,
   DashboardOutlined,
   PieChartOutlined,
   ThunderboltOutlined,
   RocketOutlined,
-  BellOutlined,
-  MessageOutlined,
-  PhoneOutlined,
-  MailOutlined,
   SyncOutlined,
   ExportOutlined,
   ReloadOutlined,
-  InfoCircleOutlined,
-  ClockCircleOutlined,
-  CrownOutlined,
-  SecurityScanOutlined,
   CalendarOutlined,
   TableOutlined,
-  HomeOutlined,
-  IdcardOutlined,
-  EnvironmentOutlined,
-  LockOutlined,
-  KeyOutlined,
-  UserAddOutlined,
-  ApartmentOutlined,
   FormOutlined,
-  FieldBinaryOutlined
-} from "@ant-design/icons";
+  FieldBinaryOutlined,
+  MoreOutlined,
+  CloudDownloadOutlined,
+  CloudUploadOutlined,
+  QuestionCircleOutlined,
+  ImportOutlined,
+  SettingOutlined,
+  BarChartOutlined} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import { useNavigate } from "react-router-dom";
-import { Patient } from "@/types/patient";
 import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { toast } from "sonner";
 import dayjs from "dayjs";
@@ -83,6 +71,10 @@ import { UserType } from "./UserTypes";
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+const { TabPane } = Tabs;
+const { Panel } = Collapse;
+const { useToken } = theme;
+const { Step } = Steps;
 
 interface UserField {
   id: string;
@@ -111,17 +103,72 @@ export default function UserFieldsList() {
   const [userTypes, setUserTypes] = useState<UserType[]>([]);
   const [selectedField, setSelectedField] = useState<UserField | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [activeTab, setActiveTab] = useState("fields");
   const [searchText, setSearchText] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [mandatoryFilter, setMandatoryFilter] = useState<string>("all");
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const [form] = Form.useForm();
+  const { token } = useToken();
+
+  // Skeleton components
+  const StatisticSkeleton = () => (
+    <Card>
+      <Skeleton active paragraph={{ rows: 1 }} />
+    </Card>
+  );
+
+  const TableSkeleton = () => (
+    <Card>
+      <Skeleton active paragraph={{ rows: 6 }} />
+    </Card>
+  );
+
+  const CardSkeleton = () => (
+    <Card>
+      <Skeleton active avatar paragraph={{ rows: 3 }} />
+    </Card>
+  );
+
+  // More actions menu
+  const moreActionsMenu = (
+    <Menu
+      items={[
+        {
+          key: 'export',
+          icon: <ExportOutlined />,
+          label: 'Export Fields',
+        },
+        {
+          key: 'import',
+          icon: <ImportOutlined />,
+          label: 'Import Fields',
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'settings',
+          icon: <SettingOutlined />,
+          label: 'Field Settings',
+        },
+        {
+          key: 'help',
+          icon: <QuestionCircleOutlined />,
+          label: 'Help & Support',
+        },
+      ]}
+    />
+  );
 
   const simulateLoading = () => {
     setIsLoading(true);
+    setStatsLoading(true);
   };
 
   const loadData = async () => {
@@ -152,17 +199,25 @@ export default function UserFieldsList() {
       console.error("Error loading data:", error);
     }).finally(() => {
       setIsLoading(false);
+      setStatsLoading(false);
+      setTableLoading(false);
     });
   };
 
   useEffect(() => {
-    loadData();
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      loadData();
+    }, 1500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Auto refresh notifier
   useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(() => {
+        loadData();
         message.info("🔄 Auto-refresh: User fields data reloaded");
       }, 30000);
       return () => clearInterval(interval);
@@ -170,7 +225,7 @@ export default function UserFieldsList() {
   }, [autoRefresh]);
 
   const deleteUserField = async (id: string) => {
-    simulateLoading();
+    setTableLoading(true);
     await DeleteApi(`/user-fields`, { id: id })
       .then((data) => {
         if (!data?.error) {
@@ -184,7 +239,7 @@ export default function UserFieldsList() {
         toast.error("Error deleting user field");
         console.error("Error deleting user field:", error);
       }).finally(() => {
-        setIsLoading(false);
+        setTableLoading(false);
       });
   };
 
@@ -212,7 +267,7 @@ export default function UserFieldsList() {
   };
 
   const handleSubmit = async (values: any) => {
-    simulateLoading();
+    setTableLoading(true);
     values.is_active = values.status === "ACTIVE"
     delete values.status
 
@@ -231,7 +286,7 @@ export default function UserFieldsList() {
           toast.error("Error updating user field");
           console.error("Error updating user field:", error);
         }).finally(() => {
-          setIsLoading(false);
+          setTableLoading(false);
         });
     } else {
       // Add new field
@@ -248,7 +303,7 @@ export default function UserFieldsList() {
           toast.error("Error adding user field");
           console.error("Error adding user field:", error);
         }).finally(() => {
-          setIsLoading(false);
+          setTableLoading(false);
         });
     }
 
@@ -317,7 +372,7 @@ export default function UserFieldsList() {
           <Tag color={getMandatoryColor(record.is_mandatory)}>
             {record.is_mandatory ? 'Mandatory' : 'Optional'}
           </Tag>
-          <Tag color={getStatusColor(record.is_active ? "ACTIVE" : "INACTIVE")} icon={getStatusIcon(record.is_active ? "ACTIVE" : "INACTIVE")}>
+          <Tag color={getStatusColor(record.is_active ? "ACTIVE" : "INACTIVE")} icon={record.is_active ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
             {record.is_active ? "ACTIVE" : "INACTIVE"}
           </Tag>
           {record.created_at && (
@@ -333,8 +388,20 @@ export default function UserFieldsList() {
       key: 'actions',
       render: (_, record) => (
         <Space>
+          <Tooltip title="View Details">
+            <Button 
+              icon={<EyeOutlined />} 
+              shape="circle" 
+              type="primary" 
+              ghost 
+            />
+          </Tooltip>
           <Tooltip title="Edit Field">
-            <Button icon={<EditOutlined />} shape="circle" onClick={() => handleOpenModal(record)} />
+            <Button 
+              icon={<EditOutlined />} 
+              shape="circle" 
+              onClick={() => handleOpenModal(record)} 
+            />
           </Tooltip>
           <Tooltip title="Delete Field">
             <Popconfirm 
@@ -349,266 +416,516 @@ export default function UserFieldsList() {
               <Button icon={<DeleteOutlined />} shape="circle" danger />
             </Popconfirm>
           </Tooltip>
+          <Dropdown overlay={moreActionsMenu} trigger={['click']}>
+            <Button icon={<MoreOutlined />} shape="circle" />
+          </Dropdown>
         </Space>
       ),
     },
   ];
 
-  return (
-    <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Header */}
-      <Card style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
-        <Flex justify="space-between" align="center">
-          <div>
-            <Space size="large">
-              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '10px' }}>
-                <FormOutlined style={{ fontSize: '36px' }} />
-              </div>
-              <div>
-                <Title level={2} style={{ color: 'white', margin: 0 }}>📋 User Fields Management</Title>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', margin: 0 }}><DashboardOutlined /> Manage custom user fields and properties</Text>
-              </div>
-            </Space>
-          </div>
-          <Space>
-            <Tooltip title="Auto Refresh">
-              <Switch 
-                checkedChildren={<SyncOutlined />} 
-                unCheckedChildren={<CloseCircleOutlined />} 
-                checked={autoRefresh} 
-                onChange={setAutoRefresh} 
-              />
-            </Tooltip>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />} 
-              onClick={() => handleOpenModal()} 
-              size="large" 
-              style={{ background: '#fff', color: '#4facfe', border: 'none', fontWeight: 'bold' }}
-            >
-              <RocketOutlined /> Add User Field
-            </Button>
-          </Space>
-        </Flex>
-      </Card>
-
-      {/* Statistics Cards */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><FormOutlined /> Total Fields</Space>} value={stats.total} valueStyle={{ color: '#4facfe' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><SafetyCertificateOutlined /> Mandatory</Space>} value={stats.mandatory} valueStyle={{ color: '#f5222d' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><CheckCircleOutlined /> Optional</Space>} value={stats.optional} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><FieldBinaryOutlined /> String Type</Space>} value={stats.stringType} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><FieldBinaryOutlined /> Integer Type</Space>} value={stats.integerType} valueStyle={{ color: '#722ed1' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><FieldBinaryOutlined /> JSON Type</Space>} value={stats.jsonType} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
-      </Row>
-
-      {/* Tabs for Different Views */}
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <Tabs.TabPane 
-          key="fields" 
-          tab={
-            <Space>
-              <FormOutlined /> All User Fields <Badge count={filteredUserFields.length} overflowCount={99} />
-            </Space>
-          }
-        >
-          <div className="space-y-6">
-            <Card>
-              <Flex wrap="wrap" gap="middle" align="center" style={{ marginBottom: '16px' }}>
-                <Input 
-                  placeholder="🔍 Search fields, user types..." 
-                  prefix={<SearchOutlined />} 
-                  value={searchText} 
-                  onChange={(e) => setSearchText(e.target.value)} 
-                  style={{ width: 300 }} 
-                  size="large" 
-                />
-                <Select value={typeFilter} onChange={setTypeFilter} placeholder="Filter by User Type" style={{ width: 180 }} size="large">
-                  <Option value="all">All User Types</Option>
-                  {userTypes.map((ut) => (
-                    <Option key={ut.id} value={ut.id}>{ut.type}</Option>
-                  ))}
-                </Select>
-                <Select value={mandatoryFilter} onChange={setMandatoryFilter} placeholder="Filter by Requirement" style={{ width: 150 }} size="large">
-                  <Option value="all">All Requirements</Option>
-                  <Option value="mandatory">Mandatory</Option>
-                  <Option value="optional">Optional</Option>
-                </Select>
-                <Space>
-                  <Button icon={<ReloadOutlined />} onClick={() => { setSearchText(''); setTypeFilter('all'); setMandatoryFilter('all'); }}>Reset</Button>
-                  <Button icon={<ExportOutlined />}>Export</Button>
-                </Space>
-              </Flex>
-              <Alert 
-                message="User Fields Overview" 
-                description={`${stats.mandatory} mandatory and ${stats.optional} optional fields. ${stats.stringType} string, ${stats.integerType} integer, and ${stats.jsonType} JSON type fields.`} 
-                type={stats.mandatory > stats.optional ? "warning" : "info"} 
-                showIcon 
-                closable 
-              />
-            </Card>
-
-            <Card 
-              title={
-                <Space>
-                  <TableOutlined /> User Fields List ({filteredUserFields.length})
-                </Space>
-              } 
-              extra={
-                <Space>
-                  <Tag color="red">{stats.mandatory} Mandatory</Tag>
-                  <Tag color="green">{stats.optional} Optional</Tag>
-                  <Tag color="blue">{stats.active} Active</Tag>
-                </Space>
-              }
-            >
-              <Table 
-                columns={columns} 
-                dataSource={filteredUserFields} 
-                rowKey="id" 
-                loading={isLoading} 
-                scroll={{ x: 800 }}
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) => 
-                    `${range[0]}-${range[1]} of ${total} user fields`,
-                }}
-              />
-            </Card>
-          </div>
-        </Tabs.TabPane>
-        
-        <Tabs.TabPane key="activity" tab={<Space><DashboardOutlined /> Field Distribution</Space>}>
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <Card title="Field Types Distribution">
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                  <PieChartOutlined style={{ fontSize: '48px', color: '#4facfe' }} />
-                  <div style={{ marginTop: '16px' }}>
-                    <Progress 
-                      type="circle" 
-                      percent={Math.round((stats.stringType / (stats.total || 1)) * 100)} 
-                      strokeColor="#1890ff" 
-                    />
-                    <div style={{ marginTop: '16px' }}>
-                      <Tag color="blue">String: {stats.stringType}</Tag>
-                      <Tag color="green">Integer: {stats.integerType}</Tag>
-                      <Tag color="purple">JSON: {stats.jsonType}</Tag>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col span={12}>
-              <Card title="Recent Field Activity">
-                <Timeline>
-                  {userFields.slice(0, 5).map(field => (
-                    <Timeline.Item 
-                      key={field.id} 
-                      color={getStatusColor(field.is_active ? "ACTIVE" : "INACTIVE")} 
-                      dot={getStatusIcon(field.is_active ? "ACTIVE" : "INACTIVE")}
-                    >
-                      <Space direction="vertical" size={0}>
-                        <div style={{ fontWeight: 'bold' }}>{field.field_name}</div>
-                        <div style={{ color: '#666', fontSize: '12px' }}>
-                          <Tag color={getFieldTypeColor(field.field_type)}>{field.field_type}</Tag>
-                          <Tag color={getMandatoryColor(field.is_mandatory)} style={{ marginLeft: '8px' }}>
-                            {field.is_mandatory ? 'Mandatory' : 'Optional'}
-                          </Tag>
-                        </div>
-                        <div style={{ color: '#999', fontSize: '12px' }}>
-                          <UserSwitchOutlined /> {field.user_type_name}
-                        </div>
-                      </Space>
-                    </Timeline.Item>
-                  ))}
-                </Timeline>
-              </Card>
-            </Col>
-          </Row>
-        </Tabs.TabPane>
-      </Tabs>
-
-      {/* Add/Edit User Field Modal */}
-      <Modal 
-        title={
-          <Space>
-            {selectedField ? <EditOutlined /> : <PlusOutlined />}
-            {selectedField ? "Edit User Field" : "Add User Field"}
-          </Space>
-        } 
-        open={isModalOpen} 
-        onCancel={() => setIsModalOpen(false)} 
-        onOk={() => form.submit()} 
-        okText={selectedField ? "Update Field" : "Add Field"} 
-        width={600} 
-        destroyOnClose
-      >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item 
-                name="field_name" 
-                label="Field Name" 
-                rules={[{ required: true, message: "Please enter field name" }]}
-              >
-                <Input prefix={<FormOutlined />} placeholder="Enter field name" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item 
-                name="field_type" 
-                label="Field Type" 
-                rules={[{ required: true }]}
-              >
-                <Select placeholder="Select field type">
-                  <Option value="STRING">STRING</Option>
-                  <Option value="INTEGER">INTEGER</Option>
-                  <Option value="JSON">JSON</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
+  if (isLoading) {
+    return (
+      
+        <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+          {/* Header Skeleton */}
+          <CardSkeleton />
           
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item 
-                name="user_type" 
-                label="User Type" 
-                rules={[{ required: true, message: "Please select user type" }]}
-              >
-                <Select placeholder="Select user type">
-                  {userTypes.map((ut) => (
-                    <Option key={ut.id} value={ut.id}>{ut.type}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item 
-                name="status" 
-                label="Status" 
-                rules={[{ required: true }]}
-              >
-                <Select placeholder="Select status">
-                  <Option value="Active">Active</Option>
-                  <Option value="Inactive">Inactive</Option>
-                </Select>
-              </Form.Item>
-            </Col>
+          {/* Statistics Skeleton */}
+          <Row gutter={[16, 16]}>
+            {[...Array(6)].map((_, i) => (
+              <Col key={i} xs={24} sm={12} md={8} lg={4}>
+                <StatisticSkeleton />
+              </Col>
+            ))}
           </Row>
 
-          <Form.Item 
-            name="is_mandatory" 
-            label="Mandatory Field" 
-            valuePropName="checked"
+          {/* Table Skeleton */}
+          <TableSkeleton />
+        </div>
+      
+    );
+  }
+
+  return (
+    
+      <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+        {/* Header */}
+        <Card style={{  color: 'black' }}>
+          <Flex justify="space-between" align="center">
+            <div>
+              <Space size="large">
+                <Avatar size={64} icon={<FormOutlined />} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                <div>
+                  <Title level={2} style={{ color: 'black', margin: 0 }}>📋 User Fields Management</Title>
+                  <Text style={{ color: 'rgba(0, 0, 0, 0.8)', margin: 0 }}>
+                    <DashboardOutlined /> Manage custom user fields and properties
+                  </Text>
+                </div>
+              </Space>
+            </div>
+            <Space>
+              <Tooltip title="Auto Refresh">
+                <Switch 
+                  checkedChildren={<SyncOutlined />} 
+                  unCheckedChildren={<CloseCircleOutlined />} 
+                  checked={autoRefresh} 
+                  onChange={setAutoRefresh} 
+                />
+              </Tooltip>
+              <Dropdown overlay={moreActionsMenu} placement="bottomRight">
+                <Button icon={<SettingOutlined />} style={{color:"black"}} size="large" ghost>
+                  Settings
+                </Button>
+              </Dropdown>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={() => handleOpenModal()} 
+                size="large" 
+                style={{ background: '#fff', color: '#4facfe', border: 'none', fontWeight: 'bold' }}
+              >
+                <RocketOutlined /> Add User Field
+              </Button>
+            </Space>
+          </Flex>
+        </Card>
+
+        {/* Statistics Cards */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><FormOutlined /> Total Fields</Space>} 
+                  value={stats.total} 
+                  valueStyle={{ color: '#4facfe' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><SafetyCertificateOutlined /> Mandatory</Space>} 
+                  value={stats.mandatory} 
+                  valueStyle={{ color: '#f5222d' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><CheckCircleOutlined /> Optional</Space>} 
+                  value={stats.optional} 
+                  valueStyle={{ color: '#52c41a' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><FieldBinaryOutlined /> String Type</Space>} 
+                  value={stats.stringType} 
+                  valueStyle={{ color: '#1890ff' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><FieldBinaryOutlined /> Integer Type</Space>} 
+                  value={stats.integerType} 
+                  valueStyle={{ color: '#722ed1' }} 
+                />
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic 
+                  title={<Space><FieldBinaryOutlined /> JSON Type</Space>} 
+                  value={stats.jsonType} 
+                  valueStyle={{ color: '#fa8c16' }} 
+                />
+              )}
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Search and Filter Section */}
+        <Card>
+          <Flex wrap="wrap" gap="middle" align="center">
+            <Input 
+              placeholder="🔍 Search fields, user types..." 
+              prefix={<SearchOutlined />} 
+              value={searchText} 
+              onChange={(e) => setSearchText(e.target.value)} 
+              style={{ width: 300 }} 
+              size="large" 
+              allowClear
+            />
+            <Select 
+              value={typeFilter} 
+              onChange={setTypeFilter} 
+              placeholder="Filter by User Type" 
+              style={{ width: 180 }} 
+              size="large"
+            >
+              <Option value="all">All User Types</Option>
+              {userTypes.map((ut) => (
+                <Option key={ut.id} value={ut.id}>{ut.type}</Option>
+              ))}
+            </Select>
+            <Select 
+              value={mandatoryFilter} 
+              onChange={setMandatoryFilter} 
+              placeholder="Filter by Requirement" 
+              style={{ width: 150 }} 
+              size="large"
+            >
+              <Option value="all">All Requirements</Option>
+              <Option value="mandatory">Mandatory</Option>
+              <Option value="optional">Optional</Option>
+            </Select>
+            <Space>
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={() => { setSearchText(''); setTypeFilter('all'); setMandatoryFilter('all'); }}
+              >
+                Reset
+              </Button>
+              <Button 
+                icon={<ExportOutlined />}
+                onClick={() => setDrawerVisible(true)}
+              >
+                Export
+              </Button>
+              <Button 
+                icon={<CloudDownloadOutlined />}
+                type="primary" 
+                ghost
+              >
+                Quick Actions
+              </Button>
+            </Space>
+          </Flex>
+        </Card>
+
+        {/* Tabs for Different Views */}
+        <Tabs activeKey={activeTab} onChange={setActiveTab}>
+          <Tabs.TabPane 
+            key="fields" 
+            tab={
+              <Space>
+                <FormOutlined /> All User Fields <Badge count={filteredUserFields.length} overflowCount={99} />
+              </Space>
+            }
           >
-            <Checkbox>This field is mandatory</Checkbox>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+            <div className="space-y-6">
+              <Card 
+                title={
+                  <Space>
+                    <TableOutlined /> User Fields List ({filteredUserFields.length})
+                  </Space>
+                } 
+                extra={
+                  <Space>
+                    <Tag color="red">{stats.mandatory} Mandatory</Tag>
+                    <Tag color="green">{stats.optional} Optional</Tag>
+                    <Tag color="blue">{stats.active} Active</Tag>
+                  </Space>
+                }
+              >
+                {tableLoading ? (
+                  <TableSkeleton />
+                ) : filteredUserFields.length > 0 ? (
+                  <Table 
+                    columns={columns} 
+                    dataSource={filteredUserFields} 
+                    rowKey="id" 
+                    loading={tableLoading} 
+                    scroll={{ x: 800 }}
+                    pagination={{
+                      pageSize: 10,
+                      showSizeChanger: true,
+                      showQuickJumper: true,
+                      showTotal: (total, range) => 
+                        `${range[0]}-${range[1]} of ${total} user fields`,
+                    }}
+                  />
+                ) : (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="No user fields found matching your criteria"
+                  >
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />} 
+                      onClick={() => handleOpenModal()}
+                    >
+                      Add First Field
+                    </Button>
+                  </Empty>
+                )}
+              </Card>
+            </div>
+          </Tabs.TabPane>
+          
+          <Tabs.TabPane key="activity" tab={<Space><DashboardOutlined /> Field Distribution</Space>}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card title="Field Types Distribution">
+                  {statsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      <Skeleton active paragraph={{ rows: 4 }} />
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      <PieChartOutlined style={{ fontSize: '48px', color: '#4facfe' }} />
+                      <div style={{ marginTop: '16px' }}>
+                        <Progress 
+                          type="circle" 
+                          percent={Math.round((stats.stringType / (stats.total || 1)) * 100)} 
+                          strokeColor="#1890ff" 
+                        />
+                        <div style={{ marginTop: '16px' }}>
+                          <Tag color="blue">String: {stats.stringType}</Tag>
+                          <Tag color="green">Integer: {stats.integerType}</Tag>
+                          <Tag color="purple">JSON: {stats.jsonType}</Tag>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card title="Recent Field Activity">
+                  {statsLoading ? (
+                    <Skeleton active paragraph={{ rows: 5 }} />
+                  ) : userFields.length > 0 ? (
+                    <Timeline>
+                      {userFields.slice(0, 5).map(field => (
+                        <Timeline.Item 
+                          key={field.id} 
+                          color={getStatusColor(field.is_active ? "ACTIVE" : "INACTIVE")} 
+                          dot={field.is_active ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                        >
+                          <Space direction="vertical" size={0}>
+                            <div style={{ fontWeight: 'bold' }}>{field.field_name}</div>
+                            <div style={{ color: '#666', fontSize: '12px' }}>
+                              <Tag color={getFieldTypeColor(field.field_type)}>{field.field_type}</Tag>
+                              <Tag color={getMandatoryColor(field.is_mandatory)} style={{ marginLeft: '8px' }}>
+                                {field.is_mandatory ? 'Mandatory' : 'Optional'}
+                              </Tag>
+                            </div>
+                            <div style={{ color: '#999', fontSize: '12px' }}>
+                              <UserSwitchOutlined /> {field.user_type_name}
+                            </div>
+                          </Space>
+                        </Timeline.Item>
+                      ))}
+                    </Timeline>
+                  ) : (
+                    <Empty description="No field activity recorded" />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </Tabs.TabPane>
+        </Tabs>
+
+        {/* Quick Actions Drawer */}
+        <Drawer
+          title="Quick Actions"
+          placement="right"
+          onClose={() => setDrawerVisible(false)}
+          open={drawerVisible}
+          width={400}
+        >
+          <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Card size="small" title="Data Management">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Button icon={<CloudDownloadOutlined />} block>
+                  Download Report
+                </Button>
+                <Button icon={<CloudUploadOutlined />} block>
+                  Upload Data
+                </Button>
+                <Button icon={<SyncOutlined />} block onClick={loadData}>
+                  Refresh Data
+                </Button>
+              </Space>
+            </Card>
+            
+            <Card size="small" title="Field Operations">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Button 
+                  icon={<PlusOutlined />} 
+                  type="primary" 
+                  block 
+                  onClick={() => {
+                    setDrawerVisible(false);
+                    handleOpenModal();
+                  }}
+                >
+                  New Field
+                </Button>
+                <Button icon={<FormOutlined />} block>
+                  Field Templates
+                </Button>
+                <Button icon={<BarChartOutlined />} block>
+                  View Analytics
+                </Button>
+              </Space>
+            </Card>
+          </Space>
+        </Drawer>
+
+        {/* Add/Edit User Field Modal */}
+        <Modal 
+          title={
+            <Space>
+              {selectedField ? <EditOutlined /> : <PlusOutlined />}
+              {selectedField ? "Edit User Field" : "Add User Field"}
+            </Space>
+          } 
+          open={isModalOpen} 
+          onCancel={() => setIsModalOpen(false)} 
+          onOk={() => form.submit()} 
+          okText={selectedField ? "Update Field" : "Add Field"} 
+          width={600} 
+          destroyOnClose
+          confirmLoading={tableLoading}
+        >
+          <Form form={form} layout="vertical" onFinish={handleSubmit}>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item 
+                  name="field_name" 
+                  label={
+                    <Space>
+                      <FormOutlined />
+                      Field Name
+                    </Space>
+                  } 
+                  rules={[{ required: true, message: "Please enter field name" }]}
+                >
+                  <Input prefix={<FormOutlined />} placeholder="Enter field name" size="large" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item 
+                  name="field_type" 
+                  label={
+                    <Space>
+                      <FieldBinaryOutlined />
+                      Field Type
+                    </Space>
+                  } 
+                  rules={[{ required: true }]}
+                >
+                  <Select placeholder="Select field type" size="large">
+                    <Option value="STRING">STRING</Option>
+                    <Option value="INTEGER">INTEGER</Option>
+                    <Option value="JSON">JSON</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item 
+                  name="user_type" 
+                  label={
+                    <Space>
+                      <UserSwitchOutlined />
+                      User Type
+                    </Space>
+                  } 
+                  rules={[{ required: true, message: "Please select user type" }]}
+                >
+                  <Select placeholder="Select user type" size="large">
+                    {userTypes.map((ut) => (
+                      <Option key={ut.id} value={ut.id}>{ut.type}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item 
+                  name="status" 
+                  label={
+                    <Space>
+                      <SafetyCertificateOutlined />
+                      Status
+                    </Space>
+                  } 
+                  rules={[{ required: true }]}
+                >
+                  <Select placeholder="Select status" size="large">
+                    <Option value="ACTIVE">Active</Option>
+                    <Option value="INACTIVE">Inactive</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item 
+              name="is_mandatory" 
+              label="Mandatory Field" 
+              valuePropName="checked"
+            >
+              <Checkbox>This field is mandatory</Checkbox>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Floating Action Button */}
+        <FloatButton.Group
+          shape="circle"
+          style={{ right: 24 }}
+          icon={<ThunderboltOutlined />}
+        >
+          <FloatButton
+            icon={<PlusOutlined />}
+            tooltip="Add Field"
+            onClick={() => handleOpenModal()}
+          />
+          <FloatButton
+            icon={<SyncOutlined />}
+            tooltip="Refresh"
+            onClick={loadData}
+          />
+          <FloatButton
+            icon={<SettingOutlined />}
+            tooltip="Settings"
+            onClick={() => setDrawerVisible(true)}
+          />
+          <FloatButton.BackTop visibilityHeight={0} />
+        </FloatButton.Group>
+      </div>
+    
   );
 }

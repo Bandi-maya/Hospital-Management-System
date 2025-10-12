@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table,
   Input,
@@ -13,7 +13,17 @@ import {
   Popconfirm,
   message,
   Descriptions,
-  Divider
+  Divider,
+  Row,
+  Col,
+  Statistic,
+  Skeleton,
+  Avatar,
+  Badge,
+  Switch,
+  Dropdown,
+  Menu,
+  Typography
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -33,12 +43,22 @@ import {
   SyncOutlined,
   CloseCircleOutlined,
   PrinterOutlined,
-  ExperimentOutlined
+  ExperimentOutlined,
+  DollarOutlined,
+  ShoppingCartOutlined,
+  MoreOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  CopyOutlined,
+  HistoryOutlined
 } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 
 const { Option } = Select;
+const { Title, Text } = Typography;
 
 interface MedicineItem {
   medicine_id: string;
@@ -61,6 +81,8 @@ interface Prescription {
   doctor?: any;
   medicine_details?: any[];
   test_details?: any[];
+  created_at?: string;
+  is_billed?: boolean;
 }
 
 export default function Prescriptions() {
@@ -78,45 +100,13 @@ export default function Prescriptions() {
   const [editingPrescription, setEditingPrescription] = useState<Prescription | null>(null);
   const [viewingPrescription, setViewingPrescription] = useState<Prescription | null>(null);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
   const loginData = JSON.parse(localStorage.getItem('loginData') || '{}');
 
   // Load data on component mount
   useEffect(() => {
-    Promise.all([
-      getApi('/medicines'),
-      getApi('/lab-tests'),
-      getApi("/users?user_type=DOCTOR"),
-      getApi('/surgery-type'),
-    ]).then(([data, data1, data2, data3]) => {
-      if (!data.error) {
-        setInventory(data.data)
-      }
-      else {
-        toast.error(data.error)
-      }
-      if (!data1.error) {
-        setTests(data1.data)
-      }
-      else {
-        toast.error(data1.error)
-      }
-      if (!data2.error) {
-        setPatients(data2.data)
-      }
-      else {
-        toast.error(data2.error)
-      }
-      if (!data3.error) {
-        setSurgeries(data3.data)
-      }
-      else {
-        toast.error(data3.error)
-      }
-    }).catch((err) => {
-      console.error("Error: ", err)
-      toast.error("Error occurred while getting data.")
-    })
-    loadPrescriptions()
+    loadAllData();
   }, []);
 
   // Auto refresh notifier
@@ -124,59 +114,153 @@ export default function Prescriptions() {
     if (autoRefresh) {
       const interval = setInterval(() => {
         message.info("🔄 Auto-refresh: Prescriptions data reloaded");
+        loadPrescriptions();
       }, 30000);
       return () => clearInterval(interval);
     }
   }, [autoRefresh]);
 
+  const loadAllData = () => {
+    setLoading(true);
+    Promise.all([
+      getApi('/medicines'),
+      getApi('/lab-tests'),
+      getApi("/users?user_type=DOCTOR"),
+      getApi('/surgery-type'),
+    ]).then(([data, data1, data2, data3]) => {
+      if (!data.error) setInventory(data.data);
+      else toast.error(data.error);
+      
+      if (!data1.error) setTests(data1.data);
+      else toast.error(data1.error);
+      
+      if (!data2.error) setPatients(data2.data);
+      else toast.error(data2.error);
+      
+      if (!data3.error) setSurgeries(data3.data);
+      else toast.error(data3.error);
+      
+    }).catch((err) => {
+      console.error("Error: ", err);
+      toast.error("Error occurred while getting data.");
+    }).finally(() => {
+      loadPrescriptions();
+    });
+  };
+
   function loadPrescriptions() {
     getApi("/prescriptions")
       .then((data) => {
         if (!data.error) {
-          setPrescriptions(data.data)
-        }
-        else {
-          toast.error(data.error)
+          setPrescriptions(data.data);
+        } else {
+          toast.error(data.error);
         }
       }).catch((err) => {
-        console.error("Error: ", err)
-        toast.error("Error occurred while getting prescriptions.")
-      })
+        console.error("Error: ", err);
+        toast.error("Error occurred while getting prescriptions.");
+      }).finally(() => setLoading(false));
   }
 
-  const handleAddOrUpdate = (values: any) => {
-    // values.doctor_id = loginData?.id || 1;
-    console.log(values)
+  // Enhanced Action Button Component
+  const ActionButton = ({
+    icon,
+    label,
+    type = "default",
+    danger = false,
+    onClick,
+    loading = false,
+    confirm = false,
+    confirmAction,
+    disabled = false
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    type?: "primary" | "default" | "dashed" | "link" | "text";
+    danger?: boolean;
+    onClick?: () => void;
+    loading?: boolean;
+    confirm?: boolean;
+    confirmAction?: () => void;
+    disabled?: boolean;
+  }) => {
+    const button = (
+      <motion.div
+        whileHover={{ scale: disabled ? 1 : 1.05 }}
+        whileTap={{ scale: disabled ? 1 : 0.95 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      >
+        <Tooltip title={label} placement="top">
+          <Button
+            type={type}
+            danger={danger}
+            icon={icon}
+            loading={loading}
+            onClick={onClick}
+            disabled={disabled}
+            className={`
+              flex items-center justify-center 
+              transition-all duration-300 ease-in-out
+              ${!danger && !type.includes('primary') ?
+                'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
+              }
+              ${danger ?
+                'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
+              }
+              ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+              w-10 h-10 rounded-full
+            `}
+            style={{
+              minWidth: '40px',
+              border: '1px solid #d9d9d9'
+            }}
+          />
+        </Tooltip>
+      </motion.div>
+    );
 
+    return confirm ? (
+      <Popconfirm
+        title="Delete Prescription"
+        description="Are you sure you want to delete this prescription?"
+        onConfirm={confirmAction}
+        okText="Yes"
+        cancelText="No"
+        okType="danger"
+        placement="top"
+        disabled={disabled}
+      >
+        {button}
+      </Popconfirm>
+    ) : (
+      button
+    );
+  };
+
+  const handleAddOrUpdate = (values: any) => {
     if (!values.patient_id) {
       toast.error("Please fill all required fields");
       return;
     }
 
-    // for (let med of values.medicines) {
-    //   if (!med.medicine_id || med.quantity <= 0) {
-    //     toast.error("Medicine name and quantity must be valid");
-    //     return;
-    //   }
-    // }
+    setLoadingActionId(editingPrescription?.id || 'new');
 
     if (editingPrescription) {
       PutApi('/prescriptions', { ...editingPrescription, ...values })
         .then((data) => {
           if (!data.error) {
-            loadPrescriptions()
+            loadPrescriptions();
             toast.success("Prescription updated successfully!");
             setIsModalOpen(false);
             form.resetFields();
             setEditingPrescription(null);
-          }
-          else {
-            toast.error(data.error)
+          } else {
+            toast.error(data.error);
           }
         }).catch((err) => {
-          console.error("Error: ", err)
-          toast.error("Error occurred while updating prescription.")
-        })
+          console.error("Error: ", err);
+          toast.error("Error occurred while updating prescription.");
+        }).finally(() => setLoadingActionId(null));
     } else {
       const newPrescription: Prescription | any = {
         patient_id: values.patient_id,
@@ -189,35 +273,27 @@ export default function Prescriptions() {
       PostApi('/prescriptions', newPrescription)
         .then((data) => {
           if (!data.error) {
-            loadPrescriptions()
+            loadPrescriptions();
             toast.success("Prescription added successfully!");
             setIsModalOpen(false);
             form.resetFields();
-          }
-          else {
-            toast.error(data.error)
+          } else {
+            toast.error(data.error);
           }
         }).catch((err) => {
-          console.error("Error: ", err)
-          toast.error("Error occurred while adding prescription.")
-        })
+          console.error("Error: ", err);
+          toast.error("Error occurred while adding prescription.");
+        }).finally(() => setLoadingActionId(null));
     }
   };
 
   const handleAddOrUpdateBilling = (values: any) => {
-    // values.doctor_id = loginData?.id || 1;
-
     if (!values.patient_id || !values.medicines || values.medicines.length === 0) {
       toast.error("Please fill all required fields");
       return;
     }
 
-    for (let med of values.medicines) {
-      if (!med.medicine_id || med.quantity <= 0) {
-        toast.error("Medicine name and quantity must be valid");
-        return;
-      }
-    }
+    setLoadingActionId(selectedPrescription?.id || 'billing');
 
     const billingData = {
       prescription_id: selectedPrescription?.id,
@@ -231,18 +307,17 @@ export default function Prescriptions() {
     PostApi('/billing', billingData)
       .then((data) => {
         if (!data.error) {
-          loadPrescriptions()
+          loadPrescriptions();
           toast.success("Billing added successfully!");
           setIsBillingModalOpen(false);
           setSelectedPrescription(null);
-        }
-        else {
-          toast.error(data.error)
+        } else {
+          toast.error(data.error);
         }
       }).catch((err) => {
-        console.error("Error: ", err)
-        toast.error("Error occurred while adding billing.")
-      })
+        console.error("Error: ", err);
+        toast.error("Error occurred while adding billing.");
+      }).finally(() => setLoadingActionId(null));
   };
 
   const handleEdit = (prescription: Prescription) => {
@@ -252,7 +327,9 @@ export default function Prescriptions() {
       patient_id: prescription.patient_id,
       medicines: prescription.medicines || [{ medicine_id: "", quantity: 1 }],
       tests: prescription.tests || [{ test_id: "" }],
-      surgeries: prescription.surgeries ? prescription.surgeries.map((surgery: any) => { return { surgery_id: surgery.surgery.surgery_type_id, id: surgery.id, price: surgery.surgery.price } }) : [{ surgery_id: "" }],
+      surgeries: prescription.surgeries ? prescription.surgeries.map((surgery: any) => { 
+        return { surgery_id: surgery.surgery.surgery_type_id, id: surgery.id, price: surgery.surgery.price } 
+      }) : [{ surgery_id: "" }],
       notes: prescription.notes || "",
     });
     setIsModalOpen(true);
@@ -264,28 +341,19 @@ export default function Prescriptions() {
   };
 
   const handleDelete = (prescription: Prescription) => {
-    Modal.confirm({
-      title: "Delete Prescription?",
-      content: "Are you sure you want to delete this prescription? This action cannot be undone.",
-      okText: "Yes",
-      cancelText: "No",
-      okType: "danger",
-      onOk() {
-        DeleteApi("/prescriptions", { id: prescription.id })
-          .then((data) => {
-            if (!data.error) {
-              loadPrescriptions()
-              toast.success("Prescription deleted successfully!");
-            }
-            else {
-              toast.error(data.error)
-            }
-          }).catch(err => {
-            console.error("Error: ", err)
-            toast.error("Error occurred while deleting prescription")
-          })
-      }
-    });
+    setLoadingActionId(prescription.id!);
+    DeleteApi("/prescriptions", { id: prescription.id })
+      .then((data) => {
+        if (!data.error) {
+          loadPrescriptions();
+          toast.success("Prescription deleted successfully!");
+        } else {
+          toast.error(data.error);
+        }
+      }).catch(err => {
+        console.error("Error: ", err);
+        toast.error("Error occurred while deleting prescription");
+      }).finally(() => setLoadingActionId(null));
   };
 
   const resetFilters = () => {
@@ -297,6 +365,17 @@ export default function Prescriptions() {
     prescription.doctor?.username?.toLowerCase().includes(search.toLowerCase()) ||
     prescription.notes?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const stats = {
+    total: prescriptions.length,
+    billed: prescriptions.filter(p => p.is_billed).length,
+    pending: prescriptions.filter(p => !p.is_billed).length,
+    today: prescriptions.filter(p => {
+      const today = new Date().toDateString();
+      const created = new Date(p.created_at || '').toDateString();
+      return created === today;
+    }).length
+  };
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank", "width=800,height=600");
@@ -370,6 +449,28 @@ export default function Prescriptions() {
     }
   };
 
+  const SkeletonTable = () => (
+    <div className="space-y-4">
+      {[1, 2, 3, 4, 5].map((item) => (
+        <Card key={item} className="p-4 border-0 shadow-sm">
+          <Skeleton active paragraph={{ rows: 1 }} />
+        </Card>
+      ))}
+    </div>
+  );
+
+  const SkeletonStats = () => (
+    <Row gutter={[16, 16]}>
+      {[1, 2, 3, 4].map((item) => (
+        <Col xs={24} sm={12} lg={6} key={item}>
+          <Card className="border-0 shadow-sm">
+            <Skeleton active paragraph={{ rows: 1 }} />
+          </Card>
+        </Col>
+      ))}
+    </Row>
+  );
+
   const columns: ColumnsType<Prescription> = [
     {
       title: (
@@ -381,12 +482,17 @@ export default function Prescriptions() {
       key: "patient",
       render: (_, record: Prescription) => (
         <Space>
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <UserOutlined className="text-blue-600" />
-          </div>
+          <Avatar 
+            icon={<UserOutlined />} 
+            size="small" 
+            style={{ 
+              backgroundColor: '#1890ff',
+              borderRadius: '8px'
+            }} 
+          />
           <div>
-            <div style={{ fontWeight: "bold" }}>{record.patient?.username || 'N/A'}</div>
-            <div style={{ fontSize: "12px", color: "#666" }}>
+            <div className="font-medium">{record.patient?.username || 'N/A'}</div>
+            <div className="text-xs text-gray-500">
               Patient ID: {record.patient_id}
             </div>
           </div>
@@ -403,8 +509,8 @@ export default function Prescriptions() {
       key: "doctor",
       render: (_, record: Prescription) => (
         <Space direction="vertical" size={0}>
-          <span style={{ fontWeight: "500" }}>{record.doctor?.username || 'N/A'}</span>
-          <div style={{ fontSize: "12px", color: "#999" }}>
+          <span className="font-medium">{record.doctor?.username || 'N/A'}</span>
+          <div className="text-xs text-gray-500">
             Doctor ID: {record.doctor_id}
           </div>
         </Space>
@@ -420,10 +526,10 @@ export default function Prescriptions() {
       key: "medicines",
       render: (_, record: Prescription) => (
         <Space direction="vertical" size={0}>
-          <span style={{ fontWeight: "500" }}>
+          <span className="font-medium">
             {(record.medicines || []).length} medicine(s)
           </span>
-          <div style={{ fontSize: "12px", color: "#999" }}>
+          <div className="text-xs text-gray-500">
             Prescribed items
           </div>
         </Space>
@@ -439,10 +545,10 @@ export default function Prescriptions() {
       key: "tests",
       render: (_, record: Prescription) => (
         <Space direction="vertical" size={0}>
-          <span style={{ fontWeight: "500" }}>
+          <span className="font-medium">
             {(record.tests || []).length} test(s)
           </span>
-          <div style={{ fontSize: "12px", color: "#999" }}>
+          <div className="text-xs text-gray-500">
             Laboratory tests
           </div>
         </Space>
@@ -452,20 +558,16 @@ export default function Prescriptions() {
       title: (
         <Space>
           <FileTextOutlined />
-          Notes
+          Status
         </Space>
       ),
-      dataIndex: "notes",
-      key: "notes",
-      render: (notes: string) => (
-        <Space direction="vertical" size={0}>
-          <span style={{ fontWeight: "500" }}>
-            {notes ? (notes.length > 50 ? `${notes.substring(0, 50)}...` : notes) : 'No notes'}
-          </span>
-          <div style={{ fontSize: "12px", color: "#999" }}>
-            Doctor's notes
-          </div>
-        </Space>
+      key: "status",
+      render: (_, record: Prescription) => (
+        <Badge 
+          status={record.is_billed ? "success" : "processing"}
+          text={record.is_billed ? "Billed" : "Pending"}
+          className="px-2 py-1"
+        />
       ),
     },
     {
@@ -476,99 +578,112 @@ export default function Prescriptions() {
         </Space>
       ),
       key: "actions",
+      width: 200,
       render: (_, record: Prescription) => (
-        <Space>
-          <Tooltip title="View Details">
-            <Button
-              icon={<EyeOutlined />}
-              shape="circle"
-              type="primary"
-              ghost
-              onClick={() => handleView(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit Prescription">
-            <Button
-              icon={<EditOutlined />}
-              shape="circle"
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Add Billing">
-            <Button
-              type="primary"
-              onClick={() => {
-                setSelectedPrescription({
-                  ...record, surgeries: record.surgeries.map((surgery) => {
-                    return {
-                      surgery_id: surgery.surgery.id, id: surgery.id, price: surgery.surgery.price
-                    }
-                  })
-                });
-                setIsBillingModalOpen(true);
-              }}
+        <Space size="small">
+          <ActionButton
+            icon={<EyeOutlined />}
+            label="View Details"
+            type="default"
+            onClick={() => handleView(record)}
+          />
+
+          <ActionButton
+            icon={<EditOutlined />}
+            label="Edit Prescription"
+            type="default"
+            loading={loadingActionId === record.id}
+            onClick={() => handleEdit(record)}
+          />
+
+          <ActionButton
+            icon={<DollarOutlined />}
+            label="Add Billing"
+            type="primary"
+            loading={loadingActionId === record.id}
+            onClick={() => {
+              setSelectedPrescription({
+                ...record, 
+                surgeries: record.surgeries?.map((surgery) => {
+                  return {
+                    surgery_id: surgery.surgery.id, 
+                    id: surgery.id, 
+                    price: surgery.surgery.price
+                  }
+                }) || []
+              });
+              setIsBillingModalOpen(true);
+            }}
+            disabled={record.is_billed}
+          />
+
+          <ActionButton
+            icon={<DeleteOutlined />}
+            label="Delete Prescription"
+            danger
+            loading={loadingActionId === record.id}
+            confirm
+            confirmAction={() => handleDelete(record)}
+            disabled={record.is_billed}
+          />
+
+          <Dropdown
+            overlay={
+              <Menu>
+                <Menu.Item key="print" icon={<PrinterOutlined />}>
+                  Print Prescription
+                </Menu.Item>
+                <Menu.Item key="duplicate" icon={<CopyOutlined />}>
+                  Duplicate Prescription
+                </Menu.Item>
+                <Menu.Item key="history" icon={<HistoryOutlined />}>
+                  View History
+                </Menu.Item>
+              </Menu>
+            }
+            trigger={['click']}
+            placement="bottomRight"
+          >
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              Add Billing
-            </Button>
-          </Tooltip>
-          <Tooltip title="Delete Prescription">
-            <Popconfirm
-              title="Delete this prescription?"
-              description="Are you sure you want to delete this prescription? This action cannot be undone."
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-              okType="danger"
-              icon={<CloseCircleOutlined style={{ color: "red" }} />}
-            >
-              <Button disabled={record?.['is_billed']} icon={<DeleteOutlined />} shape="circle" danger />
-            </Popconfirm>
-          </Tooltip>
+              <Tooltip title="More actions" placement="top">
+                <Button 
+                  type="text" 
+                  icon={<MoreOutlined />}
+                  className="w-10 h-10 rounded-full border border-gray-300 hover:border-blue-300 hover:bg-blue-50"
+                />
+              </Tooltip>
+            </motion.div>
+          </Dropdown>
         </Space>
       ),
     },
   ];
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
-      <Card className="bg-white shadow-sm border-0">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <MedicineBoxOutlined className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Prescriptions</h1>
-              <p className="text-gray-600 mt-1">Manage patient prescriptions and medications</p>
-            </div>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Prescriptions Management</h1>
+            <p className="text-gray-600 mt-1 text-base">Manage patient prescriptions and medications</p>
           </div>
-          <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
-            <Tooltip title="Auto Refresh">
-              <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
-                <SyncOutlined className="w-4 h-4 text-gray-600" />
-                <span className="text-sm text-gray-600">Auto Refresh</span>
-                <div
-                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                    }`}
-                  onClick={() => setAutoRefresh(!autoRefresh)}
-                >
-                  <div
-                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${autoRefresh ? 'translate-x-4' : 'translate-x-1'
-                      }`}
-                  />
-                </div>
-              </div>
-            </Tooltip>
-
-            <Tooltip title="Reset Filters">
-              <Button icon={<ReloadOutlined />} onClick={resetFilters}>
-                Reset Filters
+          <Space>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button 
+                icon={<ReloadOutlined />}
+                onClick={loadAllData}
+                loading={loading}
+                className="h-12 px-4 border-gray-300"
+              >
+                Refresh
               </Button>
-            </Tooltip>
-
-            <Tooltip title="Add New Prescription">
-              <Button
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button 
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => {
@@ -576,65 +691,198 @@ export default function Prescriptions() {
                   form.resetFields();
                   setIsModalOpen(true);
                 }}
-                className="bg-green-600 hover:bg-green-700"
+                size="large"
+                className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
               >
-                <RocketOutlined /> Add Prescription
+                Add Prescription
               </Button>
-            </Tooltip>
+            </motion.div>
+          </Space>
+        </div>
+      </div>
+
+      {/* Statistics Grid */}
+      {loading ? (
+        <SkeletonStats />
+      ) : (
+        <Row gutter={[16, 16]} className="mb-6">
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-300">
+              <Statistic
+                title="Total Prescriptions"
+                value={stats.total}
+                prefix={<MedicineBoxOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-300">
+              <Statistic
+                title="Billed"
+                value={stats.billed}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-300">
+              <Statistic
+                title="Pending"
+                value={stats.pending}
+                prefix={<ExclamationCircleOutlined />}
+                valueStyle={{ color: '#faad14' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-300">
+              <Statistic
+                title="Today"
+                value={stats.today}
+                prefix={<CalendarOutlined />}
+                valueStyle={{ color: '#722ed1' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
+
+      {/* Auto Refresh Toggle */}
+      <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
+        <div className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <SyncOutlined className="text-blue-600" />
+              <div>
+                <div className="font-medium">Auto Refresh</div>
+                <div className="text-sm text-gray-500">Automatically refresh data every 30 seconds</div>
+              </div>
+            </div>
+            <Switch
+              checked={autoRefresh}
+              onChange={setAutoRefresh}
+              checkedChildren="On"
+              unCheckedChildren="Off"
+            />
           </div>
         </div>
       </Card>
 
       {/* Search and Filter Section */}
-      <Card className="bg-white shadow-sm border-0">
-        <div className="p-6">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <TeamOutlined className="w-5 h-5" />
-              <span className="text-lg font-semibold">All Prescriptions</span>
-              <Tag color="blue" className="ml-2">
-                {filteredPrescriptions.length}
-              </Tag>
-            </div>
-            <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+      <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
+        <div className="p-5">
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} sm={12} md={8}>
               <Input
                 placeholder="Search by patient, doctor, or notes..."
+                prefix={<SearchOutlined />}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                prefix={<SearchOutlined />}
-                allowClear
-                style={{ width: 300 }}
+                size="large"
+                className="hover:border-blue-400 focus:border-blue-500"
               />
-            </div>
-          </div>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button 
+                  icon={<ReloadOutlined />}
+                  onClick={resetFilters}
+                  size="large"
+                  className="w-full border-gray-300 hover:border-blue-400"
+                >
+                  Reset
+                </Button>
+              </motion.div>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button 
+                  icon={<FileTextOutlined />}
+                  size="large"
+                  className="w-full border-gray-300 hover:border-blue-400"
+                >
+                  Export
+                </Button>
+              </motion.div>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <TeamOutlined />
+                <span>{filteredPrescriptions.length} prescriptions found</span>
+                <Tag color="blue" className="ml-2">
+                  {filteredPrescriptions.length}
+                </Tag>
+              </div>
+            </Col>
+          </Row>
         </div>
       </Card>
 
       {/* Prescriptions Table */}
-      <Card className="shadow-md rounded-lg">
-        <Table
-          columns={columns}
-          dataSource={filteredPrescriptions}
-          rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} of ${total} prescriptions`,
-          }}
-          scroll={{ x: "max-content" }}
-          rowClassName="hover:bg-gray-50"
-        />
+      <Card 
+        className="bg-white border-0 shadow-sm rounded-xl"
+        title={
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">All Prescriptions</h2>
+              <p className="text-gray-600 mt-1">
+                Manage and track all patient prescriptions
+              </p>
+            </div>
+          </div>
+        }
+      >
+        <div className="p-6">
+          {loading ? (
+            <SkeletonTable />
+          ) : filteredPrescriptions.length === 0 ? (
+            <div className="text-center py-12">
+              <MedicineBoxOutlined className="text-4xl text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg font-medium mb-2">No prescriptions found</p>
+              <p className="text-gray-400 text-sm max-w-sm mx-auto">
+                {search ? "Try adjusting your search" : "Get started by adding your first prescription"}
+              </p>
+              {search && (
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    type="primary" 
+                    onClick={() => setSearch("")}
+                    className="mt-4"
+                  >
+                    Clear Search
+                  </Button>
+                </motion.div>
+              )}
+            </div>
+          ) : (
+            <Table
+              columns={columns}
+              dataSource={filteredPrescriptions}
+              rowKey="id"
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) =>
+                  `${range[0]}-${range[1]} of ${total} prescriptions`,
+              }}
+              scroll={{ x: 'max-content' }}
+            />
+          )}
+        </div>
       </Card>
 
       {/* Add/Edit Prescription Modal */}
       <Modal
         title={
-          <Space>
-            {editingPrescription ? <EditOutlined /> : <PlusOutlined />}
-            {editingPrescription ? "Edit Prescription" : "Add Prescription"}
-          </Space>
+          <div className="flex items-center gap-3">
+            <MedicineBoxOutlined className="text-blue-600 text-lg" />
+            <span className="text-lg font-semibold">
+              {editingPrescription ? "Edit Prescription" : "Add New Prescription"}
+            </span>
+          </div>
         }
         open={isModalOpen}
         onCancel={() => {
@@ -645,6 +893,13 @@ export default function Prescriptions() {
         onOk={() => form.submit()}
         okText={editingPrescription ? "Update" : "Add"}
         width={700}
+        okButtonProps={{ 
+          size: 'large',
+          loading: loadingActionId !== null,
+          icon: editingPrescription ? <EditOutlined /> : <PlusOutlined />
+        }}
+        cancelButtonProps={{ size: 'large' }}
+        confirmLoading={loadingActionId !== null}
       >
         <Form form={form} layout="vertical" onFinish={handleAddOrUpdate}>
           <Form.Item
@@ -652,7 +907,7 @@ export default function Prescriptions() {
             label="Patient"
             rules={[{ required: true, message: "Please select patient" }]}
           >
-            <Select placeholder="Select patient">
+            <Select placeholder="Select patient" size="large">
               {patients.map(patient => (
                 <Option key={patient.id} value={patient.id}>
                   {patient.username}
@@ -666,7 +921,7 @@ export default function Prescriptions() {
               <>
                 <div className="flex justify-between items-center mb-4">
                   <label className="text-sm font-medium">Medicines</label>
-                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} size="large">
                     Add Medicine
                   </Button>
                 </div>
@@ -677,7 +932,7 @@ export default function Prescriptions() {
                       name={[name, 'medicine_id']}
                       rules={[{ required: true, message: 'Please select medicine' }]}
                     >
-                      <Select placeholder="Select medicine" style={{ width: 200 }}>
+                      <Select placeholder="Select medicine" style={{ width: 200 }} size="large">
                         {inventory.map(medicine => (
                           <Option key={medicine.id} value={medicine.id}>
                             {medicine.name}
@@ -690,9 +945,9 @@ export default function Prescriptions() {
                       name={[name, 'quantity']}
                       rules={[{ required: true, message: 'Please enter quantity' }]}
                     >
-                      <Input type="number" placeholder="Quantity" min={1} />
+                      <Input type="number" placeholder="Quantity" min={1} size="large" />
                     </Form.Item>
-                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} size="large" />
                   </Space>
                 ))}
               </>
@@ -704,7 +959,7 @@ export default function Prescriptions() {
               <>
                 <div className="flex justify-between items-center mb-4">
                   <label className="text-sm font-medium">Tests</label>
-                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} size="large">
                     Add Test
                   </Button>
                 </div>
@@ -714,7 +969,7 @@ export default function Prescriptions() {
                       {...restField}
                       name={[name, 'test_id']}
                     >
-                      <Select placeholder="Select test" style={{ width: 200 }}>
+                      <Select placeholder="Select test" style={{ width: 200 }} size="large">
                         {tests.map(test => (
                           <Option key={test.id} value={test.id}>
                             {test.name}
@@ -722,7 +977,7 @@ export default function Prescriptions() {
                         ))}
                       </Select>
                     </Form.Item>
-                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} size="large" />
                   </Space>
                 ))}
               </>
@@ -733,8 +988,8 @@ export default function Prescriptions() {
             {(fields, { add, remove }) => (
               <>
                 <div className="flex justify-between items-center mb-4">
-                  <label className="text-sm font-medium">Tests</label>
-                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                  <label className="text-sm font-medium">Surgeries</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} size="large">
                     Add Surgery
                   </Button>
                 </div>
@@ -744,7 +999,7 @@ export default function Prescriptions() {
                       {...restField}
                       name={[name, 'surgery_id']}
                     >
-                      <Select placeholder="Select surgery" style={{ width: 200 }}>
+                      <Select placeholder="Select surgery" style={{ width: 200 }} size="large">
                         {surgeries.map(surgery => (
                           <Option key={surgery.id} value={surgery.id}>
                             {surgery.name}
@@ -755,11 +1010,11 @@ export default function Prescriptions() {
                     <Form.Item
                       {...restField}
                       name={[name, 'price']}
-                      rules={[{ required: true, message: 'Please enter quantity' }]}
+                      rules={[{ required: true, message: 'Please enter price' }]}
                     >
-                      <Input type="number" placeholder="Price" min={1} />
+                      <Input type="number" placeholder="Price" min={1} size="large" />
                     </Form.Item>
-                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} size="large" />
                   </Space>
                 ))}
               </>
@@ -767,7 +1022,11 @@ export default function Prescriptions() {
           </Form.List>
 
           <Form.Item name="notes" label="Notes">
-            <Input.TextArea placeholder="Additional notes for the prescription" rows={3} />
+            <Input.TextArea 
+              placeholder="Additional notes for the prescription" 
+              rows={3} 
+              size="large"
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -775,10 +1034,10 @@ export default function Prescriptions() {
       {/* Billing Modal */}
       <Modal
         title={
-          <Space>
-            <FileTextOutlined />
-            Add Billing
-          </Space>
+          <div className="flex items-center gap-3">
+            <DollarOutlined className="text-green-600 text-lg" />
+            <span className="text-lg font-semibold">Add Billing</span>
+          </div>
         }
         open={isBillingModalOpen}
         onCancel={() => {
@@ -788,6 +1047,13 @@ export default function Prescriptions() {
         onOk={() => form.submit()}
         okText="Add Billing"
         width={700}
+        okButtonProps={{ 
+          size: 'large',
+          loading: loadingActionId !== null,
+          icon: <DollarOutlined />
+        }}
+        cancelButtonProps={{ size: 'large' }}
+        confirmLoading={loadingActionId !== null}
       >
         <Form
           form={form}
@@ -799,7 +1065,7 @@ export default function Prescriptions() {
             name="patient_id"
             label="Patient"
           >
-            <Select placeholder="Select patient" disabled>
+            <Select placeholder="Select patient" disabled size="large">
               {patients.map(patient => (
                 <Option key={patient.id} value={patient.id}>
                   {patient.username}
@@ -813,7 +1079,7 @@ export default function Prescriptions() {
               <>
                 <div className="flex justify-between items-center mb-4">
                   <label className="text-sm font-medium">Medicines</label>
-                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} size="large">
                     Add Medicine
                   </Button>
                 </div>
@@ -824,7 +1090,7 @@ export default function Prescriptions() {
                       name={[name, 'medicine_id']}
                       rules={[{ required: true, message: 'Please select medicine' }]}
                     >
-                      <Select placeholder="Select medicine" style={{ width: 200 }}>
+                      <Select placeholder="Select medicine" style={{ width: 200 }} size="large">
                         {inventory.map(medicine => (
                           <Option key={medicine.id} value={medicine.id}>
                             {medicine.name} - ₹{medicine.price}
@@ -837,20 +1103,21 @@ export default function Prescriptions() {
                       name={[name, 'quantity']}
                       rules={[{ required: true, message: 'Please enter quantity' }]}
                     >
-                      <Input type="number" placeholder="Quantity" min={1} />
+                      <Input type="number" placeholder="Quantity" min={1} size="large" />
                     </Form.Item>
-                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} size="large" />
                   </Space>
                 ))}
               </>
             )}
           </Form.List>
+
           <Form.List name="surgeries">
             {(fields, { add, remove }) => (
               <>
                 <div className="flex justify-between items-center mb-4">
-                  <label className="text-sm font-medium">Medicines</label>
-                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                  <label className="text-sm font-medium">Surgeries</label>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} size="large">
                     Add Surgery
                   </Button>
                 </div>
@@ -859,24 +1126,17 @@ export default function Prescriptions() {
                     <Form.Item
                       {...restField}
                       name={[name, 'surgery_id']}
-                      rules={[{ required: true, message: 'Please select medicine' }]}
+                      rules={[{ required: true, message: 'Please select surgery' }]}
                     >
-                      <Select placeholder="Select medicine" style={{ width: 200 }}>
-                        {surgeries.map(medicine => (
-                          <Option key={medicine.id} value={medicine.id}>
-                            {medicine.name} - ₹{medicine.price}
+                      <Select placeholder="Select surgery" style={{ width: 200 }} size="large">
+                        {surgeries.map(surgery => (
+                          <Option key={surgery.id} value={surgery.id}>
+                            {surgery.name} - ₹{surgery.price}
                           </Option>
                         ))}
                       </Select>
                     </Form.Item>
-                    {/* <Form.Item
-                      {...restField}
-                      name={[name, 'price']}
-                      rules={[{ required: true, message: 'Please enter quantity' }]}
-                    >
-                      <Input type="number" disabled placeholder="Price" min={1} />
-                    </Form.Item> */}
-                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} size="large" />
                   </Space>
                 ))}
               </>
@@ -888,7 +1148,7 @@ export default function Prescriptions() {
               <>
                 <div className="flex justify-between items-center mb-4">
                   <label className="text-sm font-medium">Tests</label>
-                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} size="large">
                     Add Test
                   </Button>
                 </div>
@@ -898,7 +1158,7 @@ export default function Prescriptions() {
                       {...restField}
                       name={[name, 'test_id']}
                     >
-                      <Select placeholder="Select test" style={{ width: 200 }}>
+                      <Select placeholder="Select test" style={{ width: 200 }} size="large">
                         {tests.map(test => (
                           <Option key={test.id} value={test.id}>
                             {test.name} - ₹{test.price}
@@ -906,7 +1166,7 @@ export default function Prescriptions() {
                         ))}
                       </Select>
                     </Form.Item>
-                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                    <Button danger onClick={() => remove(name)} icon={<DeleteOutlined />} size="large" />
                   </Space>
                 ))}
               </>
@@ -914,7 +1174,11 @@ export default function Prescriptions() {
           </Form.List>
 
           <Form.Item name="notes" label="Notes">
-            <Input.TextArea placeholder="Additional notes for billing" rows={3} />
+            <Input.TextArea 
+              placeholder="Additional notes for billing" 
+              rows={3} 
+              size="large"
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -922,10 +1186,10 @@ export default function Prescriptions() {
       {/* View Prescription Modal */}
       <Modal
         title={
-          <Space>
-            <EyeOutlined />
-            Prescription Details
-          </Space>
+          <div className="flex items-center gap-3">
+            <EyeOutlined className="text-blue-600 text-lg" />
+            <span className="text-lg font-semibold">Prescription Details</span>
+          </div>
         }
         open={isViewModalOpen}
         onCancel={() => {
@@ -933,10 +1197,10 @@ export default function Prescriptions() {
           setViewingPrescription(null);
         }}
         footer={[
-          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={handlePrint}>
+          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={handlePrint} size="large">
             Print / Save PDF
           </Button>,
-          <Button key="close" onClick={() => setIsViewModalOpen(false)}>
+          <Button key="close" onClick={() => setIsViewModalOpen(false)} size="large">
             Close
           </Button>
         ]}
@@ -945,9 +1209,14 @@ export default function Prescriptions() {
         {viewingPrescription && (
           <div>
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <MedicineBoxOutlined className="w-6 h-6 text-blue-600" />
-              </div>
+              <Avatar 
+                icon={<MedicineBoxOutlined />} 
+                size="large" 
+                style={{ 
+                  backgroundColor: '#1890ff',
+                  borderRadius: '8px'
+                }} 
+              />
               <div>
                 <h3 className="text-lg font-semibold">Prescription #{viewingPrescription.id}</h3>
                 <p className="text-gray-600">Medical prescription details</p>
@@ -956,10 +1225,22 @@ export default function Prescriptions() {
 
             <Descriptions bordered column={1} size="small">
               <Descriptions.Item label="Patient">
-                {viewingPrescription.patient?.username || 'N/A'}
+                <div className="flex items-center gap-2">
+                  <UserOutlined />
+                  {viewingPrescription.patient?.username || 'N/A'}
+                </div>
               </Descriptions.Item>
               <Descriptions.Item label="Doctor">
-                {viewingPrescription.doctor?.username || 'N/A'}
+                <div className="flex items-center gap-2">
+                  <UserOutlined />
+                  {viewingPrescription.doctor?.username || 'N/A'}
+                </div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Status">
+                <Badge 
+                  status={viewingPrescription.is_billed ? "success" : "processing"}
+                  text={viewingPrescription.is_billed ? "Billed" : "Pending"}
+                />
               </Descriptions.Item>
             </Descriptions>
 
@@ -972,7 +1253,17 @@ export default function Prescriptions() {
                 dataSource={viewingPrescription.medicines}
                 pagination={false}
                 columns={[
-                  { title: 'Medicine', dataIndex: ['medicine_details', 'name'], key: 'medicine' },
+                  { 
+                    title: 'Medicine', 
+                    dataIndex: ['medicine_details', 'name'], 
+                    key: 'medicine',
+                    render: (text) => (
+                      <div className="flex items-center gap-2">
+                        <MedicineBoxOutlined className="text-gray-400" />
+                        {text}
+                      </div>
+                    )
+                  },
                   { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
                 ]}
               />
@@ -989,7 +1280,17 @@ export default function Prescriptions() {
                 dataSource={viewingPrescription.tests}
                 pagination={false}
                 columns={[
-                  { title: 'Test', dataIndex: ['test_details', 'name'], key: 'test' },
+                  { 
+                    title: 'Test', 
+                    dataIndex: ['test_details', 'name'], 
+                    key: 'test',
+                    render: (text) => (
+                      <div className="flex items-center gap-2">
+                        <ExperimentOutlined className="text-gray-400" />
+                        {text}
+                      </div>
+                    )
+                  },
                 ]}
               />
             ) : (
@@ -1000,7 +1301,9 @@ export default function Prescriptions() {
               <>
                 <Divider />
                 <h4 className="font-semibold mb-2">Notes</h4>
-                <p>{viewingPrescription.notes}</p>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p>{viewingPrescription.notes}</p>
+                </div>
               </>
             )}
           </div>

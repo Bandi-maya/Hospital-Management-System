@@ -1,31 +1,4 @@
-import React, { useState, useEffect } from "react";
-import {
-  LockOutlined,
-  BellOutlined,
-  GlobalOutlined,
-  SaveOutlined,
-  ReloadOutlined,
-  SecurityScanOutlined,
-  DatabaseOutlined,
-  UserSwitchOutlined,
-  TeamOutlined,
-  SettingOutlined,
-  AuditOutlined,
-  CloudServerOutlined,
-  FileTextOutlined,
-  SafetyCertificateOutlined,
-  BarChartOutlined,
-  MonitorOutlined,
-  CodeOutlined,
-  MailOutlined,
-  CheckCircleOutlined,
-  DashboardOutlined,
-  ControlOutlined,
-  ApiOutlined,
-  CloudSyncOutlined,
-  FileProtectOutlined,
-  UserAddOutlined,
-} from "@ant-design/icons";
+import { useState, useEffect } from "react";
 import {
   Card,
   Tabs,
@@ -34,7 +7,6 @@ import {
   Switch,
   Button,
   Select,
-  Divider,
   Space,
   Row,
   Col,
@@ -42,203 +14,297 @@ import {
   message,
   InputNumber,
   TimePicker,
-  Upload,
   Statistic,
+  Avatar,
+  Badge,
+  Tag,
+  Progress,
+  Radio,
+  Checkbox,
+  Slider,
+  Skeleton,
+  Dropdown,
+  Menu,
+  Modal,
+  Drawer,
+  FloatButton,
+  Timeline,
+  Watermark,
+  theme,
+  Typography,
+  Tooltip,
+  Flex,
+  Collapse
 } from "antd";
+import {
+  LockOutlined,
+  BellOutlined,
+  SaveOutlined,
+  ReloadOutlined,
+  DatabaseOutlined,
+  SettingOutlined,
+  CheckCircleOutlined,
+  DashboardOutlined,
+  EyeOutlined,
+  HeartOutlined,
+  ThunderboltOutlined,
+  MessageOutlined,
+  CloudDownloadOutlined,
+  CloseOutlined,
+  MoreOutlined,
+  QuestionCircleOutlined,
+  SyncOutlined,
+  UserOutlined,
+  AppstoreOutlined,
+  ExclamationCircleFilled,
+  CheckCircleFilled,
+  BulbFilled,
+  ExportOutlined,
+  ImportOutlined} from "@ant-design/icons";
+import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
 const { Option } = Select;
 const { TextArea } = Input;
+const { Title, Text } = Typography;
+const { Panel } = Collapse;
+const { useToken } = theme;
 
-const defaultSettings = {
-  security: {
-    passwordPolicy: "Min 8 chars, uppercase, number, special",
-    sessionTimeout: 30,
-    twoFactor: false,
-    loginNotifications: true,
-    ipWhitelisting: false,
-    defaultRole: "User",
-    securityPolicy: "All users must follow security protocols.",
-    maxLoginAttempts: 5,
-    passwordExpiry: 90,
-    enableAuditLog: true,
-    forceLogout: false,
-    encryptionLevel: "high",
-  },
-  
-  userManagement: {
-    selfRegistration: false,
-    newUserRole: "User",
-    rolePermissions: "",
-    enableUserActivityLog: true,
-    autoApproveUsers: false,
-    userSessionLimit: 3,
-    enableProfileUpdates: true,
-    allowRoleChanges: true,
-    userQuota: 1000,
-    enableBulkOperations: false,
-  },
-  
-  notifications: {
-    emailNotif: true,
-    smsNotif: false,
-    pushNotif: true,
-    adminAlerts: true,
-    systemAlerts: true,
-    securityAlerts: true,
-    lowStorageAlerts: true,
-    performanceAlerts: false,
-    auditAlerts: true,
-    userActivityAlerts: false,
-  },
-  
-  backup: {
-    autoBackup: true,
-    backupFrequency: "daily",
-    backupLocation: "/backups/system",
-    backupRetention: 30,
-    enableCloudBackup: false,
-    compressBackups: true,
-    backupEncryption: true,
-    maintenanceMode: false,
-    autoUpdate: false,
-    backupVerification: true,
-    incrementalBackup: false,
-  },
-  
-  system: {
-    appName: "Hospital Management System",
-    appVersion: "1.0.0",
+// Default user settings
+const defaultUserSettings = {
+  // Personalization
+  personalization: {
     theme: "light",
     language: "en",
-    timezone: "UTC",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     dateFormat: "MM/DD/YYYY",
     timeFormat: "12h",
-    enableApi: true,
-    apiRateLimit: 1000,
-    enableCaching: true,
-    cacheDuration: 3600,
-    maxUploadSize: 50,
-    enableMaintenance: false,
-    logLevel: "info",
-  },
-  
-  email: {
-    smtpHost: "smtp.example.com",
-    smtpPort: 587,
-    smtpUsername: "admin@example.com",
-    smtpPassword: "",
-    fromEmail: "noreply@example.com",
-    fromName: "Hospital System",
-    enableTLS: true,
-    emailTemplate: "default",
+    fontSize: "medium",
+    compactMode: false,
+    reduceAnimations: false,
+    highContrast: false,
+    colorBlindMode: false,
   },
 
-  api: {
-    enableApi: true,
-    apiVersion: "v1",
-    rateLimit: 1000,
-    enableSwagger: true,
-    corsEnabled: true,
-    apiTimeout: 30,
-    enableWebhooks: false,
-    webhookUrl: "",
-    apiKeysEnabled: true,
+  // Privacy & Security
+  privacy: {
+    profileVisibility: "public",
+    activityStatus: true,
+    readReceipts: true,
+    twoFactorAuth: false,
+    loginAlerts: true,
+    dataExport: true,
+    autoLogout: 30,
+    clearHistoryOnExit: false,
+    cookieConsent: true,
+    locationSharing: false,
   },
 
-  monitoring: {
-    enableMonitoring: true,
-    performanceTracking: true,
-    errorTracking: true,
-    uptimeMonitoring: true,
-    resourceUsage: true,
-    alertThreshold: 80,
-    logRetention: 30,
-    enableReports: true,
+  // Notifications
+  notifications: {
+    emailNotifications: true,
+    pushNotifications: true,
+    smsNotifications: false,
+    soundEnabled: true,
+    vibrationEnabled: true,
+    desktopNotifications: true,
+    marketingEmails: false,
+    securityAlerts: true,
+    systemUpdates: true,
+    appointmentReminders: true,
+    medicationReminders: true,
+    billingAlerts: true,
+  },
+
+  // Communication
+  communication: {
+    autoReply: false,
+    autoReplyMessage: "Thank you for your message. I will get back to you soon.",
+    emailSignature: "Best regards,\n[Your Name]",
+    defaultEmailClient: "browser",
+    chatAvailability: "available",
+    doNotDisturb: false,
+    dndStartTime: "22:00",
+    dndEndTime: "08:00",
+    messageFormat: "rich",
+    fontFamily: "system",
+  },
+
+  // Display & Accessibility
+  accessibility: {
+    screenReader: false,
+    keyboardNavigation: true,
+    largeText: false,
+    boldText: false,
+    increaseContrast: false,
+    reduceMotion: false,
+    captioning: false,
+    audioDescription: false,
+    dyslexiaFont: false,
+    cursorSize: "normal",
+  },
+
+  // Data & Storage
+  dataStorage: {
+    autoBackup: true,
+    backupFrequency: "weekly",
+    cloudSync: true,
+    localStorage: true,
+    dataRetention: 365,
+    autoDeleteOldData: false,
+    exportFormat: "json",
+    compressFiles: true,
+    maxFileSize: 25,
+    syncAcrossDevices: true,
+  },
+
+  // Health & Wellness
+  health: {
+    stepGoal: 10000,
+    sleepGoal: 8,
+    waterReminder: true,
+    medicationReminders: true,
+    exerciseReminders: false,
+    mentalHealthCheckins: true,
+    healthReports: true,
+    emergencyContacts: true,
+    bloodType: "",
+    allergies: "",
+    conditions: "",
+  },
+
+  // Social & Sharing
+  social: {
+    shareActivity: true,
+    shareAchievements: true,
+    friendSuggestions: true,
+    groupInvitations: true,
+    eventInvitations: true,
+    socialFeed: true,
+    commentsEnabled: true,
+    likesVisible: true,
+    profileDiscoverable: true,
+    connectionNotifications: true,
+  },
+
+  // Payment & Billing
+  billing: {
+    paymentMethod: "card",
+    autoRenew: true,
+    paperlessBilling: true,
+    billingAlerts: true,
+    taxDocuments: true,
+    invoiceEmails: true,
+    currency: "USD",
+    savePaymentInfo: false,
+    billingAddress: "",
+    receiptStorage: true,
+  },
+
+  // Advanced
+  advanced: {
+    developerMode: false,
+    betaFeatures: false,
+    analyticsSharing: true,
+    crashReports: true,
+    performanceData: true,
+    diagnosticData: false,
+    apiAccess: false,
+    webhooks: false,
+    customCSS: "",
+    experimentalFeatures: false,
   }
 };
 
-export default function AdminSettings() {
+export default function UserSettings() {
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("1");
-  const [settings, setSettings] = useState(defaultSettings);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("personalization");
+  const [settings, setSettings] = useState(defaultUserSettings);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const { token } = useToken();
+
+  // Skeleton components
+  const StatisticSkeleton = () => (
+    <Card>
+      <Skeleton active paragraph={{ rows: 1 }} />
+    </Card>
+  );
+
+  const CardSkeleton = () => (
+    <Card>
+      <Skeleton active avatar paragraph={{ rows: 3 }} />
+    </Card>
+  );
+
+  const FormSkeleton = () => (
+    <Card>
+      <Skeleton active paragraph={{ rows: 6 }} />
+    </Card>
+  );
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem("adminSettings");
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        setSettings(parsedSettings);
-        const flattenedSettings = flattenSettings(parsedSettings);
-        form.setFieldsValue(flattenedSettings);
-      } catch (error) {
-        console.error("Error loading saved settings:", error);
-        message.error("Error loading saved settings. Using defaults.");
-        form.setFieldsValue(flattenSettings(defaultSettings));
+    // Simulate loading user settings
+    const timer = setTimeout(() => {
+      const savedSettings = localStorage.getItem("userSettings");
+      if (savedSettings) {
+        try {
+          const parsedSettings = JSON.parse(savedSettings);
+          setSettings(parsedSettings);
+          form.setFieldsValue(parsedSettings);
+        } catch (error) {
+          console.error("Error loading saved settings:", error);
+          message.error("Error loading saved settings. Using defaults.");
+          form.setFieldsValue(defaultUserSettings);
+        }
+      } else {
+        localStorage.setItem("userSettings", JSON.stringify(defaultUserSettings));
+        form.setFieldsValue(defaultUserSettings);
       }
-    } else {
-      localStorage.setItem("adminSettings", JSON.stringify(defaultSettings));
-      form.setFieldsValue(flattenSettings(defaultSettings));
-    }
+      setLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, [form]);
 
-  const flattenSettings = (nestedSettings: any) => {
-    const flattened: any = {};
-    Object.keys(nestedSettings).forEach(category => {
-      Object.keys(nestedSettings[category]).forEach(key => {
-        flattened[key] = nestedSettings[category][key];
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const values = await form.validateFields();
+      const updatedSettings = { ...settings, ...values };
+      
+      setSettings(updatedSettings);
+      localStorage.setItem("userSettings", JSON.stringify(updatedSettings));
+      localStorage.setItem('userSettingsLastSaved', new Date().toLocaleString());
+      
+      message.success({
+        content: 'Settings saved successfully!',
+        icon: <CheckCircleFilled style={{ color: '#52c41a' }} />,
       });
-    });
-    return flattened;
-  };
-
-  const nestSettings = (flatSettings: any) => {
-    const nested: any = {};
-    Object.keys(defaultSettings).forEach(category => {
-      nested[category] = {};
-      Object.keys(defaultSettings[category]).forEach(key => {
-        if (flatSettings[key] !== undefined) {
-          nested[category][key] = flatSettings[key];
-        } else {
-          nested[category][key] = defaultSettings[category][key];
-        }
-      });
-    });
-    return nested;
-  };
-
-  const handleSave = () => {
-    setLoading(true);
-    form
-      .validateFields()
-      .then((values) => {
-        setTimeout(() => {
-          const nestedSettings = nestSettings(values);
-          setSettings(nestedSettings);
-          localStorage.setItem("adminSettings", JSON.stringify(nestedSettings));
-          localStorage.setItem('adminSettingsLastSaved', new Date().toLocaleString());
-          console.log("Settings saved:", nestedSettings);
-          message.success("Settings saved successfully!");
-          setLoading(false);
-        }, 1000);
-      })
-      .catch((error) => {
-        console.error("Validation failed:", error);
-        message.error("Please fix the errors before saving.");
-        setLoading(false);
-      });
+    } catch (error) {
+      console.error("Validation failed:", error);
+      message.error("Please fix the errors before saving.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReset = () => {
-    setSettings(defaultSettings);
-    form.setFieldsValue(flattenSettings(defaultSettings));
-    localStorage.setItem("adminSettings", JSON.stringify(defaultSettings));
-    message.info("All settings have been reset to default values.");
-  };
-
-  const handleTabChange = (key: string) => {
-    setActiveTab(key);
+    Modal.confirm({
+      title: 'Reset All Settings?',
+      content: 'This will reset all your settings to their default values. This action cannot be undone.',
+      okText: 'Reset',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      icon: <ExclamationCircleFilled />,
+      onOk() {
+        setSettings(defaultUserSettings);
+        form.setFieldsValue(defaultUserSettings);
+        localStorage.setItem("userSettings", JSON.stringify(defaultUserSettings));
+        message.info("All settings have been reset to default values.");
+      },
+    });
   };
 
   const handleExportSettings = () => {
@@ -248,7 +314,7 @@ export default function AdminSettings() {
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'admin-settings-backup.json';
+      link.download = `user-settings-${dayjs().format('YYYY-MM-DD')}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -259,715 +325,700 @@ export default function AdminSettings() {
     }
   };
 
-  const handleImportSettings = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        if (e.target && typeof e.target.result === 'string') {
-          const importedSettings = JSON.parse(e.target.result);
-          
-          // Validate imported settings structure
-          if (typeof importedSettings === 'object' && importedSettings !== null) {
-            setSettings(importedSettings);
-            form.setFieldsValue(flattenSettings(importedSettings));
-            localStorage.setItem("adminSettings", JSON.stringify(importedSettings));
-            message.success("Settings imported successfully!");
-          } else {
-            throw new Error("Invalid settings format");
-          }
-        }
-      } catch (error) {
-        console.error("Import error:", error);
-        message.error("Invalid settings file format. Please check the file.");
-      }
-    };
-    reader.onerror = () => {
-      message.error("Failed to read the file.");
-    };
-    reader.readAsText(file);
+  const getSettingsStats = () => {
+    const totalSettings = Object.keys(settings).reduce((acc, category) => 
+      acc + Object.keys(settings[category as keyof typeof settings]).length, 0
+    );
     
-    // Prevent default upload behavior
-    return false;
+    const enabledFeatures = Object.values(settings).flatMap(category =>
+      Object.values(category).filter(val => val === true)
+    ).length;
+
+    return {
+      totalSettings,
+      enabledFeatures,
+      lastSaved: localStorage.getItem('userSettingsLastSaved') || 'Never',
+      categories: Object.keys(settings).length,
+    };
   };
 
-  const getSystemStats = () => {
-    try {
-      return {
-        totalSettings: Object.keys(settings).reduce((acc, key) => acc + Object.keys(settings[key] || {}).length, 0),
-        enabledFeatures: Object.values(settings).flatMap(obj => 
-          Object.values(obj || {}).filter(val => val === true)
-        ).length,
-        lastSaved: localStorage.getItem('adminSettingsLastSaved') || 'Never',
-      };
-    } catch (error) {
-      return {
-        totalSettings: 0,
-        enabledFeatures: 0,
-        lastSaved: 'Never',
-      };
-    }
-  };
+  const stats = getSettingsStats();
 
-  const systemStats = getSystemStats();
+  const moreActionsMenu = (
+    <Menu
+      items={[
+        {
+          key: 'export',
+          icon: <ExportOutlined />,
+          label: 'Export Settings',
+          onClick: handleExportSettings,
+        },
+        {
+          key: 'import',
+          icon: <ImportOutlined />,
+          label: 'Import Settings',
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'backup',
+          icon: <CloudDownloadOutlined />,
+          label: 'Backup All Data',
+        },
+        {
+          key: 'help',
+          icon: <QuestionCircleOutlined />,
+          label: 'Help & Support',
+        },
+      ]}
+    />
+  );
+
+  if (loading) {
+    return (
+      <Watermark content="User Settings">
+        <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+          {/* Header Skeleton */}
+          <CardSkeleton />
+          
+          {/* Statistics Skeleton */}
+          <Row gutter={[16, 16]}>
+            {[...Array(4)].map((_, i) => (
+              <Col key={i} xs={24} sm={12} md={6}>
+                <StatisticSkeleton />
+              </Col>
+            ))}
+          </Row>
+
+          {/* Tabs Skeleton */}
+          <Card>
+            <Skeleton active paragraph={{ rows: 8 }} />
+          </Card>
+        </div>
+      </Watermark>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Admin Panel Settings</h1>
-          <p className="text-gray-500 mt-1">Manage system administration settings</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button danger icon={<ReloadOutlined />} onClick={handleReset} size="large">
-            Reset to Default
-          </Button>
-          <Button 
-            type="primary" 
-            icon={<SaveOutlined />} 
-            onClick={handleSave} 
-            loading={loading} 
-            size="large"
-          >
-            Save Settings
-          </Button>
-        </div>
-      </div>
-
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic title="Total Settings" value={systemStats.totalSettings} prefix={<SettingOutlined />} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic 
-              title="Enabled Features" 
-              value={systemStats.enabledFeatures} 
-              valueStyle={{ color: '#52c41a' }}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <div className="space-y-2">
-              <div className="text-gray-600">Last Saved</div>
-              <div className="font-semibold">{systemStats.lastSaved}</div>
+    <Watermark content="User Settings">
+      <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+        {/* Header */}
+        <Card className="shadow-sm border-0">
+          <Flex justify="space-between" align="center">
+            <div>
+              <Space size="large">
+                <Avatar 
+                  size={64} 
+                  icon={<SettingOutlined />} 
+                  style={{ 
+                    backgroundColor: token.colorPrimary,
+                    fontSize: '24px'
+                  }} 
+                />
+                <div>
+                  <Title level={2} style={{ margin: 0, color: token.colorTextHeading }}>
+                    ⚙️ User Settings
+                  </Title>
+                  <Text type="secondary" style={{ margin: 0 }}>
+                    <DashboardOutlined /> Customize your experience and preferences
+                  </Text>
+                </div>
+              </Space>
             </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Button icon={<FileTextOutlined />} onClick={handleExportSettings}>
-                Export Settings
-              </Button>
-              <Upload 
-                beforeUpload={handleImportSettings}
-                showUploadList={false}
-                accept=".json"
-                maxCount={1}
-              >
-                <Button icon={<CloudServerOutlined />}>
-                  Import Settings
-                </Button>
-              </Upload>
-            </Space>
-          </Card>
-        </Col>
-      </Row>
-
-      <Alert
-        message="Admin Settings Configuration"
-        description="Configure system administration, security, roles, and notifications. All settings are automatically saved to your browser's local storage."
-        type="info"
-        showIcon
-        closable
-      />
-
-      <Card className="shadow-lg border-0" bodyStyle={{ padding: 0 }}>
-        <Tabs
-          defaultActiveKey="1"
-          activeKey={activeTab}
-          onChange={handleTabChange}
-          tabPosition="left"
-          size="large"
-          style={{ minHeight: 600 }}
-        >
-          <TabPane
-            tab={
-              <span className="flex items-center space-x-2">
-                <LockOutlined className="text-red-500" />
-                <span>Security</span>
-              </span>
-            }
-            key="1"
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-6 text-gray-800">Security Settings</h2>
-              <Form form={form} layout="vertical">
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Password Policy" name="passwordPolicy">
-                      <Input
-                        placeholder="Min 8 chars, uppercase, number, special"
-                        size="large"
-                        prefix={<SecurityScanOutlined className="text-gray-400" />}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Session Timeout (minutes)" name="sessionTimeout">
-                      <InputNumber 
-                        min={5} 
-                        max={480} 
-                        size="large" 
-                        style={{ width: "100%" }}
-                        placeholder="30"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={8}>
-                    <Form.Item label="Two-Factor Authentication" name="twoFactor" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="Force Logout" name="forceLogout" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="IP Whitelisting" name="ipWhitelisting" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Max Login Attempts" name="maxLoginAttempts">
-                      <InputNumber 
-                        min={1} 
-                        max={10} 
-                        size="large" 
-                        style={{ width: "100%" }}
-                        placeholder="5"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Password Expiry (days)" name="passwordExpiry">
-                      <InputNumber 
-                        min={1} 
-                        max={365} 
-                        size="large" 
-                        style={{ width: "100%" }}
-                        placeholder="90"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Default User Role" name="defaultRole">
-                      <Select size="large" placeholder="Select default role">
-                        <Option value="Super Admin">Super Admin</Option>
-                        <Option value="Admin">Admin</Option>
-                        <Option value="Doctor">Doctor</Option>
-                        <Option value="Nurse">Nurse</Option>
-                        <Option value="User">User</Option>
-                        <Option value="Viewer">Viewer</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Encryption Level" name="encryptionLevel">
-                      <Select size="large" placeholder="Select encryption level">
-                        <Option value="low">Low</Option>
-                        <Option value="medium">Medium</Option>
-                        <Option value="high">High</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item label="Enable Audit Logging" name="enableAuditLog" valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-
-                <Form.Item label="Security Policy Description" name="securityPolicy">
-                  <TextArea 
-                    placeholder="Describe security policies and requirements..."
-                    rows={3} 
-                    showCount 
-                    maxLength={500} 
-                  />
-                </Form.Item>
-              </Form>
-            </div>
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span className="flex items-center space-x-2">
-                <UserSwitchOutlined className="text-purple-500" />
-                <span>User Management</span>
-              </span>
-            }
-            key="2"
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-6 text-gray-800">User Management</h2>
-              <Form form={form} layout="vertical">
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Enable Self-Registration" name="selfRegistration" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Auto Approve Users" name="autoApproveUsers" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Default User Role" name="newUserRole">
-                      <Select size="large" placeholder="Select default role">
-                        <Option value="Admin">Admin</Option>
-                        <Option value="Doctor">Doctor</Option>
-                        <Option value="Nurse">Nurse</Option>
-                        <Option value="User">User</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="User Session Limit" name="userSessionLimit">
-                      <InputNumber 
-                        min={1} 
-                        max={10} 
-                        size="large" 
-                        style={{ width: "100%" }}
-                        placeholder="3"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Enable Activity Log" name="enableUserActivityLog" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Allow Role Changes" name="allowRoleChanges" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Enable Profile Updates" name="enableProfileUpdates" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Enable Bulk Operations" name="enableBulkOperations" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item label="User Storage Quota (MB)" name="userQuota">
-                  <InputNumber 
-                    min={100} 
-                    max={10000} 
-                    size="large" 
-                    style={{ width: "100%" }}
-                    placeholder="1000"
-                  />
-                </Form.Item>
-
-                <Form.Item label="Role Permissions" name="rolePermissions">
-                  <TextArea 
-                    placeholder="Define role permissions and access levels..."
-                    rows={4} 
-                    showCount 
-                    maxLength={1000} 
-                  />
-                </Form.Item>
-              </Form>
-            </div>
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span className="flex items-center space-x-2">
-                <DatabaseOutlined className="text-orange-500" />
-                <span>Backup & Maintenance</span>
-              </span>
-            }
-            key="3"
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-6 text-gray-800">Backup & Maintenance</h2>
-              <Form form={form} layout="vertical">
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Auto Backup" name="autoBackup" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Backup Frequency" name="backupFrequency">
-                      <Select size="large" placeholder="Select frequency">
-                        <Option value="hourly">Hourly</Option>
-                        <Option value="daily">Daily</Option>
-                        <Option value="weekly">Weekly</Option>
-                        <Option value="monthly">Monthly</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Backup Retention (days)" name="backupRetention">
-                      <InputNumber 
-                        min={1} 
-                        max={365} 
-                        size="large" 
-                        style={{ width: "100%" }}
-                        placeholder="30"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Enable Cloud Backup" name="enableCloudBackup" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Backup Encryption" name="backupEncryption" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Incremental Backup" name="incrementalBackup" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Compress Backups" name="compressBackups" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Backup Verification" name="backupVerification" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item label="Backup Location" name="backupLocation">
-                  <Input 
-                    placeholder="/backups/system"
-                    size="large"
-                  />
-                </Form.Item>
-              </Form>
-            </div>
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span className="flex items-center space-x-2">
-                <ApiOutlined className="text-blue-500" />
-                <span>API Settings</span>
-              </span>
-            }
-            key="4"
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-6 text-gray-800">API Configuration</h2>
-              <Form form={form} layout="vertical">
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Enable API" name="enableApi" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="API Version" name="apiVersion">
-                      <Select size="large" placeholder="Select API version">
-                        <Option value="v1">v1</Option>
-                        <Option value="v2">v2</Option>
-                        <Option value="beta">Beta</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Rate Limit (req/hour)" name="rateLimit">
-                      <InputNumber 
-                        min={100} 
-                        max={10000} 
-                        size="large" 
-                        style={{ width: "100%" }}
-                        placeholder="1000"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="API Timeout (seconds)" name="apiTimeout">
-                      <InputNumber 
-                        min={5} 
-                        max={300} 
-                        size="large" 
-                        style={{ width: "100%" }}
-                        placeholder="30"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Enable Swagger" name="enableSwagger" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Enable CORS" name="corsEnabled" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Enable Webhooks" name="enableWebhooks" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="API Keys Enabled" name="apiKeysEnabled" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item label="Webhook URL" name="webhookUrl">
-                  <Input 
-                    placeholder="https://example.com/webhook"
-                    size="large"
-                  />
-                </Form.Item>
-              </Form>
-            </div>
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span className="flex items-center space-x-2">
-                <MonitorOutlined className="text-green-500" />
-                <span>Monitoring</span>
-              </span>
-            }
-            key="5"
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-6 text-gray-800">System Monitoring</h2>
-              <Form form={form} layout="vertical">
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Enable Monitoring" name="enableMonitoring" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Performance Tracking" name="performanceTracking" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Error Tracking" name="errorTracking" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Uptime Monitoring" name="uptimeMonitoring" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Resource Usage" name="resourceUsage" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Enable Reports" name="enableReports" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item label="Alert Threshold (%)" name="alertThreshold">
-                  <InputNumber 
-                    min={50} 
-                    max={95} 
-                    size="large" 
-                    style={{ width: "100%" }}
-                    placeholder="80"
-                  />
-                </Form.Item>
-
-                <Form.Item label="Log Retention (days)" name="logRetention">
-                  <InputNumber 
-                    min={7} 
-                    max={365} 
-                    size="large" 
-                    style={{ width: "100%" }}
-                    placeholder="30"
-                  />
-                </Form.Item>
-              </Form>
-            </div>
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span className="flex items-center space-x-2">
-                <MailOutlined className="text-cyan-500" />
-                <span>Email</span>
-              </span>
-            }
-            key="6"
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-6 text-gray-800">Email Configuration</h2>
-              <Form form={form} layout="vertical">
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="SMTP Host" name="smtpHost">
-                      <Input 
-                        placeholder="smtp.example.com"
-                        size="large" 
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="SMTP Port" name="smtpPort">
-                      <InputNumber 
-                        min={1} 
-                        max={65535} 
-                        size="large" 
-                        style={{ width: "100%" }}
-                        placeholder="587"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="SMTP Username" name="smtpUsername">
-                      <Input 
-                        placeholder="admin@example.com"
-                        size="large" 
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="SMTP Password" name="smtpPassword">
-                      <Input.Password 
-                        placeholder="Enter SMTP password"
-                        size="large" 
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="From Email" name="fromEmail">
-                      <Input 
-                        placeholder="noreply@example.com"
-                        size="large" 
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="From Name" name="fromName">
-                      <Input 
-                        placeholder="Hospital System"
-                        size="large" 
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Form.Item label="Enable TLS" name="enableTLS" valuePropName="checked">
-                      <Switch />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Email Template" name="emailTemplate">
-                      <Select size="large" placeholder="Select template">
-                        <Option value="default">Default</Option>
-                        <Option value="modern">Modern</Option>
-                        <Option value="minimal">Minimal</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </Form>
-            </div>
-          </TabPane>
-        </Tabs>
-
-        <div className="border-t bg-gray-50 px-6 py-4">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500 text-sm">
-              Current Tab: {activeTab === "1" ? "Security" : activeTab === "2" ? "User Management" : activeTab === "3" ? "Backup" : activeTab === "4" ? "API" : activeTab === "5" ? "Monitoring" : "Email"}
-            </span>
             <Space>
-              <Button onClick={handleReset} disabled={loading}>
-                Reset
+              <Tooltip title="Auto Save">
+                <Switch 
+                  checkedChildren={<CheckCircleOutlined />}
+                  unCheckedChildren={<CloseOutlined />}
+                  defaultChecked
+                />
+              </Tooltip>
+              <Dropdown overlay={moreActionsMenu} placement="bottomRight">
+                <Button icon={<MoreOutlined />} size="large">
+                  More Actions
+                </Button>
+              </Dropdown>
+              <Button 
+                danger 
+                icon={<ReloadOutlined />} 
+                onClick={handleReset}
+                size="large"
+              >
+                Reset All
               </Button>
-              <Button type="primary" onClick={handleSave} loading={loading} icon={<SaveOutlined />}>
+              <Button 
+                type="primary" 
+                icon={<SaveOutlined />} 
+                onClick={handleSave}
+                loading={saving}
+                size="large"
+              >
                 Save Changes
               </Button>
             </Space>
+          </Flex>
+        </Card>
+
+        {/* Statistics Cards */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic 
+                title="Total Settings" 
+                value={stats.totalSettings} 
+                prefix={<SettingOutlined />}
+                valueStyle={{ color: token.colorPrimary }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic 
+                title="Enabled Features" 
+                value={stats.enabledFeatures} 
+                valueStyle={{ color: '#52c41a' }}
+                prefix={<CheckCircleFilled />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic 
+                title="Categories" 
+                value={stats.categories} 
+                valueStyle={{ color: '#fa8c16' }}
+                prefix={<AppstoreOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <div className="text-gray-600">Last Saved</div>
+                <div className="font-semibold text-lg">{stats.lastSaved}</div>
+                <Progress percent={100} status="active" size="small" />
+              </Space>
+            </Card>
+          </Col>
+        </Row>
+
+        <Alert
+          message="Personalize Your Experience"
+          description="Adjust settings to match your preferences. Changes are saved automatically to your browser's local storage."
+          type="info"
+          showIcon
+          closable
+          icon={<BulbFilled />}
+        />
+
+        <Card className="shadow-lg border-0" bodyStyle={{ padding: 0 }}>
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            tabPosition="left"
+            size="large"
+            style={{ minHeight: 600 }}
+            items={[
+              {
+                key: "personalization",
+                label: (
+                  <Space>
+                    <UserOutlined style={{ color: token.colorPrimary }} />
+                    Personalization
+                  </Space>
+                ),
+                children: (
+                  <div className="p-6">
+                    <Title level={3}>🎨 Personalization Settings</Title>
+                    <Form form={form} layout="vertical" initialValues={settings.personalization}>
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item label="Theme" name="theme">
+                            <Select size="large">
+                              <Option value="light">Light</Option>
+                              <Option value="dark">Dark</Option>
+                              <Option value="auto">Auto</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Language" name="language">
+                            <Select size="large">
+                              <Option value="en">English</Option>
+                              <Option value="es">Spanish</Option>
+                              <Option value="fr">French</Option>
+                              <Option value="de">German</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item label="Font Size" name="fontSize">
+                            <Radio.Group>
+                              <Radio value="small">Small</Radio>
+                              <Radio value="medium">Medium</Radio>
+                              <Radio value="large">Large</Radio>
+                            </Radio.Group>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Time Format" name="timeFormat">
+                            <Radio.Group>
+                              <Radio value="12h">12-hour</Radio>
+                              <Radio value="24h">24-hour</Radio>
+                            </Radio.Group>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Form.Item name="compactMode" valuePropName="checked">
+                          <Checkbox>Compact Mode</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="reduceAnimations" valuePropName="checked">
+                          <Checkbox>Reduce Animations</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="highContrast" valuePropName="checked">
+                          <Checkbox>High Contrast Mode</Checkbox>
+                        </Form.Item>
+                      </Space>
+                    </Form>
+                  </div>
+                ),
+              },
+              {
+                key: "privacy",
+                label: (
+                  <Space>
+                    <LockOutlined style={{ color: '#f5222d' }} />
+                    Privacy & Security
+                  </Space>
+                ),
+                children: (
+                  <div className="p-6">
+                    <Title level={3}>🔒 Privacy & Security</Title>
+                    <Form form={form} layout="vertical" initialValues={settings.privacy}>
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item label="Profile Visibility" name="profileVisibility">
+                            <Select size="large">
+                              <Option value="public">Public</Option>
+                              <Option value="friends">Friends Only</Option>
+                              <Option value="private">Private</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Auto Logout (minutes)" name="autoLogout">
+                            <InputNumber min={5} max={480} style={{ width: '100%' }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Form.Item name="twoFactorAuth" valuePropName="checked">
+                          <Checkbox>Two-Factor Authentication</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="loginAlerts" valuePropName="checked">
+                          <Checkbox>Login Alerts</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="activityStatus" valuePropName="checked">
+                          <Checkbox>Show Activity Status</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="readReceipts" valuePropName="checked">
+                          <Checkbox>Read Receipts</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="clearHistoryOnExit" valuePropName="checked">
+                          <Checkbox>Clear History on Exit</Checkbox>
+                        </Form.Item>
+                      </Space>
+                    </Form>
+                  </div>
+                ),
+              },
+              {
+                key: "notifications",
+                label: (
+                  <Space>
+                    <BellOutlined style={{ color: '#fa8c16' }} />
+                    Notifications
+                    <Badge count={5} size="small" />
+                  </Space>
+                ),
+                children: (
+                  <div className="p-6">
+                    <Title level={3}>🔔 Notification Preferences</Title>
+                    <Form form={form} layout="vertical" initialValues={settings.notifications}>
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item name="emailNotifications" valuePropName="checked">
+                            <Checkbox>Email Notifications</Checkbox>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name="pushNotifications" valuePropName="checked">
+                            <Checkbox>Push Notifications</Checkbox>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item name="appointmentReminders" valuePropName="checked">
+                            <Checkbox>Appointment Reminders</Checkbox>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name="medicationReminders" valuePropName="checked">
+                            <Checkbox>Medication Reminders</Checkbox>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item name="soundEnabled" valuePropName="checked">
+                            <Checkbox>Sound Enabled</Checkbox>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name="vibrationEnabled" valuePropName="checked">
+                            <Checkbox>Vibration Enabled</Checkbox>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Alert
+                        message="Notification Settings"
+                        description="Customize how and when you receive notifications"
+                        type="info"
+                        showIcon
+                      />
+                    </Form>
+                  </div>
+                ),
+              },
+              {
+                key: "communication",
+                label: (
+                  <Space>
+                    <MessageOutlined style={{ color: '#13c2c2' }} />
+                    Communication
+                  </Space>
+                ),
+                children: (
+                  <div className="p-6">
+                    <Title level={3}>💬 Communication Settings</Title>
+                    <Form form={form} layout="vertical" initialValues={settings.communication}>
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item name="autoReply" valuePropName="checked">
+                            <Checkbox>Auto-Reply Messages</Checkbox>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name="doNotDisturb" valuePropName="checked">
+                            <Checkbox>Do Not Disturb</Checkbox>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Form.Item label="Auto-Reply Message" name="autoReplyMessage">
+                        <TextArea rows={3} placeholder="Your auto-reply message..." />
+                      </Form.Item>
+
+                      <Form.Item label="Email Signature" name="emailSignature">
+                        <TextArea rows={2} placeholder="Your email signature..." />
+                      </Form.Item>
+
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item label="Do Not Disturb Start" name="dndStartTime">
+                            <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Do Not Disturb End" name="dndEndTime">
+                            <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </Form>
+                  </div>
+                ),
+              },
+              {
+                key: "accessibility",
+                label: (
+                  <Space>
+                    <EyeOutlined style={{ color: '#722ed1' }} />
+                    Accessibility
+                  </Space>
+                ),
+                children: (
+                  <div className="p-6">
+                    <Title level={3}>♿ Accessibility Settings</Title>
+                    <Form form={form} layout="vertical" initialValues={settings.accessibility}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Form.Item name="screenReader" valuePropName="checked">
+                          <Checkbox>Screen Reader Support</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="keyboardNavigation" valuePropName="checked">
+                          <Checkbox>Enhanced Keyboard Navigation</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="largeText" valuePropName="checked">
+                          <Checkbox>Large Text</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="boldText" valuePropName="checked">
+                          <Checkbox>Bold Text</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="increaseContrast" valuePropName="checked">
+                          <Checkbox>Increase Contrast</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="reduceMotion" valuePropName="checked">
+                          <Checkbox>Reduce Motion</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="dyslexiaFont" valuePropName="checked">
+                          <Checkbox>Dyslexia-Friendly Font</Checkbox>
+                        </Form.Item>
+                      </Space>
+                    </Form>
+                  </div>
+                ),
+              },
+              {
+                key: "health",
+                label: (
+                  <Space>
+                    <HeartOutlined style={{ color: '#eb2f96' }} />
+                    Health & Wellness
+                  </Space>
+                ),
+                children: (
+                  <div className="p-6">
+                    <Title level={3}>❤️ Health & Wellness Settings</Title>
+                    <Form form={form} layout="vertical" initialValues={settings.health}>
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item label="Daily Step Goal" name="stepGoal">
+                            <InputNumber 
+                              min={1000} 
+                              max={50000} 
+                              style={{ width: '100%' }}
+                              addonAfter="steps"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Sleep Goal" name="sleepGoal">
+                            <InputNumber 
+                              min={4} 
+                              max={12} 
+                              style={{ width: '100%' }}
+                              addonAfter="hours"
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Form.Item name="waterReminder" valuePropName="checked">
+                          <Checkbox>Water Reminder</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="medicationReminders" valuePropName="checked">
+                          <Checkbox>Medication Reminders</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="exerciseReminders" valuePropName="checked">
+                          <Checkbox>Exercise Reminders</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="mentalHealthCheckins" valuePropName="checked">
+                          <Checkbox>Mental Health Check-ins</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="emergencyContacts" valuePropName="checked">
+                          <Checkbox>Emergency Contacts</Checkbox>
+                        </Form.Item>
+                      </Space>
+
+                      <Form.Item label="Allergies" name="allergies">
+                        <Input placeholder="List any allergies..." />
+                      </Form.Item>
+
+                      <Form.Item label="Medical Conditions" name="conditions">
+                        <TextArea rows={2} placeholder="List any medical conditions..." />
+                      </Form.Item>
+                    </Form>
+                  </div>
+                ),
+              },
+              {
+                key: "data",
+                label: (
+                  <Space>
+                    <DatabaseOutlined style={{ color: '#fa541c' }} />
+                    Data & Storage
+                  </Space>
+                ),
+                children: (
+                  <div className="p-6">
+                    <Title level={3}>💾 Data & Storage Settings</Title>
+                    <Form form={form} layout="vertical" initialValues={settings.dataStorage}>
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item name="autoBackup" valuePropName="checked">
+                            <Checkbox>Auto Backup</Checkbox>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name="cloudSync" valuePropName="checked">
+                            <Checkbox>Cloud Sync</Checkbox>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={[24, 16]}>
+                        <Col span={12}>
+                          <Form.Item label="Backup Frequency" name="backupFrequency">
+                            <Select>
+                              <Option value="daily">Daily</Option>
+                              <Option value="weekly">Weekly</Option>
+                              <Option value="monthly">Monthly</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Data Retention (days)" name="dataRetention">
+                            <InputNumber min={30} max={1095} style={{ width: '100%' }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Form.Item label="Max File Size (MB)" name="maxFileSize">
+                        <Slider
+                          min={1}
+                          max={100}
+                          marks={{
+                            1: '1MB',
+                            25: '25MB',
+                            50: '50MB',
+                            75: '75MB',
+                            100: '100MB'
+                          }}
+                        />
+                      </Form.Item>
+
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Form.Item name="compressFiles" valuePropName="checked">
+                          <Checkbox>Compress Files</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="syncAcrossDevices" valuePropName="checked">
+                          <Checkbox>Sync Across Devices</Checkbox>
+                        </Form.Item>
+                        <Form.Item name="autoDeleteOldData" valuePropName="checked">
+                          <Checkbox>Auto Delete Old Data</Checkbox>
+                        </Form.Item>
+                      </Space>
+                    </Form>
+                  </div>
+                ),
+              },
+            ]}
+          />
+
+          <div className="border-t bg-gray-50 px-6 py-4">
+            <Flex justify="space-between" align="center">
+              <Space>
+                <Text type="secondary">
+                  Current: {activeTab === "personalization" ? "Personalization" : 
+                           activeTab === "privacy" ? "Privacy & Security" :
+                           activeTab === "notifications" ? "Notifications" :
+                           activeTab === "communication" ? "Communication" :
+                           activeTab === "accessibility" ? "Accessibility" :
+                           activeTab === "health" ? "Health & Wellness" : "Data & Storage"}
+                </Text>
+                <Tag color="blue">{stats.enabledFeatures} Features Enabled</Tag>
+              </Space>
+              <Space>
+                <Button onClick={handleReset} disabled={saving}>
+                  Reset to Defaults
+                </Button>
+                <Button 
+                  type="primary" 
+                  onClick={handleSave} 
+                  loading={saving} 
+                  icon={<SaveOutlined />}
+                  size="large"
+                >
+                  Save All Changes
+                </Button>
+              </Space>
+            </Flex>
           </div>
-        </div>
-      </Card>
-    </div>
+        </Card>
+
+        {/* Quick Settings Drawer */}
+        <Drawer
+          title="Quick Settings"
+          placement="right"
+          onClose={() => setDrawerVisible(false)}
+          open={drawerVisible}
+          width={400}
+        >
+          <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Card size="small" title="Quick Actions">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Button icon={<CloudDownloadOutlined />} block>
+                  Export Settings
+                </Button>
+                <Button icon={<SyncOutlined />} block onClick={handleSave}>
+                  Save Changes
+                </Button>
+                <Button icon={<ReloadOutlined />} block onClick={handleReset}>
+                  Reset All
+                </Button>
+              </Space>
+            </Card>
+            
+            <Card size="small" title="Recent Changes">
+              <Timeline>
+                <Timeline.Item color="green">
+                  <div>Theme changed to Dark</div>
+                  <small>2 hours ago</small>
+                </Timeline.Item>
+                <Timeline.Item color="blue">
+                  <div>Notifications enabled</div>
+                  <small>1 day ago</small>
+                </Timeline.Item>
+                <Timeline.Item color="gray">
+                  <div>Privacy settings updated</div>
+                  <small>3 days ago</small>
+                </Timeline.Item>
+              </Timeline>
+            </Card>
+          </Space>
+        </Drawer>
+
+        {/* Floating Action Button */}
+        <FloatButton.Group
+          shape="circle"
+          style={{ right: 24 }}
+          icon={<ThunderboltOutlined />}
+        >
+          <FloatButton
+            icon={<SaveOutlined />}
+            tooltip="Save Settings"
+            onClick={handleSave}
+          />
+          <FloatButton
+            icon={<SettingOutlined />}
+            tooltip="Quick Settings"
+            onClick={() => setDrawerVisible(true)}
+          />
+          <FloatButton.BackTop visibilityHeight={0} />
+        </FloatButton.Group>
+      </div>
+    </Watermark>
   );
 }

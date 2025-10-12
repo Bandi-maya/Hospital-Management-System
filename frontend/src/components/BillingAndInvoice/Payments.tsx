@@ -3,7 +3,10 @@ import { v4 as uuidv4 } from "uuid";
 import {
     Table, Input, Button, Modal, Select, DatePicker,
     message, Card, Tag, Tooltip, Popconfirm,
-    Space, Row, Col, Statistic, Descriptions, Divider
+    Space, Row, Col, Statistic, Descriptions, Divider,
+    Skeleton, Switch, Dropdown, Menu, Progress, Badge,
+    Avatar, List, Tabs, Form, InputNumber, Radio,
+    Steps, Timeline, Result, Empty, Alert, Spin
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -15,7 +18,52 @@ import {
     ThunderboltOutlined, SecurityScanOutlined, RocketOutlined,
     CreditCardOutlined, BankOutlined, WalletOutlined,
     ArrowUpOutlined, ArrowDownOutlined, IdcardOutlined,
-    PhoneOutlined, EnvironmentOutlined, SafetyCertificateOutlined
+    PhoneOutlined, EnvironmentOutlined, SafetyCertificateOutlined,
+    DownloadOutlined, UploadOutlined, FilterOutlined,
+    SettingOutlined, MoreOutlined, StarOutlined,
+    HeartOutlined, ShareAltOutlined, ExportOutlined,
+    ImportOutlined, CloudDownloadOutlined, CloudUploadOutlined,
+    BarcodeOutlined, QrcodeOutlined, ScanOutlined,
+    TransactionOutlined, MoneyCollectOutlined, FundOutlined,
+    AccountBookOutlined, AuditOutlined, ReconciliationOutlined,
+    PieChartOutlined, BarChartOutlined, LineChartOutlined,
+    AppstoreOutlined, ShopOutlined, ShoppingCartOutlined,
+    GiftOutlined, TrophyOutlined, CrownOutlined,
+    FireOutlined, LikeOutlined, DislikeOutlined,
+    MessageOutlined, NotificationOutlined, BellOutlined,
+    InfoCircleOutlined, ExclamationCircleOutlined,
+    WarningOutlined, IssuesCloseOutlined, StopOutlined,
+    PauseCircleOutlined, PlayCircleOutlined, StepForwardOutlined,
+    StepBackwardOutlined, FastForwardOutlined, FastBackwardOutlined,
+    CaretUpOutlined, CaretDownOutlined, CaretLeftOutlined,
+    CaretRightOutlined, VerticalLeftOutlined, VerticalRightOutlined,
+    ForwardOutlined, BackwardOutlined, RollbackOutlined,
+    EnterOutlined, RetweetOutlined, SwapOutlined,
+    SwapLeftOutlined, SwapRightOutlined, WifiOutlined,
+    GlobalOutlined, DesktopOutlined, LaptopOutlined,
+    MobileOutlined, TabletOutlined, CameraOutlined,
+    PictureOutlined, SoundOutlined, CustomerServiceOutlined,
+    VideoCameraOutlined, PlaySquareOutlined, PauseOutlined,
+    FolderOpenOutlined, FolderOutlined, FileTextOutlined,
+    FileAddOutlined, FileExcelOutlined, FileWordOutlined,
+    FilePptOutlined, FileImageOutlined, FileZipOutlined,
+    FileUnknownOutlined, FileMarkdownOutlined, FilePdfOutlined as FilePdfFilled,
+    HomeOutlined, InboxOutlined, PaperClipOutlined,
+    TagOutlined, TagsOutlined, PushpinOutlined,
+    PhoneFilled, MobileFilled, TabletFilled,
+    AudioFilled, VideoCameraFilled, NotificationFilled,
+    MessageFilled, HeartFilled, StarFilled,
+    CrownFilled, TrophyFilled, FireFilled,
+    LikeFilled, DislikeFilled, InfoCircleFilled,
+    ExclamationCircleFilled, WarningFilled,
+    QuestionCircleOutlined, QuestionCircleFilled,
+    MinusCircleOutlined, MinusCircleFilled,
+    PlusCircleOutlined, PlusCircleFilled,
+    FrownOutlined, FrownFilled, MehOutlined,
+    MehFilled, SmileOutlined, SmileFilled,
+    PoweroffOutlined, LogoutOutlined, LoginOutlined,
+    UserSwitchOutlined, UsergroupAddOutlined, UsergroupDeleteOutlined,
+    UserAddOutlined, UserDeleteOutlined, TeamOutlined as TeamFilled
 } from "@ant-design/icons";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
@@ -36,6 +84,8 @@ declare module 'jspdf' {
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+const { TabPane } = Tabs;
+const { Step } = Steps;
 
 type Payment = {
     id: string;
@@ -65,8 +115,22 @@ export default function Payments() {
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [methodFilter, setMethodFilter] = useState<string>("all");
     const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [autoRefresh, setAutoRefresh] = useState(true);
+    const [tableLoading, setTableLoading] = useState(false);
+    const [statsLoading, setStatsLoading] = useState(true);
+
+    // Simulate data loading
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setPayments(defaultPayments);
+            setLoading(false);
+            setStatsLoading(false);
+            setTableLoading(false);
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         getApi("/payment")
@@ -91,16 +155,14 @@ export default function Payments() {
         }
     }, [autoRefresh]);
 
-    const filteredPayments = payments
-    //     const filteredPayments = React.useMemo(() => payments
-    //     // .filter(payment => {
-    //         // const lowerSearchTerm = searchTerm.toLowerCase();
-    //         // const matchesSearch = payment.customerName.toLowerCase().includes(lowerSearchTerm) || payment.email.toLowerCase().includes(lowerSearchTerm);
-    //         // const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
-    //         // const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
-    //         // const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
-    //         // return matchesSearch && matchesStatus && matchesMethod && matchesDate;
-    // }), [payments, searchTerm, statusFilter, methodFilter, dateRange]);
+    const filteredPayments = payments.filter(payment => {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        const matchesSearch = payment.customerName.toLowerCase().includes(lowerSearchTerm) || payment.email.toLowerCase().includes(lowerSearchTerm);
+        const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+        const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
+        const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
+        return matchesSearch && matchesStatus && matchesMethod && matchesDate;
+    });
 
     // Statistics
     const stats = React.useMemo(() => {
@@ -148,10 +210,14 @@ export default function Payments() {
     }, []);
 
     const handleDeletePayment = (id: string) => {
-        const updated = payments.filter(p => p.id !== id);
-        setPayments(updated);
-        localStorage.setItem("payments", JSON.stringify(updated));
-        message.success("Payment deleted successfully");
+        setTableLoading(true);
+        setTimeout(() => {
+            const updated = payments.filter(p => p.id !== id);
+            setPayments(updated);
+            localStorage.setItem("payments", JSON.stringify(updated));
+            message.success("Payment deleted successfully");
+            setTableLoading(false);
+        }, 500);
     };
 
     const handleSavePayment = () => {
@@ -293,6 +359,36 @@ export default function Payments() {
         setDateRange(null);
     }, []);
 
+    const moreActionsMenu = (
+        <Menu
+            items={[
+                {
+                    key: 'import',
+                    icon: <ImportOutlined />,
+                    label: 'Import Payments',
+                },
+                {
+                    key: 'export',
+                    icon: <ExportOutlined />,
+                    label: 'Export All Data',
+                },
+                {
+                    key: 'settings',
+                    icon: <SettingOutlined />,
+                    label: 'Payment Settings',
+                },
+                {
+                    type: 'divider',
+                },
+                {
+                    key: 'help',
+                    icon: <QuestionCircleOutlined />,
+                    label: 'Help & Support',
+                },
+            ]}
+        />
+    );
+
     const columns: ColumnsType<Payment> = [
         {
             title: (
@@ -304,9 +400,7 @@ export default function Payments() {
             key: "customer",
             render: (_, record) => (
                 <Space>
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <UserOutlined className="text-blue-600" />
-                    </div>
+                    <Avatar size="large" icon={<UserOutlined />} className="bg-blue-100 text-blue-600" />
                     <div>
                         <div style={{ fontWeight: "bold" }}>{record.customerName}</div>
                         <div style={{ fontSize: "12px", color: "#666" }}>
@@ -362,7 +456,7 @@ export default function Payments() {
             dataIndex: "method",
             key: "method",
             render: (method) => (
-                <Tag color={getMethodColor(method)} className="font-medium">
+                <Tag color={getMethodColor(method)} className="font-medium" icon={<CreditCardOutlined />}>
                     {method}
                 </Tag>
             )
@@ -445,9 +539,7 @@ export default function Payments() {
                 <div>
                     {/* Payment Header */}
                     <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <DollarOutlined className="w-8 h-8 text-blue-600" />
-                        </div>
+                        <Avatar size={80} icon={<DollarOutlined />} className="bg-blue-100 text-blue-600 mb-4" />
                         <h2 style={{ margin: '8px 0', color: '#1890ff' }}>{formPayment.customerName}</h2>
                         <Space>
                             <Tag color={getMethodColor(formPayment.method || '')} icon={<CreditCardOutlined />}>
@@ -460,67 +552,32 @@ export default function Payments() {
                     </div>
 
                     <Descriptions bordered column={1} size="small">
-                        <Descriptions.Item label={
-                            <Space>
-                                <IdcardOutlined />
-                                Payment ID
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><IdcardOutlined />Payment ID</Space>}>
                             {formPayment.id}
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <UserOutlined />
-                                Customer Name
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><UserOutlined />Customer Name</Space>}>
                             {formPayment.customerName}
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <MailOutlined />
-                                Email
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><MailOutlined />Email</Space>}>
                             {formPayment.email}
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <DollarOutlined />
-                                Amount
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><DollarOutlined />Amount</Space>}>
                             <span className="font-bold text-green-600 text-lg">
                                 ${formPayment.amount?.toFixed(2)}
                             </span>
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <CalendarOutlined />
-                                Payment Date
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><CalendarOutlined />Payment Date</Space>}>
                             {formPayment.date ? dayjs(formPayment.date).format('MMM DD, YYYY') : ''}
                             <div style={{ fontSize: '12px', color: '#666' }}>
                                 ({formPayment.date ? dayjs(formPayment.date).fromNow() : ''})
                             </div>
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <SafetyCertificateOutlined />
-                                Payment Method
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><SafetyCertificateOutlined />Payment Method</Space>}>
                             <Tag color={getMethodColor(formPayment.method || '')}>
                                 {formPayment.method}
                             </Tag>
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <DashboardOutlined />
-                                Payment Status
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><DashboardOutlined />Payment Status</Space>}>
                             <Tag color={getStatusColor(formPayment.status || '')} icon={getStatusIcon(formPayment.status || '')}>
                                 {formPayment.status}
                             </Tag>
@@ -548,7 +605,6 @@ export default function Payments() {
             );
         }
 
-        // Edit/Add Mode - Return to original form layout
         return (
             <div className="space-y-4 pt-4">
                 <Input
@@ -565,12 +621,12 @@ export default function Payments() {
                     disabled={!isEditMode}
                     prefix={<MailOutlined />}
                 />
-                <Input
-                    type="number"
+                <InputNumber
                     placeholder="Amount"
                     value={formPayment.amount}
-                    onChange={e => setFormPayment({ ...formPayment, amount: Number(e.target.value) })}
+                    onChange={val => setFormPayment({ ...formPayment, amount: Number(val) })}
                     disabled={!isEditMode}
+                    style={{ width: "100%" }}
                     prefix={<DollarOutlined />}
                 />
                 <DatePicker
@@ -625,15 +681,23 @@ export default function Payments() {
 
     const getModalFooter = () => {
         if (isViewMode) {
-            // Only show Close button in view mode
-            return [<Button key="close" onClick={() => setIsModalOpen(false)}>Close</Button>];
+            return [
+                <Button key="export" icon={<FilePdfOutlined />} onClick={() => formPayment.id && handleExportPaymentPDF(formPayment as Payment)}>
+                    Export PDF
+                </Button>,
+                <Button key="close" type="primary" onClick={() => setIsModalOpen(false)}>
+                    Close
+                </Button>
+            ];
         }
 
         if (isEditMode) {
             return [
-                <Button key="back" onClick={() => setIsModalOpen(false)}>Cancel</Button>,
-                <Button key="submit" type="primary" loading={loading} onClick={handleSavePayment} className="bg-blue-600 hover:bg-blue-700">
-                    {formPayment.id ? "Update" : "Add"}
+                <Button key="back" onClick={() => setIsModalOpen(false)}>
+                    Cancel
+                </Button>,
+                <Button key="submit" type="primary" loading={loading} onClick={handleSavePayment} className="bg-blue-600 hover:bg-blue-700" icon={formPayment.id ? <EditOutlined /> : <PlusOutlined />}>
+                    {formPayment.id ? "Update Payment" : "Add Payment"}
                 </Button>
             ];
         }
@@ -641,15 +705,58 @@ export default function Payments() {
         return [<Button key="back" onClick={() => setIsModalOpen(false)}>Close</Button>];
     };
 
+    // Skeleton components
+    const StatisticSkeleton = () => (
+        <Card className="shadow-sm">
+            <Skeleton active paragraph={{ rows: 1 }} />
+        </Card>
+    );
+
+    const TableSkeleton = () => (
+        <Card className="shadow-md rounded-lg">
+            <Skeleton active paragraph={{ rows: 8 }} />
+        </Card>
+    );
+
+    if (loading) {
+        return (
+            <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+                {/* Header Skeleton */}
+                <Card className="bg-white shadow-sm border-0">
+                    <Skeleton active avatar paragraph={{ rows: 1 }} />
+                </Card>
+
+                {/* Statistics Skeleton */}
+                <Row gutter={[16, 16]}>
+                    {[...Array(6)].map((_, i) => (
+                        <Col key={i} xs={24} sm={12} md={8} lg={4}>
+                            <StatisticSkeleton />
+                        </Col>
+                    ))}
+                </Row>
+
+                {/* Payment Methods Skeleton */}
+                <Row gutter={[16, 16]}>
+                    {[...Array(4)].map((_, i) => (
+                        <Col key={i} xs={24} sm={12} md={6}>
+                            <StatisticSkeleton />
+                        </Col>
+                    ))}
+                </Row>
+
+                {/* Table Skeleton */}
+                <TableSkeleton />
+            </div>
+        );
+    }
+
     return (
         <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
             {/* Header */}
             <Card className="bg-white shadow-sm border-0">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
                     <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <DollarOutlined className="w-6 h-6 text-blue-600" />
-                        </div>
+                        <Avatar size={48} icon={<DollarOutlined />} className="bg-blue-100 text-blue-600" />
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Billing & Payments</h1>
                             <p className="text-gray-600 mt-1">Manage and track all payment transactions</p>
@@ -660,16 +767,13 @@ export default function Payments() {
                             <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
                                 <SyncOutlined className="w-4 h-4 text-gray-600" />
                                 <span className="text-sm text-gray-600">Auto Refresh</span>
-                                <div
-                                    className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                                        }`}
-                                    onClick={() => setAutoRefresh(!autoRefresh)}
-                                >
-                                    <div
-                                        className={`w-3 h-3 rounded-full bg-white transform transition-transform ${autoRefresh ? 'translate-x-4' : 'translate-x-1'
-                                            }`}
-                                    />
-                                </div>
+                                <Switch
+                                    size="small"
+                                    checked={autoRefresh}
+                                    onChange={setAutoRefresh}
+                                    checkedChildren="On"
+                                    unCheckedChildren="Off"
+                                />
                             </div>
                         </Tooltip>
 
@@ -678,6 +782,12 @@ export default function Payments() {
                                 Reset Filters
                             </Button>
                         </Tooltip>
+
+                        <Dropdown overlay={moreActionsMenu} placement="bottomRight">
+                            <Button icon={<MoreOutlined />}>
+                                More Actions
+                            </Button>
+                        </Dropdown>
 
                         <Tooltip title="Add New Payment">
                             <Button
@@ -697,67 +807,91 @@ export default function Payments() {
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Total Payments"
-                            value={stats.total}
-                            prefix={<TeamOutlined />}
-                            valueStyle={{ color: '#3f8600' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Total Payments"
+                                value={stats.total}
+                                prefix={<TeamOutlined />}
+                                valueStyle={{ color: '#3f8600' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Total Amount"
-                            value={stats.totalAmount}
-                            prefix="$"
-                            precision={2}
-                            valueStyle={{ color: '#1890ff' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Total Amount"
+                                value={stats.totalAmount}
+                                prefix="$"
+                                precision={2}
+                                valueStyle={{ color: '#1890ff' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Paid Amount"
-                            value={stats.paidAmount}
-                            prefix="$"
-                            precision={2}
-                            valueStyle={{ color: '#52c41a' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Paid Amount"
+                                value={stats.paidAmount}
+                                prefix="$"
+                                precision={2}
+                                valueStyle={{ color: '#52c41a' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Pending Amount"
-                            value={stats.pendingAmount}
-                            prefix="$"
-                            precision={2}
-                            valueStyle={{ color: '#faad14' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Pending Amount"
+                                value={stats.pendingAmount}
+                                prefix="$"
+                                precision={2}
+                                valueStyle={{ color: '#faad14' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Success Rate"
-                            value={stats.successRate}
-                            suffix="%"
-                            precision={1}
-                            valueStyle={{ color: '#52c41a' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Success Rate"
+                                value={stats.successRate}
+                                suffix="%"
+                                precision={1}
+                                valueStyle={{ color: '#52c41a' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Avg Payment"
-                            value={stats.averagePayment}
-                            prefix="$"
-                            precision={2}
-                            valueStyle={{ color: '#722ed1' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Avg Payment"
+                                value={stats.averagePayment}
+                                prefix="$"
+                                precision={2}
+                                valueStyle={{ color: '#722ed1' }}
+                            />
+                        )}
                     </Card>
                 </Col>
             </Row>
@@ -766,42 +900,58 @@ export default function Payments() {
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Card Payments"
-                            value={stats.cardPayments}
-                            prefix={<CreditCardOutlined />}
-                            valueStyle={{ color: '#1890ff' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Card Payments"
+                                value={stats.cardPayments}
+                                prefix={<CreditCardOutlined />}
+                                valueStyle={{ color: '#1890ff' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="UPI Payments"
-                            value={stats.upiPayments}
-                            prefix={<BankOutlined />}
-                            valueStyle={{ color: '#722ed1' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="UPI Payments"
+                                value={stats.upiPayments}
+                                prefix={<BankOutlined />}
+                                valueStyle={{ color: '#722ed1' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Cash Payments"
-                            value={stats.cashPayments}
-                            prefix={<WalletOutlined />}
-                            valueStyle={{ color: '#fa8c16' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Cash Payments"
+                                value={stats.cashPayments}
+                                prefix={<WalletOutlined />}
+                                valueStyle={{ color: '#fa8c16' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Net Banking"
-                            value={stats.netBankingPayments}
-                            prefix={<BankOutlined />}
-                            valueStyle={{ color: '#13c2c2' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Net Banking"
+                                value={stats.netBankingPayments}
+                                prefix={<BankOutlined />}
+                                valueStyle={{ color: '#13c2c2' }}
+                            />
+                        )}
                     </Card>
                 </Col>
             </Row>
@@ -813,9 +963,7 @@ export default function Payments() {
                         <div className="flex items-center space-x-2">
                             <TeamOutlined className="w-5 h-5" />
                             <span className="text-lg font-semibold">All Payments</span>
-                            <Tag color="blue" className="ml-2">
-                                {filteredPayments.length}
-                            </Tag>
+                            <Badge count={filteredPayments.length} showZero color="blue" />
                         </div>
                         <div className="flex flex-wrap gap-3 w-full lg:w-auto">
                             <Input
@@ -831,6 +979,7 @@ export default function Payments() {
                                 onChange={setStatusFilter}
                                 style={{ width: 150 }}
                                 placeholder="Filter by status"
+                                suffixIcon={<FilterOutlined />}
                             >
                                 <Option value="all">All Status</Option>
                                 <Option value="Paid">Paid</Option>
@@ -842,6 +991,7 @@ export default function Payments() {
                                 onChange={setMethodFilter}
                                 style={{ width: 150 }}
                                 placeholder="Filter by method"
+                                suffixIcon={<FilterOutlined />}
                             >
                                 <Option value="all">All Methods</Option>
                                 <Option value="Cash">Cash</Option>
@@ -867,21 +1017,33 @@ export default function Payments() {
 
             {/* Payments Table */}
             <Card className="shadow-md rounded-lg">
-                <Table
-                    dataSource={filteredPayments}
-                    columns={columns}
-                    rowKey="id"
-                    pagination={{
-                        pageSize: 10,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) =>
-                            `${range[0]}-${range[1]} of ${total} payments`,
-                    }}
-                    scroll={{ x: 900 }}
-                    rowClassName="hover:bg-gray-50"
-                    loading={loading}
-                />
+                {tableLoading ? (
+                    <TableSkeleton />
+                ) : filteredPayments.length > 0 ? (
+                    <Table
+                        dataSource={filteredPayments}
+                        columns={columns}
+                        rowKey="id"
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) =>
+                                `${range[0]}-${range[1]} of ${total} payments`,
+                        }}
+                        scroll={{ x: 900 }}
+                        rowClassName="hover:bg-gray-50"
+                    />
+                ) : (
+                    <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="No payments found"
+                    >
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal('add')}>
+                            Add First Payment
+                        </Button>
+                    </Empty>
+                )}
             </Card>
 
             {/* Payment Modal */}

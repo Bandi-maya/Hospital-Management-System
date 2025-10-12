@@ -1,18 +1,58 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { 
+  Card, 
+  Input, 
+  Button, 
+  Tag, 
+  Select, 
+  DatePicker, 
+  TimePicker, 
+  Table, 
+  Space, 
+  Modal, 
+  Form, 
+  Row, 
+  Col,
+  Divider,
+  Skeleton,
+  Avatar,
+  List,
+  Descriptions,
+  Statistic,
+  Progress,
+  Badge as AntBadge,
+  Tooltip,
+  Dropdown,
+  Menu
+} from "antd";
+import { 
+  SearchOutlined, 
+  PlusOutlined, 
+  UserOutlined, 
+  ScissorOutlined, 
+  CalendarOutlined, 
+  ClockCircleOutlined, 
+  EnvironmentOutlined, 
+  EditOutlined, 
+  DeleteOutlined, 
+  FilterOutlined, 
+  DownloadOutlined, 
+  EyeOutlined,
+  MoreOutlined,
+  TeamOutlined,
+  MedicineBoxOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  PlayCircleOutlined,
+  ScheduleOutlined
+} from "@ant-design/icons";
 import { toast } from "sonner";
-import { Select, DatePicker, TimePicker, Table, Space, Modal, Form } from "antd";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
-import { Search, PlusCircle, User, Scissors, Calendar, Clock, MapPin, Edit, Trash2, Filter, Download, Eye } from "lucide-react";
 import dayjs from "dayjs";
-import TextArea from "antd/es/input/TextArea";
 
 const { Option } = Select;
-// const { TextArea } = Input;
+const { TextArea } = Input;
+const { RangePicker } = DatePicker;
 
 interface Surgery {
     id: number;
@@ -129,7 +169,7 @@ export default function SurgeryList() {
             getApi('/surgery-type'),
             getApi('/operation-theatre'),
             getApi('/users?user_type=PATIENT'),
-            getApi('/users?user_type=DOCTOR') // Doctors
+            getApi('/users?user_type=DOCTOR')
         ]).then(([surgeriesData, typesData, theatresData, patientsData, doctorsData]) => {
             if (!surgeriesData?.error) setSurgeries(surgeriesData.data);
             if (!typesData?.error) setSurgeryTypes(typesData.data);
@@ -188,7 +228,6 @@ export default function SurgeryList() {
             };
 
             if (selectedSurgery) {
-                // Update surgery
                 PutApi(`/surgery`, {...submitData, id: selectedSurgery.id})
                     .then(data => {
                         if (!data?.error) {
@@ -205,7 +244,6 @@ export default function SurgeryList() {
                         console.error("Error updating surgery:", error);
                     });
             } else {
-                // Create new surgery
                 PostApi('/surgery', submitData)
                     .then(data => {
                         if (!data?.error) {
@@ -225,21 +263,28 @@ export default function SurgeryList() {
     };
 
     const handleDelete = (id: number) => {
-        if (confirm("Are you sure you want to delete this surgery?")) {
-            DeleteApi(`/surgeries/${id}`)
-                .then(data => {
-                    if (!data?.error) {
-                        toast.success("Surgery deleted successfully!");
-                        loadData();
-                    } else {
-                        toast.error(data.error);
-                    }
-                })
-                .catch(error => {
-                    toast.error("Error deleting surgery");
-                    console.error("Error deleting surgery:", error);
-                });
-        }
+        Modal.confirm({
+            title: 'Are you sure you want to delete this surgery?',
+            content: 'This action cannot be undone.',
+            okText: 'Yes, Delete',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk() {
+                DeleteApi(`/surgeries/${id}`)
+                    .then(data => {
+                        if (!data?.error) {
+                            toast.success("Surgery deleted successfully!");
+                            loadData();
+                        } else {
+                            toast.error(data.error);
+                        }
+                    })
+                    .catch(error => {
+                        toast.error("Error deleting surgery");
+                        console.error("Error deleting surgery:", error);
+                    });
+            }
+        });
     };
 
     const handleStatusChange = (surgeryId: number, newStatus: string) => {
@@ -282,10 +327,9 @@ export default function SurgeryList() {
     };
 
     const filteredSurgeries = surgeries.filter(surgery => {
-        const matchesSearch = surgery
-            // surgery.patient?.name?.toLowerCase().includes(search.toLowerCase()) ||
-            // surgery.surgery_type?.name?.toLowerCase().includes(search.toLowerCase()) ||
-            // surgery.operation_theatre?.name?.toLowerCase().includes(search.toLowerCase());
+        const matchesSearch = surgery.patient?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            surgery.surgery_type?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            surgery.operation_theatre?.name?.toLowerCase().includes(search.toLowerCase());
 
         const matchesStatus = statusFilter === "all" || surgery.status === statusFilter;
 
@@ -302,15 +346,25 @@ export default function SurgeryList() {
         }
     };
 
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case "SCHEDULED": return <ScheduleOutlined />;
+            case "IN_PROGRESS": return <PlayCircleOutlined />;
+            case "COMPLETED": return <CheckCircleOutlined />;
+            case "CANCELLED": return <CloseCircleOutlined />;
+            default: return <ScheduleOutlined />;
+        }
+    };
+
     const columns = [
         {
             title: "Patient",
             dataIndex: ["patient", "name"],
             key: "patient",
             render: (text: string, record: Surgery) => (
-                <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-400" />
-                    <span>{text}</span>
+                <div className="flex items-center gap-3">
+                    <Avatar icon={<UserOutlined />} size="small" />
+                    <span className="font-medium">{text}</span>
                 </div>
             ),
         },
@@ -318,6 +372,12 @@ export default function SurgeryList() {
             title: "Surgery Type",
             dataIndex: ["surgery_type", "name"],
             key: "surgery_type",
+            render: (text: string) => (
+                <div className="flex items-center gap-2">
+                    <ScissorOutlined className="text-gray-400" />
+                    <span>{text}</span>
+                </div>
+            ),
         },
         {
             title: "Operation Theatre",
@@ -325,8 +385,11 @@ export default function SurgeryList() {
             key: "operation_theatre",
             render: (text: string, record: Surgery) => (
                 <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <span>{text}</span>
+                    <EnvironmentOutlined className="text-gray-400" />
+                    <div>
+                        <div>{text}</div>
+                        <div className="text-xs text-gray-500">{record.operation_theatre?.location}</div>
+                    </div>
                 </div>
             ),
         },
@@ -335,12 +398,12 @@ export default function SurgeryList() {
             key: "scheduled_time",
             render: (record: Surgery) => (
                 <div className="space-y-1">
-                    <div className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                        <CalendarOutlined className="text-gray-400" />
                         <span>{dayjs(record.scheduled_start_time).format("MMM D, YYYY")}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-gray-400" />
+                    <div className="flex items-center gap-2">
+                        <ClockCircleOutlined className="text-gray-400" />
                         <span>{dayjs(record.scheduled_start_time).format("h:mm A")}</span>
                     </div>
                 </div>
@@ -351,17 +414,14 @@ export default function SurgeryList() {
             dataIndex: "status",
             key: "status",
             render: (status: string) => (
-                <Badge
-                    variant="outline"
-                    className={`
-            ${status === "SCHEDULED" ? "bg-blue-50 text-blue-700 border-blue-200" : ""}
-            ${status === "IN_PROGRESS" ? "bg-orange-50 text-orange-700 border-orange-200" : ""}
-            ${status === "COMPLETED" ? "bg-green-50 text-green-700 border-green-200" : ""}
-            ${status === "CANCELLED" ? "bg-red-50 text-red-700 border-red-200" : ""}
-          `}
-                >
-                    {SURGERY_STATUS[status as keyof typeof SURGERY_STATUS] || status}
-                </Badge>
+                <AntBadge 
+                    count={SURGERY_STATUS[status as keyof typeof SURGERY_STATUS] || status}
+                    style={{ 
+                        backgroundColor: getStatusColor(status),
+                        color: 'white'
+                    }}
+                    className="px-2 py-1 rounded-full text-xs"
+                />
             ),
         },
         {
@@ -369,39 +429,65 @@ export default function SurgeryList() {
             key: "actions",
             render: (record: Surgery) => (
                 <Space size="small">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewSurgery(record)}
-                        className="h-8 w-8 p-0"
+                    <Tooltip title="View Details">
+                        <Button 
+                            type="text" 
+                            icon={<EyeOutlined />} 
+                            onClick={() => handleViewSurgery(record)}
+                            className="text-blue-600 hover:text-blue-800"
+                        />
+                    </Tooltip>
+                    <Tooltip title="Edit Surgery">
+                        <Button 
+                            type="text" 
+                            icon={<EditOutlined />} 
+                            onClick={() => handleOpenModal(record)}
+                            className="text-green-600 hover:text-green-800"
+                        />
+                    </Tooltip>
+                    <Tooltip title="Delete Surgery">
+                        <Button 
+                            type="text" 
+                            icon={<DeleteOutlined />} 
+                            onClick={() => handleDelete(record.id)}
+                            className="text-red-600 hover:text-red-800"
+                        />
+                    </Tooltip>
+                    <Dropdown
+                        overlay={
+                            <Menu>
+                                <Menu.Item key="start" icon={<PlayCircleOutlined />}>
+                                    Mark In Progress
+                                </Menu.Item>
+                                <Menu.Item key="complete" icon={<CheckCircleOutlined />}>
+                                    Mark Completed
+                                </Menu.Item>
+                                <Menu.Item key="cancel" icon={<CloseCircleOutlined />}>
+                                    Cancel Surgery
+                                </Menu.Item>
+                            </Menu>
+                        }
+                        trigger={['click']}
                     >
-                        <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenModal(record)}
-                        className="h-8 w-8 p-0"
-                    >
-                        <Edit className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDelete(record.id)}
-                        className="h-8 w-8 p-0 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
-                    >
-                        <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                        <Button type="text" icon={<MoreOutlined />} />
+                    </Dropdown>
                 </Space>
             ),
         },
     ];
 
-    console.log(formData)
+    const SkeletonTable = () => (
+        <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((item) => (
+                <Card key={item} className="p-4">
+                    <Skeleton active paragraph={{ rows: 1 }} />
+                </Card>
+            ))}
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-gray-50/50 p-6">
+        <div className="min-h-screen bg-gray-50 p-6">
             {/* Header Section */}
             <div className="mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
@@ -410,11 +496,12 @@ export default function SurgeryList() {
                         <p className="text-gray-600 mt-1 text-base">Manage and track all surgical procedures</p>
                     </div>
                     <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
                         onClick={() => handleOpenModal()}
+                        size="large"
                         className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700 shrink-0"
-                        size="lg"
                     >
-                        <PlusCircle className="w-5 h-5 mr-2" />
                         Schedule Surgery
                     </Button>
                 </div>
@@ -422,25 +509,24 @@ export default function SurgeryList() {
 
             {/* Filters Card */}
             <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
-                <CardContent className="p-5">
-                    <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-                        <div className="flex-1 w-full">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                                <Input
-                                    placeholder="Search surgeries by patient, type, or theatre..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-10 h-12 w-full text-base border-gray-300 focus:border-blue-500"
-                                />
-                            </div>
-                        </div>
-                        <div className="w-full lg:w-48">
+                <div className="p-5">
+                    <Row gutter={[16, 16]} align="middle">
+                        <Col xs={24} sm={12} md={8}>
+                            <Input
+                                placeholder="Search surgeries by patient, type, or theatre..."
+                                prefix={<SearchOutlined />}
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                size="large"
+                            />
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
                             <Select
                                 value={statusFilter}
                                 onChange={setStatusFilter}
-                                className="w-full h-12 [&_.ant-select-selector]:h-12 [&_.ant-select-selection-item]:leading-10"
                                 placeholder="All Status"
+                                size="large"
+                                className="w-full"
                             >
                                 <Option value="all">All Status</Option>
                                 <Option value="SCHEDULED">Scheduled</Option>
@@ -448,49 +534,115 @@ export default function SurgeryList() {
                                 <Option value="COMPLETED">Completed</Option>
                                 <Option value="CANCELLED">Cancelled</Option>
                             </Select>
-                        </div>
-                        <Button variant="outline" className="h-12 px-6 border-gray-300 hover:bg-gray-50 w-full lg:w-auto">
-                            <Download className="w-4 h-4 mr-2" />
-                            Export
-                        </Button>
-                    </div>
-                </CardContent>
+                        </Col>
+                        <Col xs={24} sm={12} md={4}>
+                            <Button 
+                                icon={<DownloadOutlined />} 
+                                size="large"
+                                className="w-full"
+                            >
+                                Export
+                            </Button>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Button 
+                                icon={<FilterOutlined />} 
+                                size="large"
+                                className="w-full"
+                            >
+                                More Filters
+                            </Button>
+                        </Col>
+                    </Row>
+                </div>
             </Card>
 
+            {/* Statistics Row */}
+            <Row gutter={[16, 16]} className="mb-6">
+                <Col xs={24} sm={6}>
+                    <Card>
+                        <Statistic
+                            title="Total Surgeries"
+                            value={surgeries.length}
+                            prefix={<ScissorOutlined />}
+                            valueStyle={{ color: '#1890ff' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={6}>
+                    <Card>
+                        <Statistic
+                            title="Scheduled"
+                            value={surgeries.filter(s => s.status === 'SCHEDULED').length}
+                            prefix={<ScheduleOutlined />}
+                            valueStyle={{ color: '#1890ff' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={6}>
+                    <Card>
+                        <Statistic
+                            title="In Progress"
+                            value={surgeries.filter(s => s.status === 'IN_PROGRESS').length}
+                            prefix={<PlayCircleOutlined />}
+                            valueStyle={{ color: '#faad14' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={6}>
+                    <Card>
+                        <Statistic
+                            title="Completed"
+                            value={surgeries.filter(s => s.status === 'COMPLETED').length}
+                            prefix={<CheckCircleOutlined />}
+                            valueStyle={{ color: '#52c41a' }}
+                        />
+                    </Card>
+                </Col>
+            </Row>
+
             {/* Surgeries Table */}
-            <Card className="bg-white border-0 shadow-sm rounded-xl">
-                <CardHeader className="px-6 py-5 border-b border-gray-200">
+            <Card 
+                className="bg-white border-0 shadow-sm rounded-xl"
+                title={
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <CardTitle className="text-xl font-semibold text-gray-900">Scheduled Surgeries</CardTitle>
-                            <CardDescription className="text-gray-600 mt-1">
+                            <h2 className="text-xl font-semibold text-gray-900">Scheduled Surgeries</h2>
+                            <p className="text-gray-600 mt-1">
                                 {filteredSurgeries.length} surgery{filteredSurgeries.length !== 1 ? 'ies' : ''} found
-                            </CardDescription>
+                            </p>
                         </div>
                     </div>
-                </CardHeader>
-                <CardContent className="p-6">
+                }
+            >
+                <div className="p-6">
                     {loading ? (
-                        <div className="flex justify-center items-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        </div>
+                        <SkeletonTable />
                     ) : (
                         <Table
                             dataSource={filteredSurgeries}
                             columns={columns}
                             rowKey="id"
-                            pagination={{ pageSize: 10 }}
+                            pagination={{ 
+                                pageSize: 10,
+                                showSizeChanger: true,
+                                showQuickJumper: true,
+                                showTotal: (total, range) => 
+                                    `${range[0]}-${range[1]} of ${total} items`
+                            }}
                         />
                     )}
-                </CardContent>
+                </div>
             </Card>
 
             {/* Add/Edit Surgery Modal */}
             <Modal
                 title={
                     <div className="flex items-center gap-3">
-                        <Scissors className="w-5 h-5 text-blue-600" />
-                        <span>{selectedSurgery ? "Edit Surgery" : "Schedule New Surgery"}</span>
+                        <ScissorOutlined className="text-blue-600 text-lg" />
+                        <span className="text-lg font-semibold">
+                            {selectedSurgery ? "Edit Surgery" : "Schedule New Surgery"}
+                        </span>
                     </div>
                 }
                 open={isModalOpen}
@@ -499,106 +651,123 @@ export default function SurgeryList() {
                 width={800}
                 okText={selectedSurgery ? "Update Surgery" : "Schedule Surgery"}
                 cancelText="Cancel"
+                okButtonProps={{ size: 'large' }}
+                cancelButtonProps={{ size: 'large' }}
             >
                 <Form form={form} layout="vertical" className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item
-                            label="Patient"
-                            // name="patient_id"
-                            rules={[{ required: true, message: "Please select a patient" }]}
-                        >
-                            <Select
-                                placeholder="Select patient"
-                                value={formData.patient_id}
-                                onChange={(value) => setFormData(prev => ({ ...prev, patient_id: value }))}
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Patient"
+                                name="patient_id"
+                                rules={[{ required: true, message: "Please select a patient" }]}
                             >
-                                {patients.map(patient => (
-                                    <Option key={patient.id} value={patient.id.toString()}>
-                                        {patient.name}
-                                    </Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-
-                        <Form.Item
-                            label="Surgery Type"
-                            // name="surgery_type_id"
-                            rules={[{ required: true, message: "Please select surgery type" }]}
-                        >
-                            <Select
-                                placeholder="Select surgery type"
-                                value={formData.surgery_type_id}
-                                onChange={(value) => setFormData(prev => ({ ...prev, surgery_type_id: value }))}
+                                <Select
+                                    placeholder="Select patient"
+                                    value={formData.patient_id}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, patient_id: value }))}
+                                    size="large"
+                                >
+                                    {patients.map(patient => (
+                                        <Option key={patient.id} value={patient.id.toString()}>
+                                            {patient.name}
+                                        </Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Surgery Type"
+                                name="surgery_type_id"
+                                rules={[{ required: true, message: "Please select surgery type" }]}
                             >
-                                {surgeryTypes.map(type => (
-                                    <Option key={type.id} value={type.id.toString()}>
-                                        {type.name}
-                                    </Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    </div>
+                                <Select
+                                    placeholder="Select surgery type"
+                                    value={formData.surgery_type_id}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, surgery_type_id: value }))}
+                                    size="large"
+                                >
+                                    {surgeryTypes.map(type => (
+                                        <Option key={type.id} value={type.id.toString()}>
+                                            {type.name}
+                                        </Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item
-                            label="Operation Theatre"
-                            // name="operation_theatre_id"
-                        >
-                            <Select
-                                placeholder="Select operation theatre"
-                                value={formData.operation_theatre_id}
-                                onChange={(value) => setFormData(prev => ({ ...prev, operation_theatre_id: value }))}
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Operation Theatre"
+                                name="operation_theatre_id"
                             >
-                                {operationTheatres.map(theatre => (
-                                    <Option key={theatre.id} value={theatre.id.toString()}>
-                                        {theatre.name} - {theatre.location}
-                                    </Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-
-                        <Form.Item
-                            label="Status"
-                            // name="status"
-                        >
-                            <Select
-                                value={formData.status}
-                                onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                                <Select
+                                    placeholder="Select operation theatre"
+                                    value={formData.operation_theatre_id}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, operation_theatre_id: value }))}
+                                    size="large"
+                                >
+                                    {operationTheatres.map(theatre => (
+                                        <Option key={theatre.id} value={theatre.id.toString()}>
+                                            {theatre.name} - {theatre.location}
+                                        </Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Status"
+                                name="status"
                             >
-                                <Option value="SCHEDULED">Scheduled</Option>
-                                <Option value="IN_PROGRESS">In Progress</Option>
-                                <Option value="COMPLETED">Completed</Option>
-                                <Option value="CANCELLED">Cancelled</Option>
-                            </Select>
-                        </Form.Item>
-                    </div>
+                                <Select
+                                    value={formData.status}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                                    size="large"
+                                >
+                                    <Option value="SCHEDULED">Scheduled</Option>
+                                    <Option value="IN_PROGRESS">In Progress</Option>
+                                    <Option value="COMPLETED">Completed</Option>
+                                    <Option value="CANCELLED">Cancelled</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item
-                            label="Scheduled Start Time"
-                            // name="scheduled_start_time"
-                            rules={[{ required: true, message: "Please select start time" }]}
-                        >
-                            <DatePicker
-                                showTime
-                                value={formData.scheduled_start_time}
-                                onChange={(value) => setFormData(prev => ({ ...prev, scheduled_start_time: value }))}
-                                className="w-full"
-                            />
-                        </Form.Item>
-
-                        <Form.Item
-                            label="Scheduled End Time"
-                            // name="scheduled_end_time"
-                        >
-                            <DatePicker
-                                showTime
-                                value={formData.scheduled_end_time}
-                                onChange={(value) => setFormData(prev => ({ ...prev, scheduled_end_time: value }))}
-                                className="w-full"
-                            />
-                        </Form.Item>
-                    </div>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Scheduled Start Time"
+                                name="scheduled_start_time"
+                                rules={[{ required: true, message: "Please select start time" }]}
+                            >
+                                <DatePicker
+                                    showTime
+                                    value={formData.scheduled_start_time}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, scheduled_start_time: value }))}
+                                    className="w-full"
+                                    size="large"
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Scheduled End Time"
+                                name="scheduled_end_time"
+                            >
+                                <DatePicker
+                                    showTime
+                                    value={formData.scheduled_end_time}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, scheduled_end_time: value }))}
+                                    className="w-full"
+                                    size="large"
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
                     <Form.Item label="Surgical Team">
                         <div className="space-y-3">
@@ -609,6 +778,7 @@ export default function SurgeryList() {
                                         value={surgeon.doctor_id}
                                         onChange={(value) => updateSurgeon(index, "doctor_id", value)}
                                         className="flex-1"
+                                        size="large"
                                     >
                                         {doctors.map(doctor => (
                                             <Option key={doctor.id} value={doctor.id.toString()}>
@@ -621,21 +791,26 @@ export default function SurgeryList() {
                                         value={surgeon.role}
                                         onChange={(value) => updateSurgeon(index, "role", value)}
                                         className="w-32"
+                                        size="large"
                                     >
                                         {SURGEON_ROLES.map(role => (
                                             <Option key={role} value={role}>{role}</Option>
                                         ))}
                                     </Select>
                                     <Button
-                                        // danger
+                                        danger
+                                        icon={<DeleteOutlined />}
                                         onClick={() => removeSurgeon(index)}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                        size="large"
+                                    />
                                 </div>
                             ))}
-                            <Button onClick={addSurgeon} className="w-full">
-                                <PlusCircle className="w-4 h-4 mr-2" />
+                            <Button 
+                                onClick={addSurgeon} 
+                                icon={<PlusOutlined />}
+                                className="w-full"
+                                size="large"
+                            >
                                 Add Surgeon
                             </Button>
                         </div>
@@ -647,6 +822,7 @@ export default function SurgeryList() {
                             value={formData.notes}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                             placeholder="Additional notes about the surgery..."
+                            size="large"
                         />
                     </Form.Item>
                 </Form>
@@ -654,68 +830,90 @@ export default function SurgeryList() {
 
             {/* View Surgery Modal */}
             <Modal
-                title="Surgery Details"
+                title={
+                    <div className="flex items-center gap-3">
+                        <ScissorOutlined className="text-blue-600 text-lg" />
+                        <span className="text-lg font-semibold">Surgery Details</span>
+                    </div>
+                }
                 open={isViewModalOpen}
                 onCancel={() => setIsViewModalOpen(false)}
                 footer={[
-                    <Button key="close" onClick={() => setIsViewModalOpen(false)}>
+                    <Button key="close" onClick={() => setIsViewModalOpen(false)} size="large">
                         Close
                     </Button>
                 ]}
-                width={600}
+                width={700}
             >
                 {selectedSurgery && (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label className="font-semibold">Patient</Label>
-                                <p>{selectedSurgery.patient?.name}</p>
+                    <Descriptions bordered column={2} size="default">
+                        <Descriptions.Item label="Patient" span={2}>
+                            <div className="flex items-center gap-2">
+                                <UserOutlined />
+                                {selectedSurgery.patient?.name}
                             </div>
-                            <div>
-                                <Label className="font-semibold">Surgery Type</Label>
-                                <p>{selectedSurgery.surgery_type?.name}</p>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Surgery Type">
+                            <div className="flex items-center gap-2">
+                                <MedicineBoxOutlined />
+                                {selectedSurgery.surgery_type?.name}
                             </div>
-                            <div>
-                                <Label className="font-semibold">Operation Theatre</Label>
-                                <p>{selectedSurgery.operation_theatre?.name}</p>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Status">
+                            <Tag 
+                                color={getStatusColor(selectedSurgery.status)} 
+                                icon={getStatusIcon(selectedSurgery.status)}
+                            >
+                                {SURGERY_STATUS[selectedSurgery.status as keyof typeof SURGERY_STATUS]}
+                            </Tag>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Operation Theatre">
+                            <div className="flex items-center gap-2">
+                                <EnvironmentOutlined />
+                                {selectedSurgery.operation_theatre?.name}
                             </div>
-                            <div>
-                                <Label className="font-semibold">Status</Label>
-                                <Badge color={getStatusColor(selectedSurgery.status)}>
-                                    {SURGERY_STATUS[selectedSurgery.status as keyof typeof SURGERY_STATUS]}
-                                </Badge>
-                            </div>
-                            <div>
-                                <Label className="font-semibold">Scheduled Start</Label>
-                                <p>{dayjs(selectedSurgery.scheduled_start_time).format("MMM D, YYYY h:mm A")}</p>
-                            </div>
-                            <div>
-                                <Label className="font-semibold">Scheduled End</Label>
-                                <p>{selectedSurgery.scheduled_end_time ? dayjs(selectedSurgery.scheduled_end_time).format("MMM D, YYYY h:mm A") : "Not set"}</p>
-                            </div>
-                        </div>
-
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Location">
+                            {selectedSurgery.operation_theatre?.location}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Scheduled Start">
+                            {dayjs(selectedSurgery.scheduled_start_time).format("MMM D, YYYY h:mm A")}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Scheduled End">
+                            {selectedSurgery.scheduled_end_time ? 
+                                dayjs(selectedSurgery.scheduled_end_time).format("MMM D, YYYY h:mm A") : 
+                                "Not set"
+                            }
+                        </Descriptions.Item>
+                        
                         {selectedSurgery.surgery_doctors && selectedSurgery.surgery_doctors.length > 0 && (
-                            <div>
-                                <Label className="font-semibold">Surgical Team</Label>
-                                <div className="space-y-2 mt-2">
-                                    {selectedSurgery.surgery_doctors.map((sd, index) => (
-                                        <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                                            <span>{sd.doctor.name}</span>
-                                            <Badge variant="outline">{sd.role}</Badge>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            <Descriptions.Item label="Surgical Team" span={2}>
+                                <List
+                                    size="small"
+                                    dataSource={selectedSurgery.surgery_doctors}
+                                    renderItem={(sd, index) => (
+                                        <List.Item>
+                                            <List.Item.Meta
+                                                avatar={<Avatar icon={<UserOutlined />} size="small" />}
+                                                title={sd.doctor.name}
+                                                description={
+                                                    <Tag color="blue">{sd.role}</Tag>
+                                                }
+                                            />
+                                        </List.Item>
+                                    )}
+                                />
+                            </Descriptions.Item>
                         )}
 
                         {selectedSurgery.notes && (
-                            <div>
-                                <Label className="font-semibold">Notes</Label>
-                                <p className="mt-1 p-2 bg-gray-50 rounded">{selectedSurgery.notes}</p>
-                            </div>
+                            <Descriptions.Item label="Notes" span={2}>
+                                <div className="p-3 bg-gray-50 rounded-lg">
+                                    {selectedSurgery.notes}
+                                </div>
+                            </Descriptions.Item>
                         )}
-                    </div>
+                    </Descriptions>
                 )}
             </Modal>
         </div>
