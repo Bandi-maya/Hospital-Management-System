@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/tenant/6';
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://91.108.104.49:5000/tenant/6';
 
 export function getApi(urlEndPoint, options: any = {}) {
     const token = localStorage.getItem('auth_token');
