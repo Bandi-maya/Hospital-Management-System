@@ -34,6 +34,7 @@ import { getApi, PostApi, PutApi } from "@/ApiService";
 import { DepartmentInterface } from "@/components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
+import FullscreenLoader from "@/components/Loader/FullscreenLoader"; 
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -50,8 +51,7 @@ export default function PatientList() {
   const [extraFields, setExtraFields] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
-  const [spinning, setSpinning] = useState(false);
-  const [percent, setPercent] = useState(0);
+  const [showFullscreenLoader, setShowFullscreenLoader] = useState(false); // Renamed state
   const [loadingStates, setLoadingStates] = useState({
     departments: false,
     extraFields: false,
@@ -61,23 +61,9 @@ export default function PatientList() {
 
   const userTypeId = useMemo(() => extraFields?.[0]?.user_type, [extraFields]);
 
-  // Show loading spinner with progress
+  // Show loading spinner with progress - updated to use the imported loader
   const showLoader = () => {
-    setSpinning(true);
-    let ptg = 0;
-
-    const interval = setInterval(() => {
-      ptg += 10;
-      setPercent(ptg);
-
-      if (ptg >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setSpinning(false);
-          setPercent(0);
-        }, 500);
-      }
-    }, 100);
+    setShowFullscreenLoader(true);
   };
 
   const getExtraFields = () => {
@@ -148,7 +134,7 @@ export default function PatientList() {
   const loadPatients = async () => {
     setIsLoading(true);
     setLoadingStates(prev => ({ ...prev, table: true }));
-    showLoader();
+    showLoader(); // This will trigger the fullscreen loader
 
     try {
       const data = await getApi(`/users?user_type=PATIENT`);
@@ -376,11 +362,10 @@ export default function PatientList() {
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow-sm">
       {/* Fullscreen Loading Spinner */}
-      <Spin 
-        spinning={spinning} 
-        percent={percent} 
-        fullscreen
-        size="large"
+      <FullscreenLoader 
+        active={showFullscreenLoader} 
+        onComplete={() => setShowFullscreenLoader(false)}
+        speed={100}
       />
 
       {/* Header */}

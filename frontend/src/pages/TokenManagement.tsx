@@ -18,7 +18,6 @@ import { getApi, PutApi } from "@/ApiService";
 import { Search, PlusCircle, Calendar, User, Stethoscope, Clock, Filter, Download, Edit } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { totalmem } from "os";
-import { AnimatedActionButton } from "@/components/Patients/PatientList";
 import { Label } from "@/components/ui/label";
 
 interface Appointment {
@@ -50,6 +49,28 @@ export default function TokenManagement() {
   const handleChange = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  // ✅ Add this before export default function MedicalRecords()
+  const AnimatedActionButton = ({ icon, label, color, onClick }) => (
+    <Button
+      style={{
+        backgroundColor: color || "#1677ff",
+        borderColor: color || "#1677ff",
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        borderRadius: 6,
+        transition: "all 0.2s ease-in-out",
+      }}
+      onClick={onClick}
+      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+    >
+      {icon}
+      {label}
+    </Button>
+  );
+
 
   const handleSubmit = () => {
     setLoading(true);
