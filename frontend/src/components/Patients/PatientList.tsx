@@ -31,7 +31,7 @@ import {
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { countries } from "@/components/Patients/AddPatient";
-import { getApi, PostApi, PutApi } from "@/ApiService";
+import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { DepartmentInterface } from "@/components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
@@ -161,14 +161,14 @@ export default function PatientList() {
 
   const deletePatient = async (record: any) => {
     setLoadingActionId(record.id);
-    await PutApi(`/users`, { ...record, is_active: false })
+    await DeleteApi(`/users`, { id: record.id })
       .then((data) => {
         if (!data?.error) {
-          message.success("Patient deactivated successfully");
+          message.success("Patient deleted successfully");
           loadPatients();
         } else message.error(data.error);
       })
-      .catch(() => message.error("Error deactivating patient"))
+      .catch(() => message.error("Error deleting patient"))
       .finally(() => setLoadingActionId(null));
   };
 

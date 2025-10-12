@@ -207,7 +207,7 @@ export default function AddReseptionist({ onAddPatient }: AddPatientProps) {
                     street: values.street,
                     city: values.city,
                     state: values.state,
-                    zipCode: values.zipCode,
+                    zip_code: values.zipCode,
                     country: values.country,
                 },
             };

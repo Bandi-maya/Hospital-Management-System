@@ -19,6 +19,7 @@ import {
   Spin
 } from "antd";
 import {
+  SearchOutlined,
   PlusOutlined,
   UserOutlined,
   MailOutlined,
@@ -28,8 +29,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   TeamOutlined,
-  ReloadOutlined,
-  ExperimentOutlined
+  ReloadOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -42,12 +42,12 @@ import { useNavigate } from "react-router-dom";
 const { Option } = Select;
 const { Title, Text } = Typography;
 
-export default function TechnicianList() {
+export default function DoctorList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [technicians, setTechnicians] = useState<Patient[]>([]);
+  const [nurses, setNurses] = useState<Patient[]>([]);
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [form] = Form.useForm();
-  const [selectedTechnician, setSelectedTechnician] = useState<any>(null);
+  const [selectedNurse, setSelectedNurse] = useState<any>(null);
   const [extraFields, setExtraFields] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
@@ -57,7 +57,7 @@ export default function TechnicianList() {
     extraFields: false,
     table: false
   });
-  
+
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -76,22 +76,22 @@ export default function TechnicianList() {
     try {
       const data = await getApi("/user-fields");
       if (!data?.error) {
-        setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "LABTECHNICIAN"));
+        setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "DOCTOR"));
       } else {
-        toast.error("Error fetching technician fields: " + data.error);
+        toast.error("Error fetching doctor fields: " + data.error);
       }
     } catch (error) {
-      toast.error("Error fetching technician fields");
-      console.error("Error fetching technician fields:", error);
+      toast.error("Error fetching doctor fields");
+      console.error("Error fetching doctor fields:", error);
     } finally {
       setLoadingStates(prev => ({ ...prev, extraFields: false }));
     }
   };
 
-  const loadTechnicians = async (page = 1, limit = 10) => {
+  const loadNurses = async (page = 1, limit = 10) => {
     setTableLoading(true);
     try {
-      const data = await getApi(`/users?user_type=LABTECHNICIAN&page=${page}&limit=${limit}`);
+      const data = await getApi(`/users?user_type=Doctor&page=${page}&limit=${limit}`);
       if (!data?.error) {
         setPagination(prev => ({
           ...prev,
@@ -99,13 +99,13 @@ export default function TechnicianList() {
           pageSize: limit,
           total: data.total_records,
         }));
-        setTechnicians(data.data);
+        setNurses(data.data);
       } else {
         toast.error(data.error);
       }
     } catch (error) {
-      toast.error("Error getting technicians");
-      console.error("Error getting technician data:", error);
+      toast.error("Error getting nurses");
+      console.error("Error getting nurse data:", error);
     } finally {
       setTableLoading(false);
     }
@@ -129,7 +129,7 @@ export default function TechnicianList() {
   };
 
   useEffect(() => {
-    loadTechnicians(pagination.current, pagination.pageSize);
+    loadNurses(pagination.current, pagination.pageSize);
     loadDepartments();
     getExtraFields();
   }, []);
@@ -142,8 +142,8 @@ export default function TechnicianList() {
       const formData = {
         ...values,
         name: `${values?.extra_fields?.first_name || ''} ${values?.extra_fields?.last_name || ''}`.trim(),
-        user_type_id: selectedTechnician ? selectedTechnician.user_type_id : 5, // Assuming 5 is LABTECHNICIAN type
-        id: selectedTechnician?.id,
+        user_type_id: selectedNurse ? selectedNurse.user_type_id : 4,
+        id: selectedNurse?.id,
         address: {
           street: values.street,
           city: values.city,
@@ -155,40 +155,40 @@ export default function TechnicianList() {
 
       const data = await PutApi(`/users`, formData);
       if (!data?.error) {
-        toast.success(selectedTechnician ? "Technician updated successfully!" : "Technician added successfully!");
-        loadTechnicians(pagination.current, pagination.pageSize);
+        toast.success(selectedNurse ? "Doctor updated successfully!" : "Doctor added successfully!");
+        loadNurses(pagination.current, pagination.pageSize);
         setIsModalOpen(false);
-        setSelectedTechnician(null);
+        setSelectedNurse(null);
         form.resetFields();
       } else {
         toast.error(data.error);
       }
     } catch (error) {
-      toast.error(`Error ${selectedTechnician ? 'updating' : 'adding'} technician`);
-      console.error(`Error ${selectedTechnician ? 'updating' : 'adding'} technician:`, error);
+      toast.error(`Error ${selectedNurse ? 'updating' : 'adding'} Doctor`);
+      console.error(`Error ${selectedNurse ? 'updating' : 'adding'} Doctor:`, error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleTableChange = (newPagination: any) => {
-    loadTechnicians(newPagination.current, newPagination.pageSize);
+    loadNurses(newPagination.current, newPagination.pageSize);
   };
 
-  // Delete technician handler
-  const deleteTechnician = async (record: any) => {
+  // Delete nurse handler
+  const deleteNurse = async (record: any) => {
     setLoadingActionId(record.id);
     try {
       const data = await PutApi(`/users`, { ...record, is_active: false });
       if (!data?.error) {
-        toast.success("Technician deactivated successfully!");
-        loadTechnicians(pagination.current, pagination.pageSize);
+        toast.success("Doctor deactivated successfully!");
+        loadNurses(pagination.current, pagination.pageSize);
       } else {
         toast.error(data.error);
       }
     } catch (error) {
-      toast.error("Error deactivating technician");
-      console.error("Error deleting technician:", error);
+      toast.error("Error deactivating Doctor");
+      console.error("Error deleting Doctor:", error);
     } finally {
       setLoadingActionId(null);
     }
@@ -196,9 +196,9 @@ export default function TechnicianList() {
 
   // Open modal for editing
   const handleEdit = (record: any) => {
-    setSelectedTechnician(record);
+    setSelectedNurse(record);
     form.setFieldsValue({
-      extra_fields: {...record.extra_fields?.fields_data??{}},
+      extra_fields: { ...record.extra_fields?.fields_data ?? {} },
       department_id: record.department_id,
       date_of_birth: record.date_of_birth?.split("T")[0],
       gender: record.gender,
@@ -216,7 +216,7 @@ export default function TechnicianList() {
   // Close modal
   const handleCancel = () => {
     setIsModalOpen(false);
-    setSelectedTechnician(null);
+    setSelectedNurse(null);
     form.resetFields();
   };
 
@@ -290,11 +290,11 @@ export default function TechnicianList() {
   // Skeleton columns for loading state
   const skeletonColumns = [
     {
-      title: "Technician ID",
+      title: "Doctor ID",
       dataIndex: "id",
       key: "id",
-      width: 120,
-      render: () => <Skeleton.Input active size="small" style={{ width: 80 }} />,
+      width: 100,
+      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
     },
     {
       title: "Name",
@@ -361,10 +361,10 @@ export default function TechnicianList() {
   // Actual columns
   const columns = [
     {
-      title: "Technician ID",
+      title: "Doctor ID",
       dataIndex: "id",
       key: "id",
-      width: 120,
+      width: 100,
     },
     {
       title: "Name",
@@ -445,7 +445,7 @@ export default function TechnicianList() {
             danger
             loading={loadingActionId === record.id}
             confirm
-            confirmAction={() => deleteTechnician(record)}
+            confirmAction={() => deleteNurse(record)}
           />
         </Space>
       ),
@@ -465,14 +465,16 @@ export default function TechnicianList() {
     actions: '',
   }));
 
+  console.log(form, selectedNurse)
+
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow-sm">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <Title level={2} className="m-0">Lab Technician Management</Title>
+        <Title level={2} className="m-0">Doctor Management</Title>
         <Space>
           <Button
-            onClick={() => loadTechnicians()}
+            onClick={() => loadNurses()}
             icon={<ReloadOutlined />}
             loading={tableLoading}
             className="flex items-center"
@@ -481,23 +483,23 @@ export default function TechnicianList() {
           </Button>
           <Button
             type="primary"
-            onClick={() => navigate("/technicians/add")}
+            onClick={() => navigate("/doctor/add")}
             icon={<PlusOutlined />}
             loading={tableLoading}
             className="flex items-center"
           >
-            Add Technician
+            Add Doctor
           </Button>
         </Space>
       </div>
 
-      {/* Technicians Table with Skeleton Loading */}
+      {/* Nurses Table with Skeleton Loading */}
       <Card
         bodyStyle={{ padding: 0 }}
         className="overflow-hidden"
       >
         <Table
-          dataSource={tableLoading ? skeletonData : technicians}
+          dataSource={tableLoading ? skeletonData : nurses}
           columns={tableLoading ? skeletonColumns : columns}
           rowKey={tableLoading ? "key" : "id"}
           pagination={
@@ -507,8 +509,8 @@ export default function TechnicianList() {
               total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
-              showTotal: (total, range) => 
-                `${range[0]}-${range[1]} of ${total} technicians`,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} of ${total} Doctors`,
             }
           }
           onChange={handleTableChange}
@@ -517,12 +519,12 @@ export default function TechnicianList() {
         />
       </Card>
 
-      {/* Add/Edit Technician Modal */}
+      {/* Add/Edit Nurse Modal */}
       <Modal
         title={
           <Space>
-            <ExperimentOutlined className="text-blue-600" />
-            <span>{selectedTechnician ? "Edit Lab Technician" : "Add New Lab Technician"}</span>
+            <TeamOutlined className="text-blue-600" />
+            <span>{selectedNurse ? "Edit Doctor" : "Add New Doctor"}</span>
           </Space>
         }
         open={isModalOpen}
@@ -748,7 +750,7 @@ export default function TechnicianList() {
                 size="large"
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {selectedTechnician ? "Update Technician" : "Add Technician"}
+                {selectedNurse ? "Update Doctor" : "Add Doctor"}
               </Button>
             </div>
           </Form>

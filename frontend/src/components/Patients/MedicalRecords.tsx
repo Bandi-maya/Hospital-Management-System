@@ -468,10 +468,10 @@ export default function MedicalRecords() {
             onClick={loadData}
             loading={loadingStates.medicalRecords}
           />
-          <AddButton
+          {/* <AddButton
             label="Add Record"
             onClick={() => setMedicineModalVisible(true)}
-          />
+          /> */}
         </Space>
       }
     >
@@ -563,10 +563,10 @@ export default function MedicalRecords() {
       extra={
         <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.prescriptions} />
-          <AddButton
+          {/* <AddButton
             label="Add Prescription"
             onClick={() => setMedicineModalVisible(true)}
-          />
+          /> */}
         </Space>
       }
     >
@@ -625,10 +625,10 @@ export default function MedicalRecords() {
       extra={
         <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.medicines} />
-          <AddButton
+          {/* <AddButton
             label="Add Medicine"
             onClick={() => setMedicineModalVisible(true)}
-          />
+          /> */}
         </Space>
       }
     >
@@ -692,10 +692,10 @@ export default function MedicalRecords() {
       extra={
         <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.labTests} />
-          <AddButton
+          {/* <AddButton
             label="Add Lab Test"
             onClick={() => setLabTestModalVisible(true)}
-          />
+          /> */}
         </Space>
       }
     >
@@ -769,10 +769,10 @@ export default function MedicalRecords() {
       extra={
         <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.surgeries} />
-          <AddButton
+          {/* <AddButton
             label="Add Operation"
             onClick={() => setOperationModalVisible(true)}
-          />
+          /> */}
         </Space>
       }
     >
@@ -837,10 +837,10 @@ export default function MedicalRecords() {
       extra={
         <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.consultations} />
-          <AddButton
+          {/* <AddButton
             label="Add Consultation"
             onClick={() => setConsultationModalVisible(true)}
-          />
+          /> */}
         </Space>
       }
     >
@@ -895,10 +895,10 @@ export default function MedicalRecords() {
       extra={
         <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.payments} />
-          <AddButton
+          {/* <AddButton
             label="Add Payment"
             onClick={() => setPaymentModalVisible(true)}
-          />
+          /> */}
         </Space>
       }
     >
@@ -976,10 +976,10 @@ export default function MedicalRecords() {
       extra={
         <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.bills} />
-          <AddButton
+          {/* <AddButton
             label="Create Invoice"
             onClick={() => setInvoiceModalVisible(true)}
-          />
+          /> */}
         </Space>
       }
     >

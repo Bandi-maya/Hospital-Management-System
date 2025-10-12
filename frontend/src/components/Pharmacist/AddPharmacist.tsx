@@ -1,422 +1,1112 @@
+// import React, { useEffect, useState } from "react";
+// import {
+//     Card,
+//     CardContent,
+//     CardHeader,
+//     CardTitle,
+//     CardDescription,
+// } from "@/components/ui/card";
+// import { Input } from "@/components/ui/input";
+// import { Button } from "@/components/ui/button";
+// import {
+//     Select,
+//     SelectContent,
+//     SelectItem,
+//     SelectTrigger,
+//     SelectValue,
+// } from "@/components/ui/select";
+// import { useNavigate } from "react-router-dom";
+// import { Patient, BloodType } from "@/types/patient";
+// import { v4 as uuidv4 } from "uuid";
+// import { Form, Select as AntdSelect } from "antd";
+// import TextArea from "antd/es/input/TextArea";
+// import { getApi, PostApi } from "@/ApiService";
+// import { toast } from "sonner";
+
+// interface AddPatientProps {
+//     onAddPatient?: (patient: Patient) => void;
+// }
+
+// const diseaseSuggestions = [
+//     "Diabetes",
+//     "Hypertension",
+//     "Asthma",
+//     "Heart Disease",
+//     "Cancer",
+//     "Allergies",
+//     "Arthritis",
+// ];
+
+// const doctorList = [
+//     "Dr. John Doe",
+//     "Dr. Jane Smith",
+//     "Dr. Emily Johnson",
+//     "Dr. Michael Brown",
+// ];
+// const wardList = ["Ward 1", "Ward 2", "Ward 3", "Ward 4", ""];
+// const bedList = ["Bed 1", "Bed 2", "Bed 3", "Bed 4", "Bed 5", ""];
+
+// // ✅ Full country list
+// export const countries = [
+//     "Afghanistan",
+//     "Albania",
+//     "Algeria",
+//     "Andorra",
+//     "Angola",
+//     "Argentina",
+//     "Armenia",
+//     "Australia",
+//     "Austria",
+//     "Azerbaijan",
+//     "Bahamas",
+//     "Bahrain",
+//     "Bangladesh",
+//     "Belarus",
+//     "Belgium",
+//     "Bhutan",
+//     "Bolivia",
+//     "Bosnia & Herzegovina",
+//     "Brazil",
+//     "Bulgaria",
+//     "Cambodia",
+//     "Cameroon",
+//     "Canada",
+//     "Chile",
+//     "China",
+//     "Colombia",
+//     "Costa Rica",
+//     "Croatia",
+//     "Cuba",
+//     "Cyprus",
+//     "Czech Republic",
+//     "Denmark",
+//     "Egypt",
+//     "Estonia",
+//     "Ethiopia",
+//     "Finland",
+//     "France",
+//     "Germany",
+//     "Greece",
+//     "Hungary",
+//     "Iceland",
+//     "India",
+//     "Indonesia",
+//     "Iran",
+//     "Iraq",
+//     "Ireland",
+//     "Israel",
+//     "Italy",
+//     "Japan",
+//     "Jordan",
+//     "Kazakhstan",
+//     "Kenya",
+//     "Kuwait",
+//     "Latvia",
+//     "Lebanon",
+//     "Lithuania",
+//     "Luxembourg",
+//     "Malaysia",
+//     "Maldives",
+//     "Mexico",
+//     "Monaco",
+//     "Mongolia",
+//     "Morocco",
+//     "Nepal",
+//     "Netherlands",
+//     "New Zealand",
+//     "Nigeria",
+//     "Norway",
+//     "Oman",
+//     "Pakistan",
+//     "Panama",
+//     "Peru",
+//     "Philippines",
+//     "Poland",
+//     "Portugal",
+//     "Qatar",
+//     "Romania",
+//     "Russia",
+//     "Saudi Arabia",
+//     "Serbia",
+//     "Singapore",
+//     "Slovakia",
+//     "Slovenia",
+//     "South Africa",
+//     "South Korea",
+//     "Spain",
+//     "Sri Lanka",
+//     "Sweden",
+//     "Switzerland",
+//     "Syria",
+//     "Taiwan",
+//     "Tajikistan",
+//     "Tanzania",
+//     "Thailand",
+//     "Tunisia",
+//     "Turkey",
+//     "Turkmenistan",
+//     "Ukraine",
+//     "United Arab Emirates",
+//     "United Kingdom",
+//     "United States",
+//     "Uzbekistan",
+//     "Vatican City",
+//     "Venezuela",
+//     "Vietnam",
+//     "Yemen",
+//     "Zimbabwe",
+// ];
+
+// export default function AddPharmacist({ onAddPatient }: AddPatientProps) {
+//     const navigate = useNavigate();
+
+//     const [form] = Form.useForm();
+//     const [departmentList, setDepartmentList] = useState<any[]>([])
+//     const [extraFields, setExtraFields] = useState<any>([])
+
+//     function getExtraFields() {
+//         getApi("/user-fields")
+//             .then((data) => {
+//                 if (!data?.error) {
+//                     setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === 'NURSE'));
+//                 }
+//                 else {
+//                     toast.error("Error fetching doctors: " + data.error);
+//                     console.error("Error fetching doctors:", data.error);
+//                 }
+//             }).catch((error) => {
+//                 toast.error("Error fetching doctors");
+//                 console.error("Error deleting doctors:", error);
+//             });
+//     }
+
+//     function getDepartments() {
+//         getApi(`/departments`)
+//             .then((data) => {
+//                 if (!data?.error) {
+//                     setDepartmentList(data.data);
+//                 }
+//                 else {
+//                     toast.error("Error fetching departments: " + data.error);
+//                     console.error("Error fetching departments:", data.error);
+//                 }
+//             }).catch((error) => {
+//                 toast.error("Error fetching departments");
+//                 console.error("Error deleting departments:", error);
+//             });
+//     }
+
+//     useEffect(() => {
+//         getExtraFields()
+//         getDepartments()
+//     }, [])
+
+//     const handleSubmit = async (values: any) => {
+//         const date = new Date(values.dateOfBirth);
+//         const yyyy = date.getFullYear();
+//         const mm = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+//         const dd = String(date.getDate()).padStart(2, '0');
+
+//         const formattedDate = `${yyyy}-${mm}-${dd}`;
+
+//         const newPatient: any = {
+//             extra_fields: values.extra_fields,
+//             department_id: values.department_id,
+//             user_type_id: 7,
+//             username: values.email,
+//             name: `${values?.extra_fields?.first_name} ${values?.extra_fields?.last_name}`,
+//             date_of_birth: formattedDate,
+//             blood_type: values.bloodType,
+//             age: values.age ?? '0',
+//             phone_no: values.phone,
+//             email: values.email,
+//             gender: values.gender,
+//             address: {
+//                 street: values.street,
+//                 city: values.city,
+//                 state: values.state,
+//                 zipCode: values.zipCode,
+//                 country: values.country,
+//             },
+//         };
+
+//         await PostApi(`/users`, newPatient)
+//             .then((data) => {
+//                 if (!data?.error) {
+//                     toast.success("Nurse added successfully!");
+//                     navigate("/nurse");
+//                 }
+//                 else {
+//                     toast.error(data.error)
+//                     console.error("Error fetching user fields:", data.error);
+//                 }
+//             }).catch((error) => {
+//                 toast.error("Error occurred while adding the user.")
+//                 console.error("Error adding user:", error);
+//             });
+
+//     };
+
+//     return (
+//         <div className="space-y-6">
+//             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+//                 <div>
+//                     <h1 className="text-3xl font-bold text-primary">Patient Management</h1>
+//                     <p className="text-muted-foreground">Add Patient</p>
+//                 </div>
+//             </div>
+
+//             <Card className="medical-card">
+//                 <CardHeader>
+//                     <CardTitle>Add New Pharmacist</CardTitle>
+//                     <CardDescription>
+//                         Fill in patient details to add a new record
+//                     </CardDescription>
+//                 </CardHeader>
+//                 <CardContent>
+//                     <Form
+//                         layout="vertical"
+//                         onFinish={handleSubmit}
+//                         form={form}
+//                         className="space-y-6"
+//                     >
+//                         {/* Personal Info */}
+//                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                             {
+//                                 extraFields.map((field) => {
+//                                     if (["assigned_to_doctor"].includes(field.field_name)) return null
+//                                     return <Form.Item
+//                                         label={field.field_name}
+//                                         name={["extra_fields", field.field_name]}
+//                                         rules={[{ required: field.is_mandatory, message: `Please enter ${field.field_name}` }]}
+//                                     >
+//                                         <Input />
+//                                     </Form.Item>
+//                                 })
+//                             }
+
+//                             <Form.Item
+//                                 label="Date of Birth"
+//                                 name="dateOfBirth"
+//                                 rules={[
+//                                     { required: true, message: "Please select date of birth" },
+//                                 ]}
+//                             >
+//                                 <Input type="date" />
+//                             </Form.Item>
+
+//                             <Form.Item
+//                                 label="Gender"
+//                                 name="gender"
+//                                 rules={[{ required: true, message: "Please select gender" }]}
+//                             >
+//                                 <AntdSelect
+//                                     options={[
+//                                         { value: "MALE", label: "Male" },
+//                                         { value: "FEMALE", label: "Female" },
+//                                         { value: "OTHER", label: "Other" },
+//                                     ]}
+//                                 />
+//                             </Form.Item>
+//                         </div>
+
+//                         {/* Contact Info */}
+//                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                             <Form.Item
+//                                 label="Phone"
+//                                 name="phone"
+//                                 rules={[{ required: true, message: "Please enter phone" }]}
+//                             >
+//                                 <Input />
+//                             </Form.Item>
+//                             <Form.Item
+//                                 label="Email"
+//                                 name="email"
+//                                 rules={[{ required: true, message: "Please enter email" }]}
+//                             >
+//                                 <Input type="email" />
+//                             </Form.Item>
+//                         </div>
+
+//                         {/* Address */}
+//                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                             <Form.Item
+//                                 label="Street"
+//                                 name="street"
+//                                 rules={[{ required: true, message: "Please enter street" }]}
+//                             >
+//                                 <Input />
+//                             </Form.Item>
+//                             <Form.Item
+//                                 label="City"
+//                                 name="city"
+//                                 rules={[{ required: true, message: "Please enter city" }]}
+//                             >
+//                                 <Input />
+//                             </Form.Item>
+//                             <Form.Item
+//                                 label="State"
+//                                 name="state"
+//                                 rules={[{ required: true, message: "Please enter state" }]}
+//                             >
+//                                 <Input />
+//                             </Form.Item>
+//                             <Form.Item
+//                                 label="ZIP Code"
+//                                 name="zipCode"
+//                                 rules={[{ required: true, message: "Please enter ZIP code" }]}
+//                             >
+//                                 <Input />
+//                             </Form.Item>
+//                             <Form.Item
+//                                 label="Country"
+//                                 name="country"
+//                                 rules={[{ required: true, message: "Please select country" }]}
+//                             >
+//                                 <AntdSelect
+//                                     placeholder="Select country"
+//                                     showSearch
+//                                     options={countries.map((c) => ({ value: c, label: c }))}
+//                                 />
+//                             </Form.Item>
+//                         </div>
+
+//                         {/* Medical Info */}
+//                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                             <Form.Item
+//                                 label="Blood Type"
+//                                 name="bloodType"
+//                                 // rules={[
+//                                 //     { required: true, message: "Please select blood type" },
+//                                 // ]}
+//                             >
+//                                 <AntdSelect
+//                                     options={[
+//                                         { value: "A+", label: "A+" },
+//                                         { value: "A-", label: "A-" },
+//                                         { value: "B+", label: "B+" },
+//                                         { value: "B-", label: "B-" },
+//                                         { value: "AB+", label: "AB+" },
+//                                         { value: "AB-", label: "AB-" },
+//                                         { value: "O+", label: "O+" },
+//                                         { value: "O-", label: "O-" },
+//                                     ]}
+//                                 />
+//                             </Form.Item>
+
+//                             <Form.Item
+//                                 label="Department"
+//                                 name="department_id"
+//                                 rules={[{ required: true, message: "Please select doctor" }]}
+//                             >
+//                                 <AntdSelect
+//                                     placeholder="Select department"
+//                                     options={departmentList.map((d) => ({ value: d.id, label: d.name, key: d.id }))}
+//                                 />
+//                             </Form.Item>
+//                         </div>
+
+//                         <div className="sm:col-span-2">
+//                             <Button
+//                                 type="submit"
+//                                 className="bg-primary hover:bg-primary-dark text-primary-foreground w-full"
+//                             >
+//                                 Add Patient
+//                             </Button>
+//                         </div>
+//                     </Form>
+//                 </CardContent>
+//             </Card>
+//         </div >
+//     );
+// }
+
 import React, { useEffect, useState } from "react";
 import {
     Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    CardDescription,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
+    Form,
+    Input,
+    Button,
     Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+    DatePicker,
+    Spin,
+    message,
+    Typography,
+    Space,
+    Row,
+    Col,
+    Divider,
+    Tooltip,
+    Popconfirm
+} from "antd";
+import {
+    ArrowLeftOutlined,
+    UserOutlined,
+    PhoneOutlined,
+    MailOutlined,
+    EnvironmentOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    LoadingOutlined,
+    IdcardOutlined,
+    HeartOutlined,
+    TeamOutlined
+} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { Patient, BloodType } from "@/types/patient";
-import { v4 as uuidv4 } from "uuid";
-import { Form, Select as AntdSelect } from "antd";
-import TextArea from "antd/es/input/TextArea";
 import { getApi, PostApi } from "@/ApiService";
-import { toast } from "sonner";
+import dayjs from "dayjs";
+import { motion } from "framer-motion";
+import FullscreenLoader from "@/components/Loader/FullscreenLoader";
 
-interface AddPatientProps {
-    onAddPatient?: (patient: Patient) => void;
+interface AddNurseProps {
+    onAddNurse?: (nurse: any) => void;
 }
 
-const diseaseSuggestions = [
-    "Diabetes",
-    "Hypertension",
-    "Asthma",
-    "Heart Disease",
-    "Cancer",
-    "Allergies",
-    "Arthritis",
-];
-
-const doctorList = [
-    "Dr. John Doe",
-    "Dr. Jane Smith",
-    "Dr. Emily Johnson",
-    "Dr. Michael Brown",
-];
-const wardList = ["Ward 1", "Ward 2", "Ward 3", "Ward 4", ""];
-const bedList = ["Bed 1", "Bed 2", "Bed 3", "Bed 4", "Bed 5", ""];
+const { Option } = Select;
+const { Title, Text } = Typography;
 
 // ✅ Full country list
 export const countries = [
-    "Afghanistan",
-    "Albania",
-    "Algeria",
-    "Andorra",
-    "Angola",
-    "Argentina",
-    "Armenia",
-    "Australia",
-    "Austria",
-    "Azerbaijan",
-    "Bahamas",
-    "Bahrain",
-    "Bangladesh",
-    "Belarus",
-    "Belgium",
-    "Bhutan",
-    "Bolivia",
-    "Bosnia & Herzegovina",
-    "Brazil",
-    "Bulgaria",
-    "Cambodia",
-    "Cameroon",
-    "Canada",
-    "Chile",
-    "China",
-    "Colombia",
-    "Costa Rica",
-    "Croatia",
-    "Cuba",
-    "Cyprus",
-    "Czech Republic",
-    "Denmark",
-    "Egypt",
-    "Estonia",
-    "Ethiopia",
-    "Finland",
-    "France",
-    "Germany",
-    "Greece",
-    "Hungary",
-    "Iceland",
-    "India",
-    "Indonesia",
-    "Iran",
-    "Iraq",
-    "Ireland",
-    "Israel",
-    "Italy",
-    "Japan",
-    "Jordan",
-    "Kazakhstan",
-    "Kenya",
-    "Kuwait",
-    "Latvia",
-    "Lebanon",
-    "Lithuania",
-    "Luxembourg",
-    "Malaysia",
-    "Maldives",
-    "Mexico",
-    "Monaco",
-    "Mongolia",
-    "Morocco",
-    "Nepal",
-    "Netherlands",
-    "New Zealand",
-    "Nigeria",
-    "Norway",
-    "Oman",
-    "Pakistan",
-    "Panama",
-    "Peru",
-    "Philippines",
-    "Poland",
-    "Portugal",
-    "Qatar",
-    "Romania",
-    "Russia",
-    "Saudi Arabia",
-    "Serbia",
-    "Singapore",
-    "Slovakia",
-    "Slovenia",
-    "South Africa",
-    "South Korea",
-    "Spain",
-    "Sri Lanka",
-    "Sweden",
-    "Switzerland",
-    "Syria",
-    "Taiwan",
-    "Tajikistan",
-    "Tanzania",
-    "Thailand",
-    "Tunisia",
-    "Turkey",
-    "Turkmenistan",
-    "Ukraine",
-    "United Arab Emirates",
-    "United Kingdom",
-    "United States",
-    "Uzbekistan",
-    "Vatican City",
-    "Venezuela",
-    "Vietnam",
-    "Yemen",
-    "Zimbabwe",
+    "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia", "Austria",
+    "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Belarus", "Belgium", "Bhutan", "Bolivia", "Bosnia & Herzegovina",
+    "Brazil", "Bulgaria", "Cambodia", "Cameroon", "Canada", "Chile", "China", "Colombia", "Costa Rica", "Croatia",
+    "Cuba", "Cyprus", "Czech Republic", "Denmark", "Egypt", "Estonia", "Ethiopia", "Finland", "France", "Germany",
+    "Greece", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Japan",
+    "Jordan", "Kazakhstan", "Kenya", "Kuwait", "Latvia", "Lebanon", "Lithuania", "Luxembourg", "Malaysia", "Maldives",
+    "Mexico", "Monaco", "Mongolia", "Morocco", "Nepal", "Netherlands", "New Zealand", "Nigeria", "Norway", "Oman",
+    "Pakistan", "Panama", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Saudi Arabia",
+    "Serbia", "Singapore", "Slovakia", "Slovenia", "South Africa", "South Korea", "Spain", "Sri Lanka", "Sweden",
+    "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Tunisia", "Turkey", "Turkmenistan",
+    "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uzbekistan", "Vatican City", "Venezuela",
+    "Vietnam", "Yemen", "Zimbabwe",
 ];
 
-export default function AddPharmacist({ onAddPatient }: AddPatientProps) {
+// ✅ Reusable Action Button
+const ActionButton = ({
+    icon,
+    label,
+    type = "default",
+    danger = false,
+    onClick,
+    loading = false,
+    confirm = false,
+    confirmAction
+}: {
+    icon: React.ReactNode;
+    label: string;
+    type?: "primary" | "default" | "dashed" | "link" | "text";
+    danger?: boolean;
+    onClick?: () => void;
+    loading?: boolean;
+    confirm?: boolean;
+    confirmAction?: () => void;
+}) => {
+    const button = (
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+            <Tooltip title={label} placement="top">
+                <Button
+                    type={type}
+                    danger={danger}
+                    icon={icon}
+                    loading={loading}
+                    onClick={onClick}
+                    className={`
+                        flex items-center justify-center 
+                        transition-all duration-300 ease-in-out
+                        ${!danger && !type.includes('primary') ?
+                        'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
+                        }
+                        ${danger ?
+                        'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
+                        }
+                        w-10 h-10 rounded-full shadow-sm
+                    `}
+                    style={{
+                        minWidth: '40px',
+                        border: '1px solid #d9d9d9'
+                    }}
+                />
+            </Tooltip>
+        </motion.div>
+    );
+
+    return confirm ? (
+        <Popconfirm
+            title="Are you sure?"
+            onConfirm={confirmAction}
+            okText="Yes"
+            cancelText="No"
+            placement="top"
+        >
+            {button}
+        </Popconfirm>
+    ) : (
+        button
+    );
+};
+
+export default function AddPharmacist({ onAddNurse }: AddNurseProps) {
     const navigate = useNavigate();
-
     const [form] = Form.useForm();
-    const [departmentList, setDepartmentList] = useState<any[]>([])
-    const [extraFields, setExtraFields] = useState<any>([])
+    const [departmentList, setDepartmentList] = useState<any[]>([]);
+    const [extraFields, setExtraFields] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showFullscreenLoader, setShowFullscreenLoader] = useState(false);
+    const [loadingStates, setLoadingStates] = useState({
+        departments: false,
+        extraFields: false
+    });
 
-    function getExtraFields() {
-        getApi("/user-fields")
-            .then((data) => {
-                if (!data?.error) {
-                    setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === 'NURSE'));
-                }
-                else {
-                    toast.error("Error fetching doctors: " + data.error);
-                    console.error("Error fetching doctors:", data.error);
-                }
-            }).catch((error) => {
-                toast.error("Error fetching doctors");
-                console.error("Error deleting doctors:", error);
-            });
-    }
+    // Show loading spinner with progress
+    const showLoader = () => {
+        setShowFullscreenLoader(true);
+    };
 
-    function getDepartments() {
-        getApi(`/departments`)
-            .then((data) => {
-                if (!data?.error) {
-                    setDepartmentList(data.data);
-                }
-                else {
-                    toast.error("Error fetching departments: " + data.error);
-                    console.error("Error fetching departments:", data.error);
-                }
-            }).catch((error) => {
-                toast.error("Error fetching departments");
-                console.error("Error deleting departments:", error);
-            });
-    }
+    // Fetch Data
+    const getExtraFields = async () => {
+        setLoadingStates(prev => ({ ...prev, extraFields: true }));
+        try {
+            const data = await getApi("/user-fields");
+            if (!data?.error) {
+                setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "NURSE"));
+            } else {
+                message.error("Error fetching user fields: " + data.error);
+            }
+        } catch {
+            message.error("Error fetching user fields");
+        } finally {
+            setLoadingStates(prev => ({ ...prev, extraFields: false }));
+        }
+    };
+
+    const getDepartments = async () => {
+        setLoadingStates(prev => ({ ...prev, departments: true }));
+        try {
+            const data = await getApi(`/departments`);
+            if (!data?.error) {
+                setDepartmentList(data.data);
+            } else {
+                message.error("Error fetching departments: " + data.error);
+            }
+        } catch {
+            message.error("Error fetching departments");
+        } finally {
+            setLoadingStates(prev => ({ ...prev, departments: false }));
+        }
+    };
 
     useEffect(() => {
-        getExtraFields()
-        getDepartments()
-    }, [])
+        showLoader();
+        const fetchData = async () => {
+            await Promise.all([getExtraFields(), getDepartments()]);
+            // Hide fullscreen loader after all data is loaded
+            setTimeout(() => setShowFullscreenLoader(false), 500);
+        };
+        fetchData();
+    }, []);
 
     const handleSubmit = async (values: any) => {
-        const date = new Date(values.dateOfBirth);
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-        const dd = String(date.getDate()).padStart(2, '0');
+        setIsLoading(true);
+        showLoader();
 
-        const formattedDate = `${yyyy}-${mm}-${dd}`;
+        try {
+            const formattedDate = values.dateOfBirth ? dayjs(values.dateOfBirth).format('YYYY-MM-DD') : '';
 
-        const newPatient: any = {
-            extra_fields: values.extra_fields,
-            department_id: values.department_id,
-            user_type_id: 7,
-            username: values.email,
-            name: `${values?.extra_fields?.first_name} ${values?.extra_fields?.last_name}`,
-            date_of_birth: formattedDate,
-            blood_type: values.bloodType,
-            age: values.age ?? '0',
-            phone_no: values.phone,
-            email: values.email,
-            gender: values.gender,
-            address: {
-                street: values.street,
-                city: values.city,
-                state: values.state,
-                zipCode: values.zipCode,
-                country: values.country,
-            },
-        };
+            const newNurse = {
+                extra_fields: values.extra_fields,
+                department_id: values.department_id,
+                user_type_id: 7,
+                username: values.email,
+                name: `${values?.extra_fields?.first_name || ''} ${values?.extra_fields?.last_name || ''}`.trim(),
+                date_of_birth: formattedDate,
+                blood_type: values.bloodType,
+                age: values.age ?? '0',
+                phone_no: values.phone,
+                email: values.email,
+                gender: values.gender,
+                address: {
+                    street: values.street,
+                    city: values.city,
+                    state: values.state,
+                    zip_code: values.zipCode,
+                    country: values.country,
+                },
+            };
 
-        await PostApi(`/users`, newPatient)
-            .then((data) => {
-                if (!data?.error) {
-                    toast.success("Nurse added successfully!");
-                    navigate("/nurse");
-                }
-                else {
-                    toast.error(data.error)
-                    console.error("Error fetching user fields:", data.error);
-                }
-            }).catch((error) => {
-                toast.error("Error occurred while adding the user.")
-                console.error("Error adding user:", error);
-            });
+            const data = await PostApi(`/users`, newNurse);
+            if (!data?.error) {
+                message.success("Pharmacist added successfully!");
+                onAddNurse?.(newNurse);
+                navigate("/pharmacist");
+            } else {
+                message.error(data.error);
+            }
+        } catch {
+            message.error("Error occurred while adding the pharmacist.");
+        } finally {
+            setIsLoading(false);
+            setShowFullscreenLoader(false);
+        }
+    };
 
+    const handleReset = () => {
+        form.resetFields();
+        message.success("Form reset successfully");
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-primary">Patient Management</h1>
-                    <p className="text-muted-foreground">Add Patient</p>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50/50 to-indigo-50/30 py-6 px-4 sm:px-6 lg:px-8">
+            {/* Fullscreen Loading Spinner */}
+            <FullscreenLoader 
+                active={showFullscreenLoader} 
+                onComplete={() => setShowFullscreenLoader(false)}
+                speed={100}
+            />
+
+            {/* Header */}
+            <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="max-w-7xl mx-auto mb-8"
+            >
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="space-y-2">
+                        <Title level={1} className="m-0 text-3xl font-bold text-gray-900">
+                            Pharmacist Management
+                        </Title>
+                        <Text className="text-lg text-gray-600">
+                            Register a new pharmacist in the system
+                        </Text>
+                    </div>
+                    <Space>
+                        <Button
+                            onClick={() => navigate("/pharmacist")}
+                            icon={<ArrowLeftOutlined />}
+                            size="large"
+                            className="flex items-center gap-2 h-12 px-6 border-2 border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600 font-medium rounded-lg transition-all duration-300"
+                        >
+                            Back to Pharmacists
+                        </Button>
+                    </Space>
                 </div>
-            </div>
+            </motion.div>
 
-            <Card className="medical-card">
-                <CardHeader>
-                    <CardTitle>Add New Pharmacist</CardTitle>
-                    <CardDescription>
-                        Fill in patient details to add a new record
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form
-                        layout="vertical"
-                        onFinish={handleSubmit}
-                        form={form}
-                        className="space-y-6"
-                    >
-                        {/* Personal Info */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {
-                                extraFields.map((field) => {
-                                    if (["assigned_to_doctor"].includes(field.field_name)) return null
-                                    return <Form.Item
-                                        label={field.field_name}
-                                        name={["extra_fields", field.field_name]}
-                                        rules={[{ required: field.is_mandatory, message: `Please enter ${field.field_name}` }]}
-                                    >
-                                        <Input />
-                                    </Form.Item>
-                                })
-                            }
-
-                            <Form.Item
-                                label="Date of Birth"
-                                name="dateOfBirth"
-                                rules={[
-                                    { required: true, message: "Please select date of birth" },
-                                ]}
-                            >
-                                <Input type="date" />
-                            </Form.Item>
-
-                            <Form.Item
-                                label="Gender"
-                                name="gender"
-                                rules={[{ required: true, message: "Please select gender" }]}
-                            >
-                                <AntdSelect
-                                    options={[
-                                        { value: "MALE", label: "Male" },
-                                        { value: "FEMALE", label: "Female" },
-                                        { value: "OTHER", label: "Other" },
-                                    ]}
-                                />
-                            </Form.Item>
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="max-w-7xl mx-auto"
+            >
+                <Card
+                    className="w-full mx-auto border-0 shadow-2xl rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm"
+                    title={
+                        <div className="flex items-center gap-4 p-2">
+                            <div className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                                <TeamOutlined className="text-white text-2xl" />
+                            </div>
+                            <div>
+                                <Title level={3} className="m-0 text-gray-900">Add New Pharmacist</Title>
+                                <Text type="secondary" className="text-base">Fill in all required pharmacist details to create a new record</Text>
+                            </div>
                         </div>
-
-                        {/* Contact Info */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Form.Item
-                                label="Phone"
-                                name="phone"
-                                rules={[{ required: true, message: "Please enter phone" }]}
-                            >
-                                <Input />
-                            </Form.Item>
-                            <Form.Item
-                                label="Email"
-                                name="email"
-                                rules={[{ required: true, message: "Please enter email" }]}
-                            >
-                                <Input type="email" />
-                            </Form.Item>
-                        </div>
-
-                        {/* Address */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Form.Item
-                                label="Street"
-                                name="street"
-                                rules={[{ required: true, message: "Please enter street" }]}
-                            >
-                                <Input />
-                            </Form.Item>
-                            <Form.Item
-                                label="City"
-                                name="city"
-                                rules={[{ required: true, message: "Please enter city" }]}
-                            >
-                                <Input />
-                            </Form.Item>
-                            <Form.Item
-                                label="State"
-                                name="state"
-                                rules={[{ required: true, message: "Please enter state" }]}
-                            >
-                                <Input />
-                            </Form.Item>
-                            <Form.Item
-                                label="ZIP Code"
-                                name="zipCode"
-                                rules={[{ required: true, message: "Please enter ZIP code" }]}
-                            >
-                                <Input />
-                            </Form.Item>
-                            <Form.Item
-                                label="Country"
-                                name="country"
-                                rules={[{ required: true, message: "Please select country" }]}
-                            >
-                                <AntdSelect
-                                    placeholder="Select country"
-                                    showSearch
-                                    options={countries.map((c) => ({ value: c, label: c }))}
-                                />
-                            </Form.Item>
-                        </div>
-
-                        {/* Medical Info */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Form.Item
-                                label="Blood Type"
-                                name="bloodType"
-                                // rules={[
-                                //     { required: true, message: "Please select blood type" },
-                                // ]}
-                            >
-                                <AntdSelect
-                                    options={[
-                                        { value: "A+", label: "A+" },
-                                        { value: "A-", label: "A-" },
-                                        { value: "B+", label: "B+" },
-                                        { value: "B-", label: "B-" },
-                                        { value: "AB+", label: "AB+" },
-                                        { value: "AB-", label: "AB-" },
-                                        { value: "O+", label: "O+" },
-                                        { value: "O-", label: "O-" },
-                                    ]}
-                                />
-                            </Form.Item>
-
-                            <Form.Item
-                                label="Department"
-                                name="department_id"
-                                rules={[{ required: true, message: "Please select doctor" }]}
-                            >
-                                <AntdSelect
-                                    placeholder="Select department"
-                                    options={departmentList.map((d) => ({ value: d.id, label: d.name, key: d.id }))}
-                                />
-                            </Form.Item>
-                        </div>
-
-                        <div className="sm:col-span-2">
+                    }
+                    extra={
+                        <Space size="middle" className="flex items-center">
+                            <ActionButton
+                                icon={<ReloadOutlined />}
+                                label="Reset Form"
+                                onClick={handleReset}
+                                loading={isLoading}
+                            />
                             <Button
-                                type="submit"
-                                className="bg-primary hover:bg-primary-dark text-primary-foreground w-full"
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                loading={isLoading}
+                                onClick={() => form.submit()}
+                                size="large"
+                                className="h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border-0 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3"
                             >
-                                Add Patient
+                                Add Pharmacist
                             </Button>
-                        </div>
-                    </Form>
-                </CardContent>
-            </Card>
-        </div >
+                        </Space>
+                    }
+                    styles={{
+                        body: { padding: 0 }
+                    }}
+                >
+                    <div className="p-8">
+                        <Form 
+                            layout="vertical" 
+                            onFinish={handleSubmit} 
+                            form={form} 
+                            className="space-y-8"
+                            size="large"
+                            disabled={isLoading}
+                        >
+                            {/* --- Personal Information --- */}
+                            <motion.section
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.2 }}
+                                className="space-y-6"
+                            >
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-1.5 h-8 bg-blue-500 rounded-full"></div>
+                                    <Title level={4} className="m-0 text-gray-900 flex items-center gap-2">
+                                        <IdcardOutlined className="text-blue-500" />
+                                        Personal Information
+                                    </Title>
+                                </div>
+                                
+                                <Row gutter={[24, 16]}>
+                                    {extraFields.map((field: any) => {
+                                        if (["assigned_to_doctor"].includes(field.field_name)) return null;
+                                        return (
+                                            <Col xs={24} md={12} lg={8} key={field.id}>
+                                                <Form.Item
+                                                    label={
+                                                        <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                            {field.field_name.replace(/_/g, ' ')}
+                                                            {field.is_mandatory && <span className="text-red-500 ml-1">*</span>}
+                                                        </span>
+                                                    }
+                                                    name={["extra_fields", field.field_name]}
+                                                    rules={[{ 
+                                                        required: field.is_mandatory, 
+                                                        message: `Please enter ${field.field_name.replace(/_/g, ' ')}` 
+                                                    }]}
+                                                >
+                                                    <Input
+                                                        placeholder={`Enter ${field.field_name.replace(/_/g, ' ').toLowerCase()}`}
+                                                        className="w-full h-12 rounded-lg border-gray-300 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                                                        disabled={loadingStates.extraFields || isLoading}
+                                                        prefix={<UserOutlined className="text-gray-400" />}
+                                                    />
+                                                </Form.Item>
+                                            </Col>
+                                        );
+                                    })}
+                                    
+                                    {/* Additional Personal Info Fields */}
+                                    <Col xs={24} md={12} lg={8}>
+                                        <Form.Item
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    Date of Birth <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="dateOfBirth"
+                                            rules={[{ required: true, message: "Please select date of birth" }]}
+                                        >
+                                            <DatePicker
+                                                className="w-full h-12 rounded-lg"
+                                                format="YYYY-MM-DD"
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    
+                                    <Col xs={24} md={12} lg={8}>
+                                        <Form.Item
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    Gender <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="gender"
+                                            rules={[{ required: true, message: "Please select gender" }]}
+                                        >
+                                            <Select
+                                                placeholder="Select gender"
+                                                className="w-full h-12 rounded-lg"
+                                                options={[
+                                                    { value: 'MALE', label: 'Male' },
+                                                    { value: 'FEMALE', label: 'Female' },
+                                                    { value: 'OTHER', label: 'Other' }
+                                                ]}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </motion.section>
+
+                            <Divider className="my-8" />
+
+                            {/* --- Contact Information --- */}
+                            <motion.section
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.3 }}
+                                className="space-y-6"
+                            >
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-1.5 h-8 bg-green-500 rounded-full"></div>
+                                    <Title level={4} className="m-0 text-gray-900 flex items-center gap-2">
+                                        <PhoneOutlined className="text-green-500" />
+                                        Contact Information
+                                    </Title>
+                                </div>
+                                
+                                <Row gutter={[24, 16]}>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    Phone Number <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="phone"
+                                            rules={[{ 
+                                                required: true, 
+                                                
+                                                pattern: /^[0-9+\-\s()]+$/,
+                                                message: "Please enter a valid phone number"
+                                            }]}
+                                        >
+                                            <Input 
+                                                placeholder="Enter phone number" 
+                                                className="w-full h-12 rounded-lg border-gray-300 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                                                prefix={<PhoneOutlined className="text-gray-400" />}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    Email Address <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="email"
+                                            rules={[
+                                                { required: true, message: "Please enter email" }, 
+                                                { type: 'email', message: 'Please enter a valid email' }
+                                            ]}
+                                        >
+                                            <Input 
+                                                type="email" 
+                                                placeholder="Enter email address" 
+                                                className="w-full h-12 rounded-lg border-gray-300 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                                                prefix={<MailOutlined className="text-gray-400" />}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </motion.section>
+
+                            <Divider className="my-8" />
+
+                            {/* --- Address Information --- */}
+                            <motion.section
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.4 }}
+                                className="space-y-6"
+                            >
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-1.5 h-8 bg-purple-500 rounded-full"></div>
+                                    <Title level={4} className="m-0 text-gray-900 flex items-center gap-2">
+                                        <EnvironmentOutlined className="text-purple-500" />
+                                        Address Information
+                                    </Title>
+                                </div>
+                                
+                                <Row gutter={[24, 16]}>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item 
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    Street Address <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="street" 
+                                            rules={[{ required: true, message: "Please enter street address" }]}
+                                        >
+                                            <Input 
+                                                placeholder="Enter street address" 
+                                                className="w-full h-12 rounded-lg border-gray-300 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                                                prefix={<EnvironmentOutlined className="text-gray-400" />}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item 
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    City <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="city" 
+                                            rules={[{ required: true, message: "Please enter city" }]}
+                                        >
+                                            <Input 
+                                                placeholder="Enter city" 
+                                                className="w-full h-12 rounded-lg border-gray-300 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                                                prefix={<EnvironmentOutlined className="text-gray-400" />}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item 
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    State <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="state" 
+                                            rules={[{ required: true, message: "Please enter state" }]}
+                                        >
+                                            <Input 
+                                                placeholder="Enter state" 
+                                                className="w-full h-12 rounded-lg border-gray-300 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                                                prefix={<EnvironmentOutlined className="text-gray-400" />}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item 
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    ZIP Code <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="zipCode" 
+                                            rules={[{ required: true, message: "Please enter ZIP code" }]}
+                                        >
+                                            <Input 
+                                                placeholder="Enter ZIP code" 
+                                                className="w-full h-12 rounded-lg border-gray-300 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                                                prefix={<EnvironmentOutlined className="text-gray-400" />}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24}>
+                                        <Form.Item 
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    Country <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="country" 
+                                            rules={[{ required: true, message: "Please select country" }]}
+                                        >
+                                            <Select 
+                                                placeholder="Select country" 
+                                                showSearch 
+                                                optionFilterProp="label"
+                                                className="w-full h-12 rounded-lg"
+                                                options={countries.map(c => ({ value: c, label: c }))}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </motion.section>
+
+                            <Divider className="my-8" />
+
+                            {/* --- Professional Information --- */}
+                            <motion.section
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5 }}
+                                className="space-y-6"
+                            >
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-1.5 h-8 bg-orange-500 rounded-full"></div>
+                                    <Title level={4} className="m-0 text-gray-900 flex items-center gap-2">
+                                        <TeamOutlined className="text-orange-500" />
+                                        Professional Information
+                                    </Title>
+                                </div>
+                                
+                                <Row gutter={[24, 16]}>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item 
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    Blood Type
+                                                </span>
+                                            }
+                                            name="bloodType"
+                                        >
+                                            <Select
+                                                placeholder="Select blood type"
+                                                className="w-full h-12 rounded-lg"
+                                                options={[
+                                                    'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
+                                                ].map(type => ({ value: type, label: type }))}
+                                                disabled={isLoading}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item 
+                                            label={
+                                                <span className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                                                    Department <span className="text-red-500">*</span>
+                                                </span>
+                                            }
+                                            name="department_id" 
+                                            rules={[{ required: true, message: "Please select department" }]}
+                                        >
+                                            <Select
+                                                placeholder="Select department"
+                                                className="w-full h-12 rounded-lg"
+                                                options={departmentList.map(dept => ({ 
+                                                    value: dept.id, 
+                                                    label: dept.name 
+                                                }))}
+                                                disabled={isLoading || loadingStates.departments}
+                                                loading={loadingStates.departments}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            </motion.section>
+
+                            {/* --- Action Buttons --- */}
+                            <motion.section
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.6 }}
+                                className="pt-8 border-t border-gray-200"
+                            >
+                                <div className="flex flex-col sm:flex-row gap-4 justify-end">
+                                    <Button
+                                        type="default"
+                                        onClick={() => navigate("/pharmacist")}
+                                        disabled={isLoading}
+                                        size="large"
+                                        className="h-12 px-8 border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:text-gray-800 font-semibold rounded-lg transition-all duration-300"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="primary"
+                                        htmlType="submit"
+                                        className="h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border-0 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
+                                        disabled={isLoading}
+                                        loading={isLoading}
+                                        size="large"
+                                    >
+                                        {!isLoading && <PlusOutlined />}
+                                        {isLoading ? "Adding Pharmacist..." : "Add Pharmacist"}
+                                    </Button>
+                                </div>
+                            </motion.section>
+                        </Form>
+                    </div>
+                </Card>
+            </motion.div>
+        </div>
     );
 }

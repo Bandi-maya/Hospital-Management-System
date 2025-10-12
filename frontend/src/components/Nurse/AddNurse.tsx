@@ -205,7 +205,7 @@ export default function AddNurse({ onAddNurse }: AddNurseProps) {
                     street: values.street,
                     city: values.city,
                     state: values.state,
-                    zipCode: values.zipCode,
+                    zip_code: values.zipCode,
                     country: values.country,
                 },
             };

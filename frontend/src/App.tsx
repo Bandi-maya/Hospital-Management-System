@@ -53,6 +53,8 @@ import PharmacistList from "./components/Pharmacist/PharmacistList";
 import AddPharmacist from "./components/Pharmacist/AddPharmacist";
 import LogoUploader from "./components/Patients/LogoUploader";
 import Login from "./components/Auth/Login";
+import DoctorList from "./components/Doctor/DoctorsList";
+import AddDoctor from "./components/Doctor/AddDoctor";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -140,7 +142,18 @@ const App = () => (
                   element={
                     <AuthGuard requiredPermission="doctors:read">
                       <Layout>
-                        <DoctorManagement />
+                        <DoctorList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
+                <Route
+                  path="/doctors/add"
+                  element={
+                    <AuthGuard requiredPermission="doctors:write">
+                      <Layout>
+                        <AddDoctor />
                       </Layout>
                     </AuthGuard>
                   }
