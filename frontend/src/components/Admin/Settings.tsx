@@ -401,7 +401,7 @@ export default function UserSettings() {
   }
 
   return (
-    <Watermark content="User Settings">
+    
       <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
         {/* Header */}
         <Card className="shadow-sm border-0">
@@ -1001,7 +1001,7 @@ export default function UserSettings() {
         </Drawer>
 
         {/* Floating Action Button */}
-        <FloatButton.Group
+        {/* <FloatButton.Group
           shape="circle"
           style={{ right: 24 }}
           icon={<ThunderboltOutlined />}
@@ -1017,8 +1017,8 @@ export default function UserSettings() {
             onClick={() => setDrawerVisible(true)}
           />
           <FloatButton.BackTop visibilityHeight={0} />
-        </FloatButton.Group>
+        </FloatButton.Group> */}
       </div>
-    </Watermark>
+    
   );
 }
