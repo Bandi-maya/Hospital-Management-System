@@ -24,6 +24,72 @@ export interface Appointment {
   status?: "Pending" | "Confirmed" | "Completed";
 }
 
+// Skeleton Loader Components
+const StatsSkeleton = () => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    {[...Array(3)].map((_, index) => (
+      <Card key={index} className="border-0 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse"></div>
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+              <div className="h-6 bg-gray-200 rounded w-12 animate-pulse"></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
+
+const FormSkeleton = () => (
+  <Card className="border-0 shadow-sm">
+    <CardHeader>
+      <div className="flex items-center gap-2">
+        <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
+      </div>
+      <div className="h-4 bg-gray-200 rounded w-64 animate-pulse mt-2"></div>
+    </CardHeader>
+    <CardContent>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {[...Array(6)].map((_, index) => (
+          <div key={index} className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+            </div>
+            <div className="h-12 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Time Summary Skeleton */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-gray-300 rounded animate-pulse"></div>
+          <div className="h-4 bg-gray-300 rounded w-40 animate-pulse"></div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mt-2">
+          {[...Array(4)].map((_, index) => (
+            <div key={index} className="space-y-1">
+              <div className="h-3 bg-gray-300 rounded w-16 animate-pulse"></div>
+              <div className="h-4 bg-gray-300 rounded w-20 animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Action Buttons Skeleton */}
+      <div className="flex gap-3 mt-8 pt-6 border-t">
+        <div className="h-12 bg-gray-200 rounded w-40 animate-pulse"></div>
+        <div className="h-12 bg-gray-200 rounded w-32 animate-pulse"></div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
 export default function BookAppointment() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const navigate = useNavigate()
@@ -31,6 +97,11 @@ export default function BookAppointment() {
   const [doctors, setDoctors] = useState([])
   const [departments, setDepartments] = useState([])
   const [loading, setLoading] = useState(false)
+  const [dataLoading, setDataLoading] = useState({
+    patients: true,
+    doctors: true,
+    departments: true
+  })
   const [form, setForm] = useState({
     patient_id: "",
     doctor_id: "",
@@ -41,6 +112,7 @@ export default function BookAppointment() {
   });
 
   function getPatients() {
+    setDataLoading(prev => ({ ...prev, patients: true }));
     getApi('/users?user_type=PATIENT')
       .then((data) => {
         if (!data.error) {
@@ -54,9 +126,13 @@ export default function BookAppointment() {
         toast.error("Error occurred while getting patients")
         console.error("Error: ", err)
       })
+      .finally(() => {
+        setDataLoading(prev => ({ ...prev, patients: false }));
+      })
   }
 
   function getDoctors() {
+    setDataLoading(prev => ({ ...prev, doctors: true }));
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
@@ -70,9 +146,13 @@ export default function BookAppointment() {
         toast.error("Error occurred while getting doctors")
         console.error("Error: ", err)
       })
+      .finally(() => {
+        setDataLoading(prev => ({ ...prev, doctors: false }));
+      })
   }
 
   function getDepartments() {
+    setDataLoading(prev => ({ ...prev, departments: true }));
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
@@ -85,6 +165,9 @@ export default function BookAppointment() {
       .catch((err) => {
         toast.error("Error occurred while getting departments")
         console.error("Error: ", err)
+      })
+      .finally(() => {
+        setDataLoading(prev => ({ ...prev, departments: false }));
       })
   }
 
@@ -144,6 +227,8 @@ export default function BookAppointment() {
     departments: departments.length,
   };
 
+  const isLoading = dataLoading.patients || dataLoading.doctors || dataLoading.departments;
+
   return (
     <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header Card */}
@@ -174,238 +259,246 @@ export default function BookAppointment() {
       </Card>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-0 shadow-sm bg-blue-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <User className="w-4 h-4 text-blue-600" />
+      {isLoading ? (
+        <StatsSkeleton />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-0 shadow-sm bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-blue-700">Total Patients</p>
+                  <p className="text-2xl font-bold text-blue-900">{stats.totalPatients}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-blue-700">Total Patients</p>
-                <p className="text-2xl font-bold text-blue-900">{stats.totalPatients}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="border-0 shadow-sm bg-green-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Stethoscope className="w-4 h-4 text-green-600" />
+          <Card className="border-0 shadow-sm bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Stethoscope className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-green-700">Available Doctors</p>
+                  <p className="text-2xl font-bold text-green-900">{stats.availableDoctors}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-green-700">Available Doctors</p>
-                <p className="text-2xl font-bold text-green-900">{stats.availableDoctors}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="border-0 shadow-sm bg-purple-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Building className="w-4 h-4 text-purple-600" />
+          <Card className="border-0 shadow-sm bg-purple-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Building className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-purple-700">Departments</p>
+                  <p className="text-2xl font-bold text-purple-900">{stats.departments}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-purple-700">Departments</p>
-                <p className="text-2xl font-bold text-purple-900">{stats.departments}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Main Form Card */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <PlusCircle className="w-5 h-5 text-blue-600" />
-            Appointment Details
-          </CardTitle>
-          <CardDescription>
-            Fill in the appointment information to schedule a new booking
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Patient Selection */}
-            <div className="space-y-3">
-              <Label htmlFor="patient" className="text-sm font-medium flex items-center gap-2">
-                <User className="w-4 h-4 text-gray-600" />
-                Patient
-              </Label>
-              <Select value={form.patient_id} onValueChange={(val) => setForm({ ...form, patient_id: val })}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select patient" />
-                </SelectTrigger>
-                <SelectContent>
-                  {patients.map((p) => (
-                    <SelectItem key={p.id} value={p.id} className="py-3">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{p.username}</span>
-                        <span className="text-xs text-gray-500">{p.email}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Department Selection */}
-            <div className="space-y-3">
-              <Label htmlFor="department" className="text-sm font-medium flex items-center gap-2">
-                <Building className="w-4 h-4 text-gray-600" />
-                Department
-              </Label>
-              <Select value={form.department_id} onValueChange={(val) => setForm({ ...form, department_id: val })}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((s) => (
-                    <SelectItem key={s.id} value={s.id} className="py-3">
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Doctor Selection */}
-            <div className="space-y-3">
-              <Label htmlFor="doctor" className="text-sm font-medium flex items-center gap-2">
-                <Stethoscope className="w-4 h-4 text-gray-600" />
-                Doctor
-              </Label>
-              <Select value={form.doctor_id} onValueChange={(val) => setForm({ ...form, doctor_id: val })}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select doctor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {doctors.map((d) => (
-                    <SelectItem key={d.id} value={d.id} className="py-3">
-                      <div className="flex flex-col">
-                        <span className="font-medium">Dr. {d.username}</span>
-                        <span className="text-xs text-gray-500">{d.specialization || "General Practitioner"}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date Selection */}
-            <div className="space-y-3">
-              <Label htmlFor="date" className="text-sm font-medium flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-600" />
-                Appointment Date
-              </Label>
-              <Input 
-                type="date" 
-                value={form.appointment_date} 
-                onChange={(e) => setForm({ ...form, appointment_date: e.target.value })}
-                className="h-12"
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-
-            {/* Time Selection */}
-            <div className="space-y-3">
-              <Label htmlFor="time" className="text-sm font-medium flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-600" />
-                Start Time
-              </Label>
-              <Input 
-                type="time" 
-                value={form.appointment_start_time} 
-                onChange={(e) => setForm({ ...form, appointment_start_time: e.target.value })}
-                className="h-12"
-              />
-            </div>
-
-            {/* Duration Selection */}
-            <div className="space-y-3">
-              <Label htmlFor="duration" className="text-sm font-medium flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-600" />
-                Duration (minutes)
-              </Label>
-              <Select value={form.duration.toString()} onValueChange={(val) => setForm({ ...form, duration: Number(val) })}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15 minutes</SelectItem>
-                  <SelectItem value="30">30 minutes</SelectItem>
-                  <SelectItem value="45">45 minutes</SelectItem>
-                  <SelectItem value="60">60 minutes</SelectItem>
-                  <SelectItem value="90">90 minutes</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Time Summary */}
-          {form.appointment_start_time && form.duration && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2 text-blue-700 font-medium">
-                <Clock className="w-4 h-4" />
-                Appointment Time Summary
+      {isLoading ? (
+        <FormSkeleton />
+      ) : (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <PlusCircle className="w-5 h-5 text-blue-600" />
+              Appointment Details
+            </CardTitle>
+            <CardDescription>
+              Fill in the appointment information to schedule a new booking
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Patient Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="patient" className="text-sm font-medium flex items-center gap-2">
+                  <User className="w-4 h-4 text-gray-600" />
+                  Patient
+                </Label>
+                <Select value={form.patient_id} onValueChange={(val) => setForm({ ...form, patient_id: val })}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select patient" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {patients.map((p) => (
+                      <SelectItem key={p.id} value={p.id} className="py-3">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{p.username}</span>
+                          <span className="text-xs text-gray-500">{p.email}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
-                <div>
-                  <span className="text-gray-600">Start Time:</span>
-                  <span className="font-medium ml-2">{form.appointment_start_time}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">End Time:</span>
-                  <span className="font-medium ml-2">
-                    {calculateEndTime(form.appointment_start_time, form.duration)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Duration:</span>
-                  <span className="font-medium ml-2">{form.duration} minutes</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Date:</span>
-                  <span className="font-medium ml-2">{form.appointment_date}</span>
-                </div>
+
+              {/* Department Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="department" className="text-sm font-medium flex items-center gap-2">
+                  <Building className="w-4 h-4 text-gray-600" />
+                  Department
+                </Label>
+                <Select value={form.department_id} onValueChange={(val) => setForm({ ...form, department_id: val })}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((s) => (
+                      <SelectItem key={s.id} value={s.id} className="py-3">
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Doctor Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="doctor" className="text-sm font-medium flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4 text-gray-600" />
+                  Doctor
+                </Label>
+                <Select value={form.doctor_id} onValueChange={(val) => setForm({ ...form, doctor_id: val })}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {doctors.map((d) => (
+                      <SelectItem key={d.id} value={d.id} className="py-3">
+                        <div className="flex flex-col">
+                          <span className="font-medium">Dr. {d.username}</span>
+                          <span className="text-xs text-gray-500">{d.specialization || "General Practitioner"}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Date Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="date" className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-600" />
+                  Appointment Date
+                </Label>
+                <Input 
+                  type="date" 
+                  value={form.appointment_date} 
+                  onChange={(e) => setForm({ ...form, appointment_date: e.target.value })}
+                  className="h-12"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              {/* Time Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="time" className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-600" />
+                  Start Time
+                </Label>
+                <Input 
+                  type="time" 
+                  value={form.appointment_start_time} 
+                  onChange={(e) => setForm({ ...form, appointment_start_time: e.target.value })}
+                  className="h-12"
+                />
+              </div>
+
+              {/* Duration Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="duration" className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-600" />
+                  Duration (minutes)
+                </Label>
+                <Select value={form.duration.toString()} onValueChange={(val) => setForm({ ...form, duration: Number(val) })}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 minutes</SelectItem>
+                    <SelectItem value="30">30 minutes</SelectItem>
+                    <SelectItem value="45">45 minutes</SelectItem>
+                    <SelectItem value="60">60 minutes</SelectItem>
+                    <SelectItem value="90">90 minutes</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button 
-              onClick={handleBookAppointment} 
-              className="px-8 h-12 text-base font-medium"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Booking Appointment...
-                </>
-              ) : (
-                <>
-                  <PlusCircle className="w-4 h-4 mr-2" />
-                  Book Appointment
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/appointments')}
-              className="px-8 h-12 text-base font-medium"
-            >
-              Cancel
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            {/* Time Summary */}
+            {form.appointment_start_time && form.duration && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 text-blue-700 font-medium">
+                  <Clock className="w-4 h-4" />
+                  Appointment Time Summary
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                  <div>
+                    <span className="text-gray-600">Start Time:</span>
+                    <span className="font-medium ml-2">{form.appointment_start_time}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">End Time:</span>
+                    <span className="font-medium ml-2">
+                      {calculateEndTime(form.appointment_start_time, form.duration)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Duration:</span>
+                    <span className="font-medium ml-2">{form.duration} minutes</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Date:</span>
+                    <span className="font-medium ml-2">{form.appointment_date}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-8 pt-6 border-t">
+              <Button 
+                onClick={handleBookAppointment} 
+                className="px-8 h-12 text-base font-medium"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Booking Appointment...
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="w-4 h-4 mr-2" />
+                    Book Appointment
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/appointments')}
+                className="px-8 h-12 text-base font-medium"
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
