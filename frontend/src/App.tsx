@@ -14,7 +14,7 @@ import Specializations from "./components/Doctor/Specializations";
 import CalenderView from "./components/Appointments/CalenderView";
 import BookAppointment from "./components/Appointments/BookAppointment";
 import MedicalInventory from "./components/Pharmacy/MedicalInventory";
-import Prescriptions from "./components/Pharmacy/Prescriptions";
+import Prescriptions from "./components/Prescription/Prescriptions";
 import PurchaseOrders from "./components/Pharmacy/PurchaseOrders";
 import LabTests from "./components/Laboratory/LabTests";
 import LabReports from "./components/Laboratory/LabReports";
@@ -351,9 +351,9 @@ const App = () => (
                 />
 
                 <Route
-                  path="/pharmacy/prescriptions"
+                  path="/prescriptions"
                   element={
-                    <AuthGuard requiredPermission="appointments:read">
+                    <AuthGuard requiredPermission="prescriptions:read">
                       <Layout>
                         <Prescriptions />
                       </Layout>

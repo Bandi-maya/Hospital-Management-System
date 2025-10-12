@@ -35,6 +35,10 @@ import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { DepartmentInterface } from "@/components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
+import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
+import { Download, Filter, Search } from "lucide-react";
+import { CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button as UIButton } from "@/components/ui/button";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -57,6 +61,8 @@ export default function PatientList() {
     extraFields: false,
     table: false
   });
+    const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
   const [pagination, setPagination] = useState({
     current: 1,
@@ -438,7 +444,7 @@ export default function PatientList() {
   }));
 
   return (
-    <div className="p-4 md:p-6 bg-white rounded-lg shadow-sm">
+    <div className="p-6 space-y-6 rounded-lg" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
         <Title level={2} className="m-0">Patient List</Title>
@@ -462,6 +468,48 @@ export default function PatientList() {
           </Button>
         </Space>
       </div>
+
+      
+      <Card className="border-0 shadow-sm mb-15">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Filter className="w-5 h-5 text-blue-600" />
+            Filters & Search
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search patients, doctors, or dates..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-12"
+                />
+              </div>
+            </div>
+            <div className="w-full md:w-48">
+              <UISelect value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Confirmed">Confirmed</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                </SelectContent>
+              </UISelect>
+            </div>
+            <UIButton variant="outline" className="h-12 px-6">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </UIButton>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Patients Table with Skeleton Loading */}
       <Card

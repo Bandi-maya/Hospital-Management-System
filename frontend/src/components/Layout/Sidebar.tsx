@@ -163,7 +163,7 @@ const createMenuItems = (): MenuItem[] => {
       requiredPermission: 'medicines:read',
       children: [
         { key: '/pharmacy/medicines', label: 'Medicine Inventory', requiredPermission: "medicines:read", icon: <MedicineBoxOutlined /> },
-        { key: '/pharmacy/prescriptions', label: 'Prescriptions', requiredPermission: "medicines:read", icon: <FileTextOutlined /> },
+        // { key: '/pharmacy/prescriptions', label: 'Prescriptions', requiredPermission: "medicines:read", icon: <FileTextOutlined /> },
         { key: '/pharmacy/orders', label: 'Purchase Orders', requiredPermission: "medicines:read", icon: <ContainerOutlined /> },
       ],
     },
@@ -187,6 +187,15 @@ const createMenuItems = (): MenuItem[] => {
         { key: '/surgery/list', label: 'Surgeries', requiredPermission: "surgery:read", icon: <RocketOutlined /> },
         { key: '/surgery/types', label: 'Surgery Types', requiredPermission: "surgery:read", icon: <ToolOutlined /> },
         { key: '/surgery/operation-theatres', label: 'Operation Theatres', requiredPermission: "surgery:read", icon: <HomeOutlined /> },
+      ],
+    },
+    {
+      key: '/prescriptions',
+      label: 'Prescription',
+      icon: <RocketOutlined />,
+      requiredPermission: 'prescriptions:read',
+      children: [
+        { key: '/prescriptions', label: 'Prescriptions', requiredPermission: "prescriptions:read", icon: <FileTextOutlined /> },
       ],
     },
     {
