@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { getApi, PutApi } from "@/ApiService";
 import { Search, PlusCircle, Calendar, User, Stethoscope, Clock, Filter, Download, ArrowRight, Edit } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { AnimatedActionButton } from "@/components/Patients/PatientList";
+import { AnimatedActionButton } from "./TokenManagement";
 
 interface Appointment {
   id: string;
