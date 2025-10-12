@@ -544,7 +544,7 @@ export default function MedicalRecords() {
                     />
                     <ActionButton
                       icon={<FileTextOutlined />}
-                      label="Add"
+                      label="Add Notes"
                       onClick={() => handleAddMedicalRecord(record)}
                     />
                   </div>

@@ -130,7 +130,7 @@ const createMenuItems = (): MenuItem[] => {
       requiredPermission: 'doctors:read',
       children: [
         { key: '/doctors', label: 'All Doctors', requiredPermission: "doctor:read", icon: <TeamOutlined /> },
-        { key: '/doctors/schedules', label: 'Schedules', icon: <ScheduleOutlined /> },
+        // { key: '/doctors/schedules', label: 'Schedules', icon: <ScheduleOutlined /> },
       ],
     },
     {

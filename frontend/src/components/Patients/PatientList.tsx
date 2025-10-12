@@ -17,7 +17,8 @@ import {
   Col,
   Typography,
   Descriptions,
-  Tooltip
+  Tooltip,
+  Skeleton
 } from "antd";
 import {
   EditOutlined,
@@ -34,7 +35,6 @@ import { getApi, PostApi, PutApi } from "@/ApiService";
 import { DepartmentInterface } from "@/components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
-import FullscreenLoader from "@/components/Loader/FullscreenLoader";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -51,7 +51,7 @@ export default function PatientList() {
   const [extraFields, setExtraFields] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
-  const [showFullscreenLoader, setShowFullscreenLoader] = useState(false); // Renamed state
+  const [tableLoading, setTableLoading] = useState(false);
   const [loadingStates, setLoadingStates] = useState({
     departments: false,
     extraFields: false,
@@ -65,11 +65,6 @@ export default function PatientList() {
   });
 
   const userTypeId = useMemo(() => extraFields?.[0]?.user_type, [extraFields]);
-
-  // Show loading spinner with progress - updated to use the imported loader
-  const showLoader = () => {
-    setShowFullscreenLoader(true);
-  };
 
   const getExtraFields = () => {
     setLoadingStates(prev => ({ ...prev, extraFields: true }));
@@ -137,16 +132,16 @@ export default function PatientList() {
   };
 
   const loadPatients = async (page = 1, limit = 10) => {
-    setIsLoading(true);
+    setTableLoading(true);
     try {
       const data = await getApi(`/users?user_type=PATIENT&page=${page}&limit=${limit}`);
       if (!data?.error) {
-        setPatients(data.data); // Use the paginated `data` field from API
+        setPatients(data.data);
         setPagination(prev => ({
           ...prev,
           current: page,
           pageSize: limit,
-          total: data.total_records, // Set total from API
+          total: data.total_records,
         }));
       } else {
         message.error(data.error);
@@ -154,7 +149,7 @@ export default function PatientList() {
     } catch (error) {
       message.error("Error getting patients");
     } finally {
-      setIsLoading(false);
+      setTableLoading(false);
     }
   };
 
@@ -288,6 +283,65 @@ export default function PatientList() {
     );
   };
 
+  // Skeleton columns for loading state
+  const skeletonColumns = [
+    {
+      title: "Patient ID",
+      dataIndex: "id",
+      key: "id",
+      width: 90,
+      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
+    },
+    {
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+      render: () => <Skeleton.Input active size="small" style={{ width: 120 }} />,
+    },
+    {
+      title: "Gender",
+      dataIndex: "gender",
+      key: "gender",
+      render: () => <Skeleton.Input active size="small" style={{ width: 80 }} />,
+    },
+    {
+      title: "Blood Type",
+      dataIndex: "blood_type",
+      key: "bloodType",
+      render: () => <Skeleton.Input active size="small" style={{ width: 70 }} />,
+    },
+    {
+      title: "Phone",
+      dataIndex: "phone_no",
+      key: "phone",
+      render: () => <Skeleton.Input active size="small" style={{ width: 100 }} />,
+    },
+    {
+      title: "Doctor",
+      dataIndex: "assignedDoctor",
+      key: "assignedDoctor",
+      render: () => <Skeleton.Input active size="small" style={{ width: 110 }} />,
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: () => <Skeleton.Input active size="small" style={{ width: 70 }} />,
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 200,
+      render: () => (
+        <Space size="small">
+          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
+          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
+          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
+        </Space>
+      ),
+    },
+  ];
+
   const columns = [
     {
       title: "Patient ID",
@@ -370,15 +424,21 @@ export default function PatientList() {
     loadPatients(newPagination.current, newPagination.pageSize);
   };
 
+  // Generate skeleton data for loading state
+  const skeletonData = Array.from({ length: pagination.pageSize }, (_, index) => ({
+    key: index,
+    id: index,
+    name: '',
+    gender: '',
+    blood_type: '',
+    phone_no: '',
+    assignedDoctor: '',
+    status: '',
+    actions: '',
+  }));
+
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow-sm">
-      {/* Fullscreen Loading Spinner */}
-      <FullscreenLoader
-        active={showFullscreenLoader}
-        onComplete={() => setShowFullscreenLoader(false)}
-        speed={100}
-      />
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
         <Title level={2} className="m-0">Patient List</Title>
@@ -386,7 +446,7 @@ export default function PatientList() {
           <Button
             onClick={() => loadPatients()}
             icon={<ReloadOutlined />}
-            loading={loadingStates.table}
+            loading={tableLoading}
             className="flex items-center"
           >
             Refresh
@@ -395,7 +455,7 @@ export default function PatientList() {
             type="primary"
             onClick={() => navigate("/patients/add")}
             icon={<PlusOutlined />}
-            loading={loadingStates.table}
+            loading={tableLoading}
             className="flex items-center"
           >
             Add Patient
@@ -403,23 +463,25 @@ export default function PatientList() {
         </Space>
       </div>
 
-      {/* Patients Table */}
+      {/* Patients Table with Skeleton Loading */}
       <Card
-        loading={loadingStates.table}
         bodyStyle={{ padding: 0 }}
         className="overflow-hidden"
       >
         <Table
-          dataSource={patients}
-          columns={columns}
-          rowKey="id"
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-          }}
+          dataSource={tableLoading ? skeletonData : patients}
+          columns={tableLoading ? skeletonColumns : columns}
+          rowKey={tableLoading ? "key" : "id"}
+          pagination={
+            tableLoading ? false : {
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+            }
+          }
           onChange={handleTableChange}
           scroll={{ x: 800 }}
+          loading={false} // We handle loading ourselves with skeleton
         />
       </Card>
 

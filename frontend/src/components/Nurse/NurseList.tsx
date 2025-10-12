@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Card, 
-  Button, 
-  Input, 
-  Select, 
-  Table, 
-  Popconfirm, 
+import {
+  Card,
+  Button,
+  Input,
+  Select,
+  Table,
+  Popconfirm,
   Modal,
   Tag,
   Space,
@@ -14,20 +14,24 @@ import {
   Form,
   Row,
   Col,
-  message
+  Tooltip,
+  Skeleton,
+  Spin
 } from "antd";
-import { 
-  SearchOutlined, 
-  PlusOutlined, 
-  UserOutlined, 
-  MailOutlined, 
-  PhoneOutlined, 
-  EnvironmentOutlined, 
-  CalendarOutlined, 
-  EditOutlined, 
+import {
+  SearchOutlined,
+  PlusOutlined,
+  UserOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  EnvironmentOutlined,
+  CalendarOutlined,
+  EditOutlined,
   DeleteOutlined,
-  TeamOutlined
+  TeamOutlined,
+  ReloadOutlined
 } from "@ant-design/icons";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { countries } from "@/components/Patients/AddPatient";
 import { getApi, PostApi, PutApi } from "@/ApiService";
@@ -46,7 +50,19 @@ export default function NurseList() {
   const [selectedNurse, setSelectedNurse] = useState<any>(null);
   const [extraFields, setExtraFields] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({
+    departments: false,
+    extraFields: false,
+    table: false
+  });
+  
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   const userTypeId = useMemo(() => {
     return extraFields?.[0]?.user_type;
@@ -55,25 +71,34 @@ export default function NurseList() {
   const navigate = useNavigate();
 
   // Fetch data functions
-  const getExtraFields = () => {
-    getApi("/user-fields")
-      .then((data) => {
-        if (!data?.error) {
-          setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "NURSE"));
-        } else {
-          toast.error("Error fetching nurse fields: " + data.error);
-        }
-      }).catch((error) => {
-        toast.error("Error fetching nurse fields");
-        console.error("Error fetching nurse fields:", error);
-      });
+  const getExtraFields = async () => {
+    setLoadingStates(prev => ({ ...prev, extraFields: true }));
+    try {
+      const data = await getApi("/user-fields");
+      if (!data?.error) {
+        setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "NURSE"));
+      } else {
+        toast.error("Error fetching nurse fields: " + data.error);
+      }
+    } catch (error) {
+      toast.error("Error fetching nurse fields");
+      console.error("Error fetching nurse fields:", error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, extraFields: false }));
+    }
   };
 
-  const loadNurses = async () => {
-    setLoading(true);
+  const loadNurses = async (page = 1, limit = 10) => {
+    setTableLoading(true);
     try {
-      const data = await getApi(`/users?user_type=NURSE`);
+      const data = await getApi(`/users?user_type=NURSE&page=${page}&limit=${limit}`);
       if (!data?.error) {
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: limit,
+          total: data.total_records,
+        }));
         setNurses(data.data);
       } else {
         toast.error(data.error);
@@ -82,29 +107,31 @@ export default function NurseList() {
       toast.error("Error getting nurses");
       console.error("Error getting nurse data:", error);
     } finally {
-      setLoading(false);
+      setTableLoading(false);
     }
   };
 
-  const loadDepartments = () => {
-    getApi('/departments')
-      .then((data) => {
-        if (!data.error) {
-          setDepartments(data.data);
-        } else {
-          toast.error(data.error);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching departments:", error);
-        toast.error("Failed to fetch departments");
-      });
+  const loadDepartments = async () => {
+    setLoadingStates(prev => ({ ...prev, departments: true }));
+    try {
+      const data = await getApi('/departments');
+      if (!data.error) {
+        setDepartments(data.data);
+      } else {
+        toast.error(data.error);
+      }
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      toast.error("Failed to fetch departments");
+    } finally {
+      setLoadingStates(prev => ({ ...prev, departments: false }));
+    }
   };
 
   useEffect(() => {
-    getExtraFields();
-    loadNurses();
+    loadNurses(pagination.current, pagination.pageSize);
     loadDepartments();
+    getExtraFields();
   }, []);
 
   // Form submission handler
@@ -129,7 +156,7 @@ export default function NurseList() {
       const data = await PutApi(`/users`, formData);
       if (!data?.error) {
         toast.success(selectedNurse ? "Nurse updated successfully!" : "Nurse added successfully!");
-        loadNurses();
+        loadNurses(pagination.current, pagination.pageSize);
         setIsModalOpen(false);
         setSelectedNurse(null);
         form.resetFields();
@@ -144,19 +171,26 @@ export default function NurseList() {
     }
   };
 
+  const handleTableChange = (newPagination: any) => {
+    loadNurses(newPagination.current, newPagination.pageSize);
+  };
+
   // Delete nurse handler
   const deleteNurse = async (record: any) => {
+    setLoadingActionId(record.id);
     try {
       const data = await PutApi(`/users`, { ...record, is_active: false });
       if (!data?.error) {
-        toast.success("Nurse deleted successfully!");
-        loadNurses();
+        toast.success("Nurse deactivated successfully!");
+        loadNurses(pagination.current, pagination.pageSize);
       } else {
         toast.error(data.error);
       }
     } catch (error) {
-      toast.error("Error deleting nurse");
+      toast.error("Error deactivating nurse");
       console.error("Error deleting nurse:", error);
+    } finally {
+      setLoadingActionId(null);
     }
   };
 
@@ -186,7 +220,145 @@ export default function NurseList() {
     form.resetFields();
   };
 
-  // Table columns
+  // Enhanced Action Button Component
+  const ActionButton = ({
+    icon,
+    label,
+    type = "default",
+    danger = false,
+    onClick,
+    loading = false,
+    confirm = false,
+    confirmAction
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    type?: "primary" | "default" | "dashed" | "link" | "text";
+    danger?: boolean;
+    onClick?: () => void;
+    loading?: boolean;
+    confirm?: boolean;
+    confirmAction?: () => void;
+  }) => {
+    const button = (
+      <motion.div
+        whileHover={{ scale: 1.1 }}
+        transition={{ type: "spring", stiffness: 250 }}
+      >
+        <Tooltip title={label} placement="top">
+          <Button
+            type={type}
+            danger={danger}
+            icon={icon}
+            loading={loading}
+            onClick={onClick}
+            className={`
+              flex items-center justify-center 
+              transition-all duration-300 ease-in-out
+              ${!danger && !type.includes('primary') ?
+                'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
+              }
+              ${danger ?
+                'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
+              }
+              w-10 h-10 rounded-full
+            `}
+            style={{
+              minWidth: '40px',
+              border: '1px solid #d9d9d9'
+            }}
+          />
+        </Tooltip>
+      </motion.div>
+    );
+
+    return confirm ? (
+      <Popconfirm
+        title="Are you sure?"
+        onConfirm={confirmAction}
+        okText="Yes"
+        cancelText="No"
+        placement="top"
+      >
+        {button}
+      </Popconfirm>
+    ) : (
+      button
+    );
+  };
+
+  // Skeleton columns for loading state
+  const skeletonColumns = [
+    {
+      title: "Nurse ID",
+      dataIndex: "id",
+      key: "id",
+      width: 100,
+      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
+    },
+    {
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+      render: () => (
+        <Space>
+          <Skeleton.Avatar active size="small" />
+          <Skeleton.Input active size="small" style={{ width: 120 }} />
+        </Space>
+      ),
+    },
+    {
+      title: "Gender",
+      dataIndex: "gender",
+      key: "gender",
+      width: 100,
+      render: () => <Skeleton.Input active size="small" style={{ width: 80 }} />,
+    },
+    {
+      title: "Blood Type",
+      dataIndex: "blood_type",
+      key: "bloodType",
+      width: 120,
+      render: () => <Skeleton.Input active size="small" style={{ width: 70 }} />,
+    },
+    {
+      title: "Phone",
+      dataIndex: "phone_no",
+      key: "phone",
+      render: () => (
+        <Space>
+          <Skeleton.Avatar active size="small" />
+          <Skeleton.Input active size="small" style={{ width: 100 }} />
+        </Space>
+      ),
+    },
+    {
+      title: "Department",
+      dataIndex: "department_id",
+      key: "department",
+      render: () => <Skeleton.Input active size="small" style={{ width: 110 }} />,
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: 100,
+      render: () => <Skeleton.Input active size="small" style={{ width: 70 }} />,
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 150,
+      render: () => (
+        <Space size="small">
+          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
+          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
+        </Space>
+      ),
+    },
+  ];
+
+  // Actual columns
   const columns = [
     {
       title: "Nurse ID",
@@ -259,71 +431,89 @@ export default function NurseList() {
       width: 150,
       render: (_: any, record: any) => (
         <Space size="small">
-          <Button
-            type="primary"
+          <ActionButton
             icon={<EditOutlined />}
-            size="small"
+            label="Edit"
+            type="default"
+            loading={loadingActionId === record.id}
             onClick={() => handleEdit(record)}
-          >
-            Edit
-          </Button>
-          <Popconfirm
-            title="Are you sure you want to delete this nurse?"
-            onConfirm={() => deleteNurse(record)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button
-              type="primary"
-              danger
-              icon={<DeleteOutlined />}
-              size="small"
-            >
-              Delete
-            </Button>
-          </Popconfirm>
+          />
+
+          <ActionButton
+            icon={<DeleteOutlined />}
+            label="Delete"
+            danger
+            loading={loadingActionId === record.id}
+            confirm
+            confirmAction={() => deleteNurse(record)}
+          />
         </Space>
       ),
     },
   ];
 
+  // Generate skeleton data for loading state
+  const skeletonData = Array.from({ length: pagination.pageSize }, (_, index) => ({
+    key: index,
+    id: index,
+    name: '',
+    gender: '',
+    blood_type: '',
+    phone_no: '',
+    department: '',
+    status: '',
+    actions: '',
+  }));
+
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6">
+    <div className="p-4 md:p-6 bg-white rounded-lg shadow-sm">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <Title level={2} className="!mb-2">Nurse Management</Title>
-          <Text type="secondary">Manage and view all nurses in the system</Text>
-        </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />}
-          size="large"
-          onClick={() => navigate("/nurse/add")}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          Add Nurse
-        </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <Title level={2} className="m-0">Nurse Management</Title>
+        <Space>
+          <Button
+            onClick={() => loadNurses()}
+            icon={<ReloadOutlined />}
+            loading={tableLoading}
+            className="flex items-center"
+          >
+            Refresh
+          </Button>
+          <Button
+            type="primary"
+            onClick={() => navigate("/nurse/add")}
+            icon={<PlusOutlined />}
+            loading={tableLoading}
+            className="flex items-center"
+          >
+            Add Nurse
+          </Button>
+        </Space>
       </div>
 
-      {/* Nurses Table */}
-      <Card 
-        className="shadow-lg border-0"
+      {/* Nurses Table with Skeleton Loading */}
+      <Card
         bodyStyle={{ padding: 0 }}
+        className="overflow-hidden"
       >
         <Table
-          dataSource={nurses}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => 
-              `${range[0]}-${range[1]} of ${total} nurses`,
-          }}
+          dataSource={tableLoading ? skeletonData : nurses}
+          columns={tableLoading ? skeletonColumns : columns}
+          rowKey={tableLoading ? "key" : "id"}
+          pagination={
+            tableLoading ? false : {
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) => 
+                `${range[0]}-${range[1]} of ${total} nurses`,
+            }
+          }
+          onChange={handleTableChange}
           scroll={{ x: 1000 }}
+          loading={false} // We handle loading ourselves with skeleton
         />
       </Card>
 
@@ -331,8 +521,8 @@ export default function NurseList() {
       <Modal
         title={
           <Space>
-            <TeamOutlined className="text-blue-500" />
-            {selectedNurse ? "Edit Nurse" : "Add New Nurse"}
+            <TeamOutlined className="text-blue-600" />
+            <span>{selectedNurse ? "Edit Nurse" : "Add New Nurse"}</span>
           </Space>
         }
         open={isModalOpen}
@@ -341,226 +531,228 @@ export default function NurseList() {
         width={800}
         style={{ top: 20 }}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          className="mt-4"
-        >
-          <Row gutter={[16, 16]}>
-            {/* Personal Information */}
-            <Col span={24}>
-              <Title level={4} className="!mb-4">Personal Information</Title>
-            </Col>
-            
-            {extraFields.map((field: any) => (
-              <Col span={12} key={field.field_name}>
+        <Spin spinning={loadingStates.departments || loadingStates.extraFields}>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            className="mt-4"
+          >
+            <Row gutter={[16, 16]}>
+              {/* Personal Information */}
+              <Col span={24}>
+                <Title level={4} className="!mb-4">Personal Information</Title>
+              </Col>
+
+              {extraFields.map((field: any) => (
+                <Col span={12} key={field.field_name}>
+                  <Form.Item
+                    label={field.field_name}
+                    name={['extra_fields', field.field_name]}
+                    rules={[
+                      {
+                        required: field.is_mandatory,
+                        message: `Please enter ${field.field_name}`
+                      }
+                    ]}
+                  >
+                    <Input
+                      placeholder={`Enter ${field.field_name}`}
+                      size="large"
+                      prefix={<UserOutlined />}
+                    />
+                  </Form.Item>
+                </Col>
+              ))}
+
+              <Col span={12}>
                 <Form.Item
-                  label={field.field_name}
-                  name={field.field_name}
-                  rules={[
-                    { 
-                      required: field.is_mandatory, 
-                      message: `Please enter ${field.field_name}` 
-                    }
-                  ]}
+                  label="Date of Birth"
+                  name="date_of_birth"
+                  rules={[{ required: true, message: "Please select date of birth" }]}
                 >
-                  <Input 
-                    placeholder={`Enter ${field.field_name}`}
+                  <Input
+                    type="date"
                     size="large"
-                    prefix={<UserOutlined />}
+                    prefix={<CalendarOutlined />}
                   />
                 </Form.Item>
               </Col>
-            ))}
 
-            <Col span={12}>
-              <Form.Item
-                label="Date of Birth"
-                name="date_of_birth"
-                rules={[{ required: true, message: "Please select date of birth" }]}
-              >
-                <Input 
-                  type="date"
-                  size="large"
-                  prefix={<CalendarOutlined />}
-                />
-              </Form.Item>
-            </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Gender"
+                  name="gender"
+                  rules={[{ required: true, message: "Please select gender" }]}
+                >
+                  <Select
+                    placeholder="Select gender"
+                    size="large"
+                    options={[
+                      { value: "MALE", label: "Male" },
+                      { value: "FEMALE", label: "Female" },
+                      { value: "OTHER", label: "Other" },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
 
-            <Col span={12}>
-              <Form.Item
-                label="Gender"
-                name="gender"
-                rules={[{ required: true, message: "Please select gender" }]}
-              >
-                <Select
-                  placeholder="Select gender"
-                  size="large"
-                  options={[
-                    { value: "MALE", label: "Male" },
-                    { value: "FEMALE", label: "Female" },
-                    { value: "OTHER", label: "Other" },
+              {/* Contact Information */}
+              <Col span={24}>
+                <Title level={4} className="!mb-4">Contact Information</Title>
+              </Col>
+
+              <Col span={12}>
+                <Form.Item
+                  label="Email"
+                  name="email"
+                  rules={[
+                    { required: true, message: "Please enter email" },
+                    { type: 'email', message: 'Please enter a valid email' }
                   ]}
-                />
-              </Form.Item>
-            </Col>
+                >
+                  <Input
+                    type="email"
+                    placeholder="Email address"
+                    size="large"
+                    prefix={<MailOutlined />}
+                  />
+                </Form.Item>
+              </Col>
 
-            {/* Contact Information */}
-            <Col span={24}>
-              <Title level={4} className="!mb-4">Contact Information</Title>
-            </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Phone"
+                  name="phone_no"
+                  rules={[{ required: true, message: "Please enter phone number" }]}
+                >
+                  <Input
+                    placeholder="Phone number"
+                    size="large"
+                    prefix={<PhoneOutlined />}
+                  />
+                </Form.Item>
+              </Col>
 
-            <Col span={12}>
-              <Form.Item
-                label="Email"
-                name="email"
-                rules={[
-                  { required: true, message: "Please enter email" },
-                  { type: 'email', message: 'Please enter a valid email' }
-                ]}
+              {/* Address Information */}
+              <Col span={24}>
+                <Title level={4} className="!mb-4">Address Information</Title>
+              </Col>
+
+              <Col span={24}>
+                <Form.Item
+                  label="Street"
+                  name="street"
+                  rules={[{ required: true, message: "Please enter street address" }]}
+                >
+                  <Input
+                    placeholder="Street address"
+                    size="large"
+                    prefix={<EnvironmentOutlined />}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={12}>
+                <Form.Item
+                  label="City"
+                  name="city"
+                  rules={[{ required: true, message: "Please enter city" }]}
+                >
+                  <Input
+                    placeholder="City"
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={12}>
+                <Form.Item
+                  label="State"
+                  name="state"
+                  rules={[{ required: true, message: "Please enter state" }]}
+                >
+                  <Input
+                    placeholder="State"
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={12}>
+                <Form.Item
+                  label="ZIP Code"
+                  name="zip_code"
+                  rules={[{ required: true, message: "Please enter ZIP code" }]}
+                >
+                  <Input
+                    placeholder="ZIP code"
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={12}>
+                <Form.Item
+                  label="Country"
+                  name="country"
+                  rules={[{ required: true, message: "Please select country" }]}
+                >
+                  <Select
+                    placeholder="Select country"
+                    size="large"
+                    showSearch
+                    optionFilterProp="label"
+                    options={countries.map((c) => ({ value: c, label: c }))}
+                  />
+                </Form.Item>
+              </Col>
+
+              {/* Professional Information */}
+              <Col span={24}>
+                <Title level={4} className="!mb-4">Professional Information</Title>
+              </Col>
+
+              <Col span={24}>
+                <Form.Item
+                  label="Department"
+                  name="department_id"
+                  rules={[{ required: true, message: "Please select department" }]}
+                >
+                  <Select
+                    placeholder="Select department"
+                    size="large"
+                    options={departments.map((d) => ({
+                      value: d.id,
+                      label: d.name
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Divider />
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-3">
+              <Button
+                onClick={handleCancel}
+                size="large"
               >
-                <Input 
-                  type="email"
-                  placeholder="Email address"
-                  size="large"
-                  prefix={<MailOutlined />}
-                />
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                label="Phone"
-                name="phone_no"
-                rules={[{ required: true, message: "Please enter phone number" }]}
+                Cancel
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={isLoading}
+                size="large"
+                className="bg-blue-600 hover:bg-blue-700"
               >
-                <Input 
-                  placeholder="Phone number"
-                  size="large"
-                  prefix={<PhoneOutlined />}
-                />
-              </Form.Item>
-            </Col>
-
-            {/* Address Information */}
-            <Col span={24}>
-              <Title level={4} className="!mb-4">Address Information</Title>
-            </Col>
-
-            <Col span={24}>
-              <Form.Item
-                label="Street"
-                name="street"
-                rules={[{ required: true, message: "Please enter street address" }]}
-              >
-                <Input 
-                  placeholder="Street address"
-                  size="large"
-                  prefix={<EnvironmentOutlined />}
-                />
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                label="City"
-                name="city"
-                rules={[{ required: true, message: "Please enter city" }]}
-              >
-                <Input 
-                  placeholder="City"
-                  size="large"
-                />
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                label="State"
-                name="state"
-                rules={[{ required: true, message: "Please enter state" }]}
-              >
-                <Input 
-                  placeholder="State"
-                  size="large"
-                />
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                label="ZIP Code"
-                name="zip_code"
-                rules={[{ required: true, message: "Please enter ZIP code" }]}
-              >
-                <Input 
-                  placeholder="ZIP code"
-                  size="large"
-                />
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                label="Country"
-                name="country"
-                rules={[{ required: true, message: "Please select country" }]}
-              >
-                <Select
-                  placeholder="Select country"
-                  size="large"
-                  showSearch
-                  optionFilterProp="label"
-                  options={countries.map((c) => ({ value: c, label: c }))}
-                />
-              </Form.Item>
-            </Col>
-
-            {/* Professional Information */}
-            <Col span={24}>
-              <Title level={4} className="!mb-4">Professional Information</Title>
-            </Col>
-
-            <Col span={24}>
-              <Form.Item
-                label="Department"
-                name="department_id"
-                rules={[{ required: true, message: "Please select department" }]}
-              >
-                <Select
-                  placeholder="Select department"
-                  size="large"
-                  options={departments.map((d) => ({ 
-                    value: d.id, 
-                    label: d.name 
-                  }))}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Divider />
-
-          {/* Form Actions */}
-          <div className="flex justify-end gap-3">
-            <Button 
-              onClick={handleCancel}
-              size="large"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="primary" 
-              htmlType="submit" 
-              loading={isLoading}
-              size="large"
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {selectedNurse ? "Update Nurse" : "Add Nurse"}
-            </Button>
-          </div>
-        </Form>
+                {selectedNurse ? "Update Nurse" : "Add Nurse"}
+              </Button>
+            </div>
+          </Form>
+        </Spin>
       </Modal>
     </div>
   );

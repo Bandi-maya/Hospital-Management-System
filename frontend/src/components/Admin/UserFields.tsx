@@ -132,7 +132,7 @@ export default function UserFieldsList() {
     ]).then(([data, usertypesData]) => {
       if (!data?.error) {
         // Enhance fields with user type names
-        const enhancedData = data.map((field: UserField) => ({
+        const enhancedData = data.data.map((field: UserField) => ({
           ...field,
           user_type_name: usertypesData.data?.find((ut: UserType) => ut.id === field.user_type)?.type || field.user_type
         }));
