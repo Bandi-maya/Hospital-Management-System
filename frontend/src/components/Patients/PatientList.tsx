@@ -67,7 +67,7 @@ const WhiteSpinner = ({ size = "default", className = "" }: { size?: "small" | "
 };
 
 /** 🔹 Enhanced Animated Icon Button with Better Hover Labels **/
-const AnimatedActionButton = ({
+export const AnimatedActionButton = ({
   icon,
   label,
   color,

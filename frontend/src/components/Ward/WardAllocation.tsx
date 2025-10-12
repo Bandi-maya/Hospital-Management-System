@@ -454,7 +454,7 @@ export default function WardAllocations() {
     try {
       const res = await getApi("/ward-beds");  // or your allocation endpoint
       if (!res.error) {
-        setData(res);
+        setData(res.filter((ward) => ward.status !== "AVAILABLE"));
       } else {
         message.error(res.error);
       }
@@ -492,61 +492,61 @@ export default function WardAllocations() {
   const handleUpdate = async () => {
     try {
       const values = await form.validateFields();
-      if (modalInfo.type === "add") {
-        // create
-        const payload = {
-          ward_id: values.ward_id,
-          bed_no: values.bed_no,
-          patient_name: values.patient_name,
-          admission_date: values.admission_date,
-          price: values.price,
-          status: values.status,
-          insurance: values.insurance,
-        };
-        const res = await PostApi("/ward-beds", payload);
-        if (!res.error) {
-          message.success("Allocation created");
-          loadAllocations();
-          handleCancel();
-        } else {
-          message.error(res.error);
-        }
-      } else if (modalInfo.type === "edit") {
-        const rec = modalInfo.record!;
-        const payload = {
-          id: rec.id,
-          ward_id: values.ward_id,
-          bed_no: values.bed_no,
-          patient_id: values.patient_id,
-          admission_date: values.admission_date,
-          price: values.price,
-          status: values.status,
-        };
-        const res = await PutApi("/ward-beds", payload);
-        if (!res.error) {
-          message.success("Allocation updated");
-          loadAllocations();
-          handleCancel();
-        } else {
-          message.error(res.error);
-        }
-      } else if (modalInfo.type === "insurance") {
-        const rec = modalInfo.record!;
-        const payload: any = {
-          id: rec.id,
-        };
-        if (values.insurance) {
-          payload.insurance = values.insurance;
-        }
-        const res = await PutApi("/wardbeds", payload);
-        if (!res.error) {
-          message.success("Insurance updated");
-          loadAllocations();
-          handleCancel();
-        } else {
-          message.error(res.error);
-        }
+      // if (modalInfo.type === "add") {
+      //   console.log(values)
+      //   // create
+      //   const payload = {
+      //     ward_id: values.ward_id,
+      //     bed_id: values.bed_id,
+      //     patient_name: values.patient_name,
+      //     admission_date: values.admission_date,
+      //     price: values.price,
+      //     status: values.status,
+      //     insurance: values.insurance,
+      //   };
+      //   const res = await PostApi("/ward-beds", payload);
+      //   if (!res.error) {
+      //     message.success("Allocation created");
+      //     loadAllocations();
+      //     handleCancel();
+      //   } else {
+      //     message.error(res.error);
+      //   }
+      // } else if (modalInfo.type === "edit") {
+      const payload = {
+        id: values.bed_id,
+        ward_id: values.ward_id,
+        patient_id: values.patient_id,
+        admission_date: values.admission_date,
+        price: values.price,
+        status: values.status,
+      };
+      const res = await PutApi("/ward-beds", payload);
+      if (!res.error) {
+        message.success("Allocation updated");
+        loadAllocations();
+        handleCancel();
+      } else {
+        message.error(res.error);
       }
+      // } 
+      // else if (modalInfo.type === "insurance") {
+      //   const rec = modalInfo.record!;
+      //   const payload: any = {
+      //     id: rec.id,
+      //   };
+      //   if (values.insurance) {
+      //     payload.insurance = values.insurance;
+      //   }
+      //   const res = await PutApi("/wardbeds", payload);
+      //   if (!res.error) {
+      //     message.success("Insurance updated");
+      //     loadAllocations();
+      //     handleCancel();
+      //   } else {
+      //     message.error(res.error);
+      //   }
+      // }
     } catch (errorInfo) {
       console.log("Validation Failed:", errorInfo);
     }
@@ -570,12 +570,12 @@ export default function WardAllocations() {
   const columns = [
     {
       title: "Patient Name",
-      dataIndex: "patient_name",
+      dataIndex: ["patient", "name"],
       key: "patient_name",
     },
     {
       title: "Ward",
-      dataIndex: "ward_name",
+      dataIndex: ["ward", "name"],
       key: "ward_name",
     },
     {
@@ -626,13 +626,13 @@ export default function WardAllocations() {
               onClick={() => handleDelete(rec)}
             />
           </Tooltip>
-          <Tooltip title="Edit Insurance">
+          {/* <Tooltip title="Edit Insurance">
             <Button
               type="link"
               icon={<SafetyCertificateOutlined />}
               onClick={() => showInsuranceModal(rec)}
             />
-          </Tooltip>
+          </Tooltip> */}
         </Space>
       ),
     },

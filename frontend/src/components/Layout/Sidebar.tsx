@@ -218,16 +218,16 @@ const createMenuItems = (): MenuItem[] => {
         { key: '/departments/users', label: 'Users', icon: <UsergroupAddOutlined /> },
       ],
     },
-    {
-      key: '/emergency',
-      label: 'Emergency',
-      icon: <AlertOutlined />,
-      requiredPermission: 'emergency:read',
-      children: [
-        { key: '/emergency/cases', label: 'Emergency Cases', icon: <AlertOutlined /> },
-        { key: '/emergency/triage', label: 'Triage', icon: <InsuranceOutlined /> },
-      ],
-    },
+    // {
+    //   key: '/emergency',
+    //   label: 'Emergency',
+    //   icon: <AlertOutlined />,
+    //   requiredPermission: 'emergency:read',
+    //   children: [
+    //     { key: '/emergency/cases', label: 'Emergency Cases', icon: <AlertOutlined /> },
+    //     { key: '/emergency/triage', label: 'Triage', icon: <InsuranceOutlined /> },
+    //   ],
+    // },
   ];
 
   const adminItems: MenuItem[] = [

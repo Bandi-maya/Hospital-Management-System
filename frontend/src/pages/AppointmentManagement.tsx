@@ -14,8 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { getApi } from "@/ApiService";
-import { Search, PlusCircle, Calendar, User, Stethoscope, Clock, Filter, Download, ArrowRight } from "lucide-react";
+import { getApi, PutApi } from "@/ApiService";
+import { Search, PlusCircle, Calendar, User, Stethoscope, Clock, Filter, Download, ArrowRight, Edit } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { AnimatedActionButton } from "@/components/Patients/PatientList";
 
 interface Appointment {
   id: string;
@@ -32,6 +34,44 @@ export default function AppointmentManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
+  const [appointment, setAppointment] = useState<any>(null);
+  const [form, setForm] = useState({
+    id: "",
+    patient_id: "",
+    doctor_id: "",
+    appointment_date: "",
+    appointment_start_time: "",
+    status: "",
+  });
+
+  const handleChange = (key: string, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = () => {
+    setLoading(true);
+    PutApi(`/appointment`, form)
+      .then((res) => {
+        if (!res?.error) {
+          toast.success("Appointment updated successfully!");
+          setAppointment({})
+          setForm({
+            id: "",
+            patient_id: "",
+            doctor_id: "",
+            appointment_date: "",
+            appointment_start_time: "",
+            status: ""
+          })
+          loadData()
+        } else {
+          toast.error(res?.error || "Update failed");
+        }
+      })
+      .catch(() => toast.error("Error updating appointment"))
+      .finally(() => setLoading(false));
+  };
+
 
   function loadData() {
     setLoading(true);
@@ -329,6 +369,25 @@ export default function AppointmentManagement() {
                             </SelectContent>
                           </Select>
                         )}
+                        <AnimatedActionButton
+                          icon={<Edit className="w-4 h-4" />}
+                          label="Edit Patient"
+                          color="blue"
+                          // loading={loadingActionId === record.id}
+                          onClick={() => {
+                            setAppointment(app);
+                            setForm({
+                              id: app?.['id'],
+                              patient_id: app?.['patient_id'],
+                              doctor_id: app?.['doctor_id'],
+                              appointment_date: app.appointment_date
+                                ? app.appointment_date.split("T")[0]
+                                : "",
+                              appointment_start_time: app?.['appointment_start_time'],
+                              status: app?.['status'],
+                            });
+                          }}
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -338,6 +397,80 @@ export default function AppointmentManagement() {
           </div>
         </CardContent>
       </Card>
+      <div className="p-6 flex justify-center bg-gray-50 min-h-screen">
+        <Card className="w-full max-w-2xl shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-xl font-bold">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              Edit Appointment
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="flex items-center gap-2 mb-1">
+                  <Calendar className="w-4 h-4 text-gray-500" /> Date
+                </Label>
+                <Input
+                  type="date"
+                  value={form.appointment_date}
+                  onChange={(e) => handleChange("appointment_date", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label className="flex items-center gap-2 mb-1">
+                  <Clock className="w-4 h-4 text-gray-500" /> Start Time
+                </Label>
+                <Input
+                  type="time"
+                  value={form.appointment_start_time}
+                  onChange={(e) => handleChange("appointment_start_time", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-1 block">Status</Label>
+              <Select value={form.status} onValueChange={(v) => handleChange("status", v)}>
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Scheduled">Scheduled</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Confirmed">Confirmed</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAppointment({})
+                  setForm({
+                    id: "",
+                    patient_id: "",
+                    doctor_id: "",
+                    appointment_date: "",
+                    appointment_start_time: "",
+                    status: ""
+                  })
+                }}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

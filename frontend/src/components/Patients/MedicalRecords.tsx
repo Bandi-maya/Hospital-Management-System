@@ -22,6 +22,8 @@ import { getApi, PutApi, PostApi, DeleteApi } from "@/ApiService";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import Prescriptions from "../Pharmacy/Prescriptions";
+import { AnimatedActionButton } from "./PatientList";
+import { Edit } from "lucide-react";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -45,7 +47,7 @@ export default function MedicalRecords() {
   const [search, setSearch] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [notes, setNotes] = useState("");
+  const [medicalRecordData, setMedicalRecordData] = useState<any>({});
   const [activeTab, setActiveTab] = useState("1");
   const [medicines, setMedicines] = useState([])
   const [labTests, setlabTests] = useState([])
@@ -137,12 +139,12 @@ export default function MedicalRecords() {
     PutApi('/medical-records', {
       user_id: selectedPatient.user_id,
       id: selectedPatient.id,
-      notes: notes,
+      notes: medicalRecordData?.['notes'],
     }).then((data) => {
       if (!data?.error) {
         loadPatients();
         setSelectedPatient({});
-        setNotes("");
+        setMedicalRecordData({});
         setIsModalVisible(false);
       } else {
         toast.error("Error updating record: " + data.error);
@@ -221,7 +223,6 @@ export default function MedicalRecords() {
         <Button
           type="link"
           onClick={() => {
-            setNotes(record?.["notes"]);
             setSelectedPatient(record);
             setIsModalVisible(true);
           }}
@@ -239,9 +240,39 @@ export default function MedicalRecords() {
       columns={[
         { title: "Patient ID", dataIndex: "id", key: "patientId" },
         { title: "Patient Name", dataIndex: ["user", "name"], key: "patientName" },
-        { title: "Condition", dataIndex: "diagnosis", key: "condition" },
+        // { title: "Condition", dataIndex: "diagnosis", key: "condition" },
         { title: "Date", dataIndex: "created_at", key: "date" },
         { title: "Notes", dataIndex: "notes", key: "notes" },
+        {
+          title: "Actions",
+          key: "actions",
+          width: 300,
+          render: (_: any, record: any) => (
+            <div className="flex flex-wrap gap-2">
+              <AnimatedActionButton
+                icon={<Edit className="w-4 h-4" />}
+                label="Edit Patient"
+                color="blue"
+                // loading={loadingActionId === record.id}
+                onClick={() => {
+                  setSelectedPatient(record);
+                  setIsModalVisible(true)
+                  setMedicalRecordData({ notes: record.notes, id: record.id })
+                  // setForm({
+                  //   address: record.address || {},
+                  //   department_id: record.department_id,
+                  //   date_of_birth: record.date_of_birth?.split("T")[0] || "",
+                  //   gender: record.gender,
+                  //   extra_fields: record.extra_fields?.fields_data || {},
+                  //   email: record.email,
+                  //   phone_no: record.phone_no,
+                  //   blood_type: record.blood_type,
+                  // });
+                }}
+              />
+            </div>
+          )
+        }
       ]}
       rowKey="id"
     />
@@ -593,7 +624,7 @@ export default function MedicalRecords() {
         onOk={handleAddRecord}
       >
         Notes
-        <TextArea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+        <TextArea value={medicalRecordData?.notes} onChange={(e) => setMedicalRecordData({ ...medicalRecordData, notes: e.target.value })} rows={3} />
       </Modal>
 
       {/* Medicine Modal */}

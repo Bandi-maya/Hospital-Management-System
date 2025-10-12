@@ -36,7 +36,7 @@ export default function CreateToken() {
   });
 
   function getPatients() {
-    getApi('/users?user_type=DOCTOR')
+    getApi('/users?user_type=PATIENT')
       .then((data) => {
         if (!data.error) {
           setPatients(data)

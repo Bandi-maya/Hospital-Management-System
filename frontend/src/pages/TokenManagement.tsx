@@ -15,9 +15,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { getApi, PutApi } from "@/ApiService";
-import { Search, PlusCircle, Calendar, User, Stethoscope, Clock, Filter, Download } from "lucide-react";
+import { Search, PlusCircle, Calendar, User, Stethoscope, Clock, Filter, Download, Edit } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { totalmem } from "os";
+import { AnimatedActionButton } from "@/components/Patients/PatientList";
+import { Label } from "@/components/ui/label";
 
 interface Appointment {
   id: string;
@@ -36,6 +38,41 @@ export default function TokenManagement() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const { user } = useAuth()
+  const [appointment, setAppointment] = useState<any>(null);
+  const [form, setForm] = useState({
+    id: "",
+    patient_id: "",
+    doctor_id: "",
+    appointment_date: "",
+    status: "",
+  });
+
+  const handleChange = (key: string, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = () => {
+    setLoading(true);
+    PutApi(`/tokens`, form)
+      .then((res) => {
+        if (!res?.error) {
+          toast.success("Appointment updated successfully!");
+          setAppointment({})
+          setForm({
+            id: "",
+            patient_id: "",
+            doctor_id: "",
+            appointment_date: "",
+            status: ""
+          })
+          loadData()
+        } else {
+          toast.error(res?.error || "Update failed");
+        }
+      })
+      .catch(() => toast.error("Error updating appointment"))
+      .finally(() => setLoading(false));
+  };
 
   function loadData() {
     setLoading(true);
@@ -356,6 +393,24 @@ export default function TokenManagement() {
                             </SelectContent>
                           </Select>
                         )}
+                        <AnimatedActionButton
+                          icon={<Edit className="w-4 h-4" />}
+                          label="Edit Patient"
+                          color="blue"
+                          // loading={loadingActionId === record.id}
+                          onClick={() => {
+                            setAppointment(app);
+                            setForm({
+                              id: app?.['id'],
+                              patient_id: app?.['patient_id'],
+                              doctor_id: app?.['doctor_id'],
+                              appointment_date: app.appointment_date
+                                ? app.appointment_date.split("T")[0]
+                                : "",
+                              status: app?.['status'],
+                            });
+                          }}
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -365,6 +420,68 @@ export default function TokenManagement() {
           </div>
         </CardContent>
       </Card>
+      <div className="p-6 flex justify-center bg-gray-50 min-h-screen">
+        <Card className="w-full max-w-2xl shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-xl font-bold">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              Edit Appointment
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="flex items-center gap-2 mb-1">
+                  <Calendar className="w-4 h-4 text-gray-500" /> Date
+                </Label>
+                <Input
+                  type="date"
+                  value={form.appointment_date}
+                  onChange={(e) => handleChange("appointment_date", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-1 block">Status</Label>
+              <Select value={form.status} onValueChange={(v) => handleChange("status", v)}>
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Alloted">Alloted</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Confirmed">Confirmed</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAppointment({})
+                  setForm({
+                    id: "",
+                    patient_id: "",
+                    doctor_id: "",
+                    appointment_date: "",
+                    status: ""
+                  })
+                }}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
