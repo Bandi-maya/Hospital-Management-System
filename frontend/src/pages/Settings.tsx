@@ -117,7 +117,7 @@ export default function Settings() {
     getApi("/user-fields")
       .then((data) => {
         if (!data?.error) {
-          setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === "NURSE"));
+          setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === "NURSE"));
         } else {
           message.error("Error fetching fields: " + data.error);
         }

@@ -70,7 +70,7 @@ export default function LabTests() {
     await getApi("/lab-tests")
       .then((data) => {
         if (!data?.error) {
-          setTests(data);
+          setTests(data.data);
         }
         else {
           toast.error(data.error);

@@ -134,7 +134,7 @@ export default function UserFieldsList() {
         // Enhance fields with user type names
         const enhancedData = data.map((field: UserField) => ({
           ...field,
-          user_type_name: usertypesData?.find((ut: UserType) => ut.id === field.user_type)?.type || field.user_type
+          user_type_name: usertypesData.data?.find((ut: UserType) => ut.id === field.user_type)?.type || field.user_type
         }));
         setUserFields(enhancedData);
       } else {
@@ -142,7 +142,7 @@ export default function UserFieldsList() {
         console.error("Error fetching user fields:", data.error);
       }
       if (!usertypesData?.error) {
-        setUserTypes(usertypesData);
+        setUserTypes(usertypesData.data);
       } else {
         toast.error(usertypesData.error)
         console.error("Error fetching user types:", usertypesData.error);

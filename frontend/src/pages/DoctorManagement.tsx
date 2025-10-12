@@ -76,7 +76,7 @@ export default function DoctorManagement() {
     getApi("/user-fields")
       .then((data) => {
         if (!data?.error) {
-          setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === "DOCTOR"));
+          setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === "DOCTOR"));
         }
         else {
           toast.error("Error fetching doctors: " + data.error);
@@ -92,7 +92,7 @@ export default function DoctorManagement() {
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data);
+          setDepartments(data.data);
         }
         else {
           toast.error(data.error);
@@ -109,7 +109,7 @@ export default function DoctorManagement() {
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
-          setDoctors(data);
+          setDoctors(data.data);
         }
         else {
           toast.error(data.error);

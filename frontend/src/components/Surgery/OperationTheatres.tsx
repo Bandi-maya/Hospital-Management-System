@@ -99,8 +99,8 @@ export default function OperationTheatreManagement() {
       getApi('/operation-theatre'),
       getApi('/departments')
     ]).then(([theatresData, departmentsData]) => {
-      if (!theatresData?.error) setOperationTheatres(theatresData);
-      if (!departmentsData?.error) setDepartments(departmentsData);
+      if (!theatresData?.error) setOperationTheatres(theatresData.data);
+      if (!departmentsData?.error) setDepartments(departmentsData.data);
     }).catch(error => {
       toast.error("Failed to load data");
       console.error("Error loading data:", error);

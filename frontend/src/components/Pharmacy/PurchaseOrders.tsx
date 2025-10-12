@@ -104,7 +104,7 @@ export default function PurchaseOrders() {
     getApi("/orders")
       .then((res) => {
         if (!res.error) {
-          setOrders(res);
+          setOrders(res.data);
         } else {
           toast.error("Failed to load orders.");
         }
@@ -116,7 +116,7 @@ export default function PurchaseOrders() {
     getApi("/users?user_type=DOCTOR")
       .then((res) => {
         if (!res.error) {
-          setPatients(res);
+          setPatients(res.data);
         } else {
           toast.error("Failed to load patients.");
         }
@@ -128,7 +128,7 @@ export default function PurchaseOrders() {
     getApi("/medicines")
       .then((res) => {
         if (!res.error) {
-          setMedicines(res);
+          setMedicines(res.data);
         } else {
           toast.error("Failed to load medicines.");
         }

@@ -169,7 +169,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         getApi("/user-fields")
             .then((data) => {
                 if (!data?.error) {
-                    setExtraFields(data.filter((field) => field.user_type === 4));
+                    setExtraFields(data.data.filter((field) => field.user_type === 4));
                 }
                 else {
                     toast.error("Error fetching doctors: " + data.error);
@@ -185,7 +185,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         getApi(`/users?user_type=DOCTOR`)
             .then((data) => {
                 if (!data?.error) {
-                    setDoctorList(data);
+                    setDoctorList(data.data);
                 }
                 else {
                     toast.error("Error fetching doctors: " + data.error);
@@ -200,7 +200,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         getApi(`/departments`)
             .then((data) => {
                 if (!data?.error) {
-                    setDepartmentList(data);
+                    setDepartmentList(data.data);
                 }
                 else {
                     toast.error("Error fetching departments: " + data.error);

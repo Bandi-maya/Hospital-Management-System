@@ -22,7 +22,7 @@ export default function PatientList() {
     await getApi(`/users?DOCTOR=LABTECHNICIAN`)
       .then((data) => {
         if (!data?.error) {
-          setPatients(data);
+          setPatients(data.data);
         }
         else {
           toast.error(data.error)

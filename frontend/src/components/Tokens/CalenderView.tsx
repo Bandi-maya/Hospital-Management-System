@@ -57,7 +57,7 @@ export default function TokenCalendarView() {
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
-          setDoctors(data);
+          setDoctors(data.data);
         } else {
           toast.error(data.error);
         }
@@ -71,7 +71,7 @@ export default function TokenCalendarView() {
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data);
+          setDepartments(data.data);
         } else {
           toast.error(data.error);
         }
@@ -101,7 +101,7 @@ export default function TokenCalendarView() {
       getApi(`/tokens?${params.join('&')}`)
         .then((data) => {
           if (!data.error) {
-            setTokens(data);
+            setTokens(data.data);
           } else {
             toast.error(data.error);
           }

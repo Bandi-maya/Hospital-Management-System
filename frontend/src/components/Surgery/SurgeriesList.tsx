@@ -131,11 +131,11 @@ export default function SurgeryList() {
             getApi('/users?user_type=PATIENT'),
             getApi('/users?user_type=DOCTOR') // Doctors
         ]).then(([surgeriesData, typesData, theatresData, patientsData, doctorsData]) => {
-            if (!surgeriesData?.error) setSurgeries(surgeriesData);
-            if (!typesData?.error) setSurgeryTypes(typesData);
-            if (!theatresData?.error) setOperationTheatres(theatresData);
-            if (!patientsData?.error) setPatients(patientsData);
-            if (!doctorsData?.error) setDoctors(doctorsData);
+            if (!surgeriesData?.error) setSurgeries(surgeriesData.data);
+            if (!typesData?.error) setSurgeryTypes(typesData.data);
+            if (!theatresData?.error) setOperationTheatres(theatresData.data);
+            if (!patientsData?.error) setPatients(patientsData.data);
+            if (!doctorsData?.error) setDoctors(doctorsData.data);
         }).catch(error => {
             toast.error("Failed to load data");
             console.error("Error loading data:", error);

@@ -115,7 +115,7 @@ export default function Users() {
     getApi("/users")
       .then((data) => {
         if (!data.error) {
-          setUsers(data)
+          setUsers(data.data)
         }
         else {
           toast.error(data.error)

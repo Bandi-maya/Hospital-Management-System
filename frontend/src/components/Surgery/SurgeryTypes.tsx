@@ -61,8 +61,8 @@ export default function SurgeryType() {
       getApi('/surgery-type'),
       getApi('/departments')
     ]).then(([surgeryTypesData, departmentsData]) => {
-      if (!surgeryTypesData?.error) setSurgeryTypes(surgeryTypesData);
-      if (!departmentsData?.error) setDepartments(departmentsData);
+      if (!surgeryTypesData?.error) setSurgeryTypes(surgeryTypesData.data);
+      if (!departmentsData?.error) setDepartments(departmentsData.data);
     }).catch(error => {
       toast.error("Failed to load data");
       console.error("Error loading data:", error);

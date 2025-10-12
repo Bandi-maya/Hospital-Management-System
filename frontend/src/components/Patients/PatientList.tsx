@@ -34,7 +34,7 @@ import { getApi, PostApi, PutApi } from "@/ApiService";
 import { DepartmentInterface } from "@/components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
-import FullscreenLoader from "@/components/Loader/FullscreenLoader"; 
+import FullscreenLoader from "@/components/Loader/FullscreenLoader";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -58,6 +58,11 @@ export default function PatientList() {
     table: false
   });
   const navigate = useNavigate();
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   const userTypeId = useMemo(() => extraFields?.[0]?.user_type, [extraFields]);
 
@@ -72,13 +77,13 @@ export default function PatientList() {
       .then((data) => {
         if (!data?.error) {
           setExtraFields(
-            data.filter(
+            data.data.filter(
               (field: any) => field.user_type_data.type.toUpperCase() === "PATIENT"
             )
           );
         } else message.error("Error fetching user fields: " + data.error);
       })
-      .catch(() => message.error("Error fetching extra fields"))
+      .catch(() => message.error("Error fetching user fields"))
       .finally(() => setLoadingStates(prev => ({ ...prev, extraFields: false })));
   };
 
@@ -124,22 +129,25 @@ export default function PatientList() {
     setLoadingStates(prev => ({ ...prev, departments: true }));
     getApi("/departments")
       .then((data) => {
-        if (!data.error) setDepartments(data);
+        if (!data.error) setDepartments(data.data);
         else message.error(data.error);
       })
       .catch(() => message.error("Failed to fetch departments"))
       .finally(() => setLoadingStates(prev => ({ ...prev, departments: false })));
   };
 
-  const loadPatients = async () => {
+  const loadPatients = async (page = 1, limit = 10) => {
     setIsLoading(true);
-    setLoadingStates(prev => ({ ...prev, table: true }));
-    showLoader(); // This will trigger the fullscreen loader
-
     try {
-      const data = await getApi(`/users?user_type=PATIENT`);
+      const data = await getApi(`/users?user_type=PATIENT&page=${page}&limit=${limit}`);
       if (!data?.error) {
-        setPatients(data);
+        setPatients(data.data); // Use the paginated `data` field from API
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: limit,
+          total: data.total_records, // Set total from API
+        }));
       } else {
         message.error(data.error);
       }
@@ -147,12 +155,11 @@ export default function PatientList() {
       message.error("Error getting patients");
     } finally {
       setIsLoading(false);
-      setLoadingStates(prev => ({ ...prev, table: false }));
     }
   };
 
   useEffect(() => {
-    loadPatients();
+    loadPatients(pagination.current, pagination.pageSize);
     loadDepartments();
     getExtraFields();
   }, []);
@@ -174,7 +181,7 @@ export default function PatientList() {
     try {
       const values = await medicalRecordForm.validateFields();
       setLoadingActionId(values.user_id);
-      
+
       PostApi("/medical-records", values)
         .then((data) => {
           if (!data?.error) {
@@ -215,15 +222,15 @@ export default function PatientList() {
     setIsDialogOpen(true);
   };
 
-  const ActionButton = ({ 
-    icon, 
-    label, 
-    type = "default", 
-    danger = false, 
-    onClick, 
+  const ActionButton = ({
+    icon,
+    label,
+    type = "default",
+    danger = false,
+    onClick,
     loading = false,
     confirm = false,
-    confirmAction 
+    confirmAction
   }: {
     icon: React.ReactNode;
     label: string;
@@ -235,8 +242,8 @@ export default function PatientList() {
     confirmAction?: () => void;
   }) => {
     const button = (
-      <motion.div 
-        whileHover={{ scale: 1.1 }} 
+      <motion.div
+        whileHover={{ scale: 1.1 }}
         transition={{ type: "spring", stiffness: 250 }}
       >
         <Tooltip title={label} placement="top">
@@ -249,15 +256,15 @@ export default function PatientList() {
             className={`
               flex items-center justify-center 
               transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ? 
+              ${!danger && !type.includes('primary') ?
                 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
               }
-              ${danger ? 
+              ${danger ?
                 'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
               }
               w-10 h-10 rounded-full
             `}
-            style={{ 
+            style={{
               minWidth: '40px',
               border: '1px solid #d9d9d9'
             }}
@@ -359,11 +366,15 @@ export default function PatientList() {
     },
   ];
 
+  const handleTableChange = (newPagination: any) => {
+    loadPatients(newPagination.current, newPagination.pageSize);
+  };
+
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow-sm">
       {/* Fullscreen Loading Spinner */}
-      <FullscreenLoader 
-        active={showFullscreenLoader} 
+      <FullscreenLoader
+        active={showFullscreenLoader}
         onComplete={() => setShowFullscreenLoader(false)}
         speed={100}
       />
@@ -373,7 +384,7 @@ export default function PatientList() {
         <Title level={2} className="m-0">Patient List</Title>
         <Space>
           <Button
-            onClick={loadPatients}
+            onClick={() => loadPatients()}
             icon={<ReloadOutlined />}
             loading={loadingStates.table}
             className="flex items-center"
@@ -393,7 +404,7 @@ export default function PatientList() {
       </div>
 
       {/* Patients Table */}
-      <Card 
+      <Card
         loading={loadingStates.table}
         bodyStyle={{ padding: 0 }}
         className="overflow-hidden"
@@ -402,7 +413,12 @@ export default function PatientList() {
           dataSource={patients}
           columns={columns}
           rowKey="id"
-          pagination={{ pageSize: 5 }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+          }}
+          onChange={handleTableChange}
           scroll={{ x: 800 }}
         />
       </Card>
@@ -416,8 +432,8 @@ export default function PatientList() {
           medicalRecordForm.resetFields();
         }}
         footer={[
-          <Button 
-            key="cancel" 
+          <Button
+            key="cancel"
             onClick={() => {
               setIsDialogOpen(false);
               medicalRecordForm.resetFields();
@@ -472,8 +488,8 @@ export default function PatientList() {
           form.resetFields();
         }}
         footer={[
-          <Button 
-            key="cancel" 
+          <Button
+            key="cancel"
             onClick={() => {
               setIsModalOpen(false);
               setSelectedPatient(null);
@@ -503,7 +519,7 @@ export default function PatientList() {
             <Row gutter={16}>
               <Col span={12}>
                 <Title level={4}>Personal Information</Title>
-                
+
                 <Form.Item
                   name={['extra_fields', 'first_name']}
                   label="First Name"
@@ -573,7 +589,7 @@ export default function PatientList() {
 
               <Col span={12}>
                 <Title level={4}>Address Information</Title>
-                
+
                 <Form.Item
                   name={['address', 'city']}
                   label="City"
@@ -616,7 +632,7 @@ export default function PatientList() {
                   name="department_id"
                   label="Department"
                 >
-                  <Select 
+                  <Select
                     placeholder="Select department"
                     loading={loadingStates.departments}
                   >

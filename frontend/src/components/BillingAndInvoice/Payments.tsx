@@ -72,7 +72,7 @@ export default function Payments() {
         getApi("/payment")
             .then((data) => {
                 if (!data.error) {
-                    setPayments(data)
+                    setPayments(data.data)
                 }
                 else {
                     toast.error(data.error)

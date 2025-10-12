@@ -25,7 +25,7 @@ export default function CalendarView() {
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
-          setDoctors(data)
+          setDoctors(data.data)
         }
         else {
           toast.error(data.error)
@@ -46,7 +46,7 @@ export default function CalendarView() {
     getApi(`/appointment?doctor_id=${doctorId}&date=${dateString}`)
       .then((data) => {
         if (!data.error) {
-          setAppointments(data)
+          setAppointments(data.data)
         }
         else {
           toast.error(data.error)

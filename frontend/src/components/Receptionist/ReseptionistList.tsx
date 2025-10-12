@@ -31,7 +31,7 @@ export default function ReseptionistList() {
     getApi("/user-fields")
       .then((data) => {
         if (!data?.error) {
-          setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === "NURSE"));
+          setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === "NURSE"));
         }
         else {
           toast.error("Error fetching doctors: " + data.error);
@@ -82,7 +82,7 @@ export default function ReseptionistList() {
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data);
+          setDepartments(data.data);
         }
         else {
           toast.error(data.error);
@@ -101,7 +101,7 @@ export default function ReseptionistList() {
     await getApi(`/users?user_type=RECEPTIONIST`)
       .then((data) => {
         if (!data?.error) {
-          setPatients(data);
+          setPatients(data.data);
         }
         else {
           toast.error(data.error)

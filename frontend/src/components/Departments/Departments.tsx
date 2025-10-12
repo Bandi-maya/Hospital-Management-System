@@ -117,7 +117,7 @@ export default function Department() {
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data);
+          setDepartments(data.data);
         } else {
           toast.error(data.error);
         }

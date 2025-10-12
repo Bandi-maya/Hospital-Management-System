@@ -158,7 +158,7 @@ export default function HMSAuditLogs() {
     getApi("/activity-logs")
     .then((data) => {
       if (!data.error) {
-        setLogs(data)
+        setLogs(data.data)
       }
       else {
         toast.error(data.error)

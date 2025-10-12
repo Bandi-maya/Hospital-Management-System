@@ -116,7 +116,7 @@ export default function UserTypesList() {
     await getApi(`/user-types`)
       .then((data) => {
         if (!data?.error) {
-          setUserTypes(data);
+          setUserTypes(data.data);
         } else {
           toast.error(data.error)
           console.error("Error fetching user types:", data.error);

@@ -427,7 +427,7 @@ export default function WardAllocations() {
     try {
       const wardRes = await getApi("/wards");
       if (!wardRes.error) {
-        setWards(wardRes);
+        setWards(wardRes.data);
       }
       // Optionally load patients, doctors if needed
     } catch (e) {
@@ -440,7 +440,7 @@ export default function WardAllocations() {
     try {
       const wardRes = await getApi("/users?user_type=PATIENT");
       if (!wardRes.error) {
-        setPatients(wardRes);
+        setPatients(wardRes.data);
       }
       // Optionally load patients, doctors if needed
     } catch (e) {
@@ -454,7 +454,7 @@ export default function WardAllocations() {
     try {
       const res = await getApi("/ward-beds");  // or your allocation endpoint
       if (!res.error) {
-        setData(res.filter((ward) => ward.status !== "AVAILABLE"));
+        setData(res.data.filter((ward) => ward.status !== "AVAILABLE"));
       } else {
         message.error(res.error);
       }

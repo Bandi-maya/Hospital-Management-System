@@ -89,25 +89,25 @@ export default function Prescriptions() {
       getApi('/surgery-type'),
     ]).then(([data, data1, data2, data3]) => {
       if (!data.error) {
-        setInventory(data)
+        setInventory(data.data)
       }
       else {
         toast.error(data.error)
       }
       if (!data1.error) {
-        setTests(data1)
+        setTests(data1.data)
       }
       else {
         toast.error(data1.error)
       }
       if (!data2.error) {
-        setPatients(data2)
+        setPatients(data2.data)
       }
       else {
         toast.error(data2.error)
       }
       if (!data3.error) {
-        setSurgeries(data3)
+        setSurgeries(data3.data)
       }
       else {
         toast.error(data3.error)
@@ -133,7 +133,7 @@ export default function Prescriptions() {
     getApi("/prescriptions")
       .then((data) => {
         if (!data.error) {
-          setPrescriptions(data)
+          setPrescriptions(data.data)
         }
         else {
           toast.error(data.error)

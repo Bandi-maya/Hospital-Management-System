@@ -168,7 +168,7 @@ export default function AddTechnician({ onAddPatient }: AddPatientProps) {
         getApi("/user-fields")
             .then((data) => {
                 if (!data?.error) {
-                    setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === 'NURSE'));
+                    setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === 'NURSE'));
                 }
                 else {
                     toast.error("Error fetching doctors: " + data.error);
@@ -184,7 +184,7 @@ export default function AddTechnician({ onAddPatient }: AddPatientProps) {
         getApi(`/departments`)
             .then((data) => {
                 if (!data?.error) {
-                    setDepartmentList(data);
+                    setDepartmentList(data.data);
                 }
                 else {
                     toast.error("Error fetching departments: " + data.error);

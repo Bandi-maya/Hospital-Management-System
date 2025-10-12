@@ -148,7 +148,7 @@ export default function MedicalRecords() {
     getApi(config.endpoint)
       .then((data) => {
         if (!data.error) {
-          config.setter(data);
+          config.setter(data.data);
         } else {
           toast.error(data.error);
         }
@@ -168,8 +168,8 @@ export default function MedicalRecords() {
     getApi("/medical-records")
       .then((data) => {
         if (!data?.error) {
-          setPatients(data);
-          setFilteredPatients(data);
+          setPatients(data.data);
+          setFilteredPatients(data.data);
         } else {
           console.error("Error fetching patients:", data.error);
         }

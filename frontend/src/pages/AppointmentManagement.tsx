@@ -78,7 +78,7 @@ export default function AppointmentManagement() {
     getApi('/appointment')
       .then((data) => {
         if (!data.error) {
-          setAppointments(data)
+          setAppointments(data.data)
         }
         else {
           toast.error(data.error)

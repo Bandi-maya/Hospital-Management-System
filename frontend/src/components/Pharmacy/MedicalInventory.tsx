@@ -73,7 +73,7 @@ export default function MedicalInventory() {
     getApi('/medicine-stock')
       .then((data) => {
         if (!data?.error) {
-          setInventory(data);
+          setInventory(data.data);
         }
       }).catch((err) => {
         console.error(err);

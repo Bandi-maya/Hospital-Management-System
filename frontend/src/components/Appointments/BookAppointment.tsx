@@ -44,7 +44,7 @@ export default function BookAppointment() {
     getApi('/users?user_type=PATIENT')
       .then((data) => {
         if (!data.error) {
-          setPatients(data)
+          setPatients(data.data)
         }
         else {
           toast.error(data.error)
@@ -60,7 +60,7 @@ export default function BookAppointment() {
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
-          setDoctors(data)
+          setDoctors(data.data)
         }
         else {
           toast.error(data.error)
@@ -76,7 +76,7 @@ export default function BookAppointment() {
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data)
+          setDepartments(data.data)
         }
         else {
           toast.error(data.error)

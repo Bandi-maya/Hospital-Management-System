@@ -32,7 +32,7 @@ export default function PharmacistList() {
     getApi("/user-fields")
       .then((data) => {
         if (!data?.error) {
-          setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === "NURSE"));
+          setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === "NURSE"));
         }
         else {
           toast.error("Error fetching doctors: " + data.error);
@@ -83,7 +83,7 @@ export default function PharmacistList() {
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data);
+          setDepartments(data.data);
         }
         else {
           toast.error(data.error);
@@ -102,7 +102,7 @@ export default function PharmacistList() {
     await getApi(`/users?user_type=PHARMACIST`)
       .then((data) => {
         if (!data?.error) {
-          setPatients(data);
+          setPatients(data.data);
         }
         else {
           toast.error(data.error)

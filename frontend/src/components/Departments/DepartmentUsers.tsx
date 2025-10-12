@@ -84,21 +84,12 @@ export default function DepartmentUsers() {
   const [activeTab, setActiveTab] = useState("users");
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Initial sample data for fallback
-  const sampleDepartments: DepartmentInterface[] = [
-    { id: 1, name: "Cardiology", description: "Heart and cardiovascular system care" },
-    { id: 2, name: "Neurology", description: "Brain and nervous system disorders" },
-    { id: 3, name: "Orthopedics", description: "Bones, joints, and musculoskeletal system" },
-    { id: 4, name: "Pediatrics", description: "Medical care for infants, children, and adolescents" },
-    { id: 5, name: "Emergency Medicine", description: "Urgent medical care and trauma" },
-  ];
-
   function getUsersByDepartment(departmentId: number) {
     setLoading(true);
     getApi(`/users?department_id=${departmentId}`)
       .then((data) => {
         if (!data.error) {
-          setUsers(data);
+          setUsers(data.data);
         } else {
           console.error(data.error);
           toast.error(data.error);
@@ -125,19 +116,11 @@ export default function DepartmentUsers() {
           } else {
             console.error(data.error);
             toast.error(data.error);
-            // Fallback to sample data
-            setDepartments(sampleDepartments);
-            setSelectedDepartment(sampleDepartments[0]);
-            getUsersByDepartment(sampleDepartments[0].id);
           }
         })
         .catch((error) => {
           toast.error("Failed to fetch departments");
           console.error("Error fetching departments:", error);
-          // Fallback to sample data
-          setDepartments(sampleDepartments);
-          setSelectedDepartment(sampleDepartments[0]);
-          getUsersByDepartment(sampleDepartments[0].id);
         })
         .finally(() => setLoading(false));
     } catch (error) {

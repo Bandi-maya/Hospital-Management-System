@@ -135,7 +135,7 @@ export default function WardStatus() {
     getApi("/wards")
       .then((data) => {
         if (!data.error) {
-          setWards(data)
+          setWards(data.data)
         }
         else {
           toast.error(data.error)
@@ -151,7 +151,7 @@ export default function WardStatus() {
     getApi("/departments")
       .then((data) => {
         if (!data.error) {
-          setDepartments(data)
+          setDepartments(data.data)
         }
         else {
           toast.error(data.error)

@@ -182,19 +182,19 @@ export default function BillingPage() {
       getApi("/users?user_type=DOCTOR"),
     ])
       .then(([meds, surgeriesRes, testsRes, pats, docs]) => {
-        if (!meds.error) setInventory(meds);
+        if (!meds.error) setInventory(meds.data);
         else toast.error(meds.error);
 
-        if (!surgeriesRes.error) setSurgeries(surgeriesRes);
+        if (!surgeriesRes.error) setSurgeries(surgeriesRes.data);
         else toast.error(surgeriesRes.error);
 
-        if (!testsRes.error) setTests(testsRes);
+        if (!testsRes.error) setTests(testsRes.data);
         else toast.error(testsRes.error);
 
-        if (!pats.error) setPatients(pats);
+        if (!pats.error) setPatients(pats.data);
         else toast.error(pats.error);
 
-        if (!docs.error) setDoctors(docs);
+        if (!docs.error) setDoctors(docs.data);
         else toast.error(docs.error);
       })
       .catch((err) => {
@@ -207,7 +207,7 @@ export default function BillingPage() {
     setLoading(true);
     getApi("/billing")
       .then((data) => {
-        if (!data.error) setBillings(data);
+        if (!data.error) setBillings(data.data);
         else toast.error(data.error);
       })
       .catch((err) => {

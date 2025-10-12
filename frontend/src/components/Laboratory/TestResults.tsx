@@ -74,7 +74,7 @@ export default function TestResults() {
     await getApi("/users?user_type=PATIENT")
       .then((data) => {
         if (!data?.error) {
-          setPatients(data);
+          setPatients(data.data);
         }
         else {
           toast.error(data.error);
@@ -90,7 +90,7 @@ export default function TestResults() {
     await getApi("/lab-tests")
       .then((data) => {
         if (!data?.error) {
-          setTests(data);
+          setTests(data.data);
         }
         else {
           toast.error(data.error);
@@ -106,7 +106,7 @@ export default function TestResults() {
     await getApi("/lab-requests")
       .then((data) => {
         if (!data?.error) {
-          setResults(data);
+          setResults(data.data);
         }
         else {
           toast.error(data.error);

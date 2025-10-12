@@ -149,7 +149,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         getApi("/user-fields")
             .then((data) => {
                 if (!data?.error) {
-                    setExtraFields(data.filter((field) => field.user_type_data.type.toUpperCase() === "PATIENT"));
+                    setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === "PATIENT"));
                 } else {
                     message.error("Error fetching user fields: " + data.error);
                 }
@@ -163,7 +163,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         getApi(`/users?user_type=DOCTOR`)
             .then((data) => {
                 if (!data?.error) {
-                    setDoctorList(data);
+                    setDoctorList(data.data);
                 } else {
                     message.error("Error fetching doctors: " + data.error);
                 }
@@ -177,7 +177,7 @@ export default function AddPatient({ onAddPatient }: AddPatientProps) {
         getApi(`/departments`)
             .then((data) => {
                 if (!data?.error) {
-                    setDepartmentList(data);
+                    setDepartmentList(data.data);
                 } else {
                     message.error("Error fetching departments: " + data.error);
                 }

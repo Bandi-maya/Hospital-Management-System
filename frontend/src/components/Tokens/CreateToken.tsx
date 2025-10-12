@@ -39,7 +39,7 @@ export default function CreateToken() {
     getApi('/users?user_type=PATIENT')
       .then((data) => {
         if (!data.error) {
-          setPatients(data)
+          setPatients(data.data)
         }
         else {
           toast.error(data.error)
@@ -55,7 +55,7 @@ export default function CreateToken() {
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
-          setDoctors(data)
+          setDoctors(data.data)
         }
         else {
           toast.error(data.error)
@@ -71,7 +71,7 @@ export default function CreateToken() {
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data)
+          setDepartments(data.data)
         }
         else {
           toast.error(data.error)
