@@ -1,20 +1,20 @@
 // src/pages/Settings.tsx
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Card, 
-  Input, 
-  Button, 
-  Select, 
-  Modal, 
-  Form, 
-  Space, 
-  Tooltip, 
-  Tag, 
-  Row, 
-  Col, 
-  Statistic, 
-  Avatar, 
-  Descriptions, 
+import {
+  Card,
+  Input,
+  Button,
+  Select,
+  Modal,
+  Form,
+  Space,
+  Tooltip,
+  Tag,
+  Row,
+  Col,
+  Statistic,
+  Avatar,
+  Descriptions,
   Divider,
   Switch,
   message,
@@ -63,6 +63,41 @@ export default function Settings() {
   const [extraFields, setExtraFields] = useState<any>([]);
   const [activeTab, setActiveTab] = useState("profile");
 
+  useEffect(() => {
+    if (user?.id) {
+      getApi(`/users?user_id=${user?.id}`)
+        .then((data) => {
+          if (!data.error) {
+            const userForm = {
+              address: {
+                street: data?.address?.street,
+                city: data?.address?.city,
+                state: data?.address?.state,
+                country: data?.address?.country,
+                zip_code: data?.address?.zip_code,
+              },
+              department_id: data?.department_id,
+              date_of_birth: data?.date_of_birth?.split("T")[0],
+              gender: data?.gender,
+              extra_fields: data?.extra_fields?.fields_data,
+              email: data?.email,
+              phone_no: data?.phone_no,
+            };
+
+            form.setFieldsValue(userForm);
+            setSettings(prev => ({
+              ...prev,
+              profile: {
+                name: data?.name || "",
+                email: data?.email || "",
+                password: ""
+              }
+            }));
+          }
+        })
+    }
+  }, [])
+
   const [settings, setSettings] = useState({
     profile: {
       name: "",
@@ -83,35 +118,35 @@ export default function Settings() {
     }
   });
 
-  useEffect(() => {
-    if (user) {
-      const userForm = {
-        address: {
-          street: user?.address?.street,
-          city: user?.address?.city,
-          state: user?.address?.state,
-          country: user?.address?.country,
-          zip_code: user?.address?.zip_code,
-        },
-        department_id: user?.department_id,
-        date_of_birth: user?.date_of_birth?.split("T")[0],
-        gender: user?.gender,
-        extra_fields: user?.extra_fields?.fields_data,
-        email: user?.email,
-        phone_no: user?.phone_no,
-      };
-      
-      form.setFieldsValue(userForm);
-      setSettings(prev => ({
-        ...prev,
-        profile: {
-          name: user?.name || "",
-          email: user?.email || "",
-          password: ""
-        }
-      }));
-    }
-  }, [user, form]);
+  // useEffect(() => {
+  //   if (user) {
+  //     const userForm = {
+  //       address: {
+  //         street: user?.address?.street,
+  //         city: user?.address?.city,
+  //         state: user?.address?.state,
+  //         country: user?.address?.country,
+  //         zip_code: user?.address?.zip_code,
+  //       },
+  //       department_id: user?.department_id,
+  //       date_of_birth: user?.date_of_birth?.split("T")[0],
+  //       gender: user?.gender,
+  //       extra_fields: user?.extra_fields?.fields_data,
+  //       email: user?.email,
+  //       phone_no: user?.phone_no,
+  //     };
+
+  //     form.setFieldsValue(userForm);
+  //     setSettings(prev => ({
+  //       ...prev,
+  //       profile: {
+  //         name: user?.name || "",
+  //         email: user?.email || "",
+  //         password: ""
+  //       }
+  //     }));
+  //   }
+  // }, [user, form]);
 
   const getExtraFields = () => {
     getApi("/user-fields")
@@ -131,10 +166,10 @@ export default function Settings() {
   const handleSubmit = () => {
     setLoading(true);
     const formValues = form.getFieldsValue();
-    
-    if (!formValues.gender || !formValues.date_of_birth || !formValues.address?.city || 
-        !formValues.address?.state || !formValues.address?.zip_code || !formValues.address?.country || 
-        !formValues.email || !formValues.phone_no) {
+
+    if (!formValues.gender || !formValues.date_of_birth || !formValues.address?.city ||
+      !formValues.address?.state || !formValues.address?.zip_code || !formValues.address?.country ||
+      !formValues.email || !formValues.phone_no) {
       message.error("Please fill in all required fields");
       setLoading(false);
       return;
@@ -284,9 +319,9 @@ export default function Settings() {
                   <Row gutter={[24, 16]}>
                     {/* Personal Information */}
                     <Col span={24}>
-                      <div style={{ 
-                        padding: "16px", 
-                        background: "#fafafa", 
+                      <div style={{
+                        padding: "16px",
+                        background: "#fafafa",
                         borderRadius: "8px",
                         marginBottom: "24px"
                       }}>
@@ -296,7 +331,7 @@ export default function Settings() {
                         </Space>
                       </div>
                     </Col>
-                    
+
                     {extraFields.map((field: any) => (
                       <Col xs={24} md={12} key={field.id}>
                         <Form.Item
@@ -304,7 +339,7 @@ export default function Settings() {
                           label={field.field_name}
                           rules={[{ required: true, message: `Please enter ${field.field_name}` }]}
                         >
-                          <Input 
+                          <Input
                             size="large"
                             placeholder={`Enter ${field.field_name}`}
                             prefix={<UserOutlined />}
@@ -319,7 +354,7 @@ export default function Settings() {
                         label="Date of Birth"
                         rules={[{ required: true, message: "Please select date of birth" }]}
                       >
-                        <Input 
+                        <Input
                           type="date"
                           size="large"
                           prefix={<CalendarOutlined />}
@@ -347,9 +382,9 @@ export default function Settings() {
 
                     {/* Contact Information */}
                     <Col span={24}>
-                      <div style={{ 
-                        padding: "16px", 
-                        background: "#fafafa", 
+                      <div style={{
+                        padding: "16px",
+                        background: "#fafafa",
                         borderRadius: "8px",
                         margin: "24px 0"
                       }}>
@@ -369,7 +404,7 @@ export default function Settings() {
                           { type: "email", message: "Please enter valid email" }
                         ]}
                       >
-                        <Input 
+                        <Input
                           size="large"
                           placeholder="Email address"
                           prefix={<MailOutlined />}
@@ -384,7 +419,7 @@ export default function Settings() {
                         label="Phone Number"
                         rules={[{ required: true, message: "Please enter phone number" }]}
                       >
-                        <Input 
+                        <Input
                           size="large"
                           placeholder="Phone number"
                           prefix={<PhoneOutlined />}
@@ -394,9 +429,9 @@ export default function Settings() {
 
                     {/* Address Information */}
                     <Col span={24}>
-                      <div style={{ 
-                        padding: "16px", 
-                        background: "#fafafa", 
+                      <div style={{
+                        padding: "16px",
+                        background: "#fafafa",
                         borderRadius: "8px",
                         margin: "24px 0"
                       }}>
@@ -413,7 +448,7 @@ export default function Settings() {
                         label="Street Address"
                         rules={[{ required: true, message: "Please enter street address" }]}
                       >
-                        <Input 
+                        <Input
                           size="large"
                           placeholder="Street address"
                           prefix={<EnvironmentOutlined />}
@@ -427,10 +462,10 @@ export default function Settings() {
                         label="City"
                         rules={[{ required: true, message: "Please enter city" }]}
                       >
-                        <Input 
+                        <Input
                           size="large"
                           placeholder="City"
-                        prefix={<EnvironmentOutlined />}
+                          prefix={<EnvironmentOutlined />}
                         />
                       </Form.Item>
                     </Col>
@@ -441,7 +476,7 @@ export default function Settings() {
                         label="State"
                         rules={[{ required: true, message: "Please enter state" }]}
                       >
-                        <Input 
+                        <Input
                           size="large"
                           placeholder="State"
                           prefix={<EnvironmentOutlined />}
@@ -455,7 +490,7 @@ export default function Settings() {
                         label="ZIP Code"
                         rules={[{ required: true, message: "Please enter ZIP code" }]}
                       >
-                        <Input 
+                        <Input
                           size="large"
                           placeholder="ZIP code"
                           prefix={<EnvironmentOutlined />}
@@ -501,15 +536,15 @@ export default function Settings() {
                 <Row gutter={[24, 16]}>
                   <Col span={24}>
                     <Space direction="vertical" style={{ width: "100%" }}>
-                      <div style={{ 
-                        padding: "16px", 
-                        background: "#fafafa", 
+                      <div style={{
+                        padding: "16px",
+                        background: "#fafafa",
                         borderRadius: "8px",
                         marginBottom: "16px"
                       }}>
                         <h3 style={{ margin: 0, color: "#1890ff" }}>Appearance & Behavior</h3>
                       </div>
-                      
+
                       <Card size="small">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
                           <Space>
@@ -566,15 +601,15 @@ export default function Settings() {
                 <Row gutter={[24, 16]}>
                   <Col span={24}>
                     <Space direction="vertical" style={{ width: "100%" }}>
-                      <div style={{ 
-                        padding: "16px", 
-                        background: "#fafafa", 
+                      <div style={{
+                        padding: "16px",
+                        background: "#fafafa",
                         borderRadius: "8px",
                         marginBottom: "16px"
                       }}>
                         <h3 style={{ margin: 0, color: "#1890ff" }}>Security Settings</h3>
                       </div>
-                      
+
                       <Card size="small">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
                           <Space>
@@ -623,7 +658,7 @@ export default function Settings() {
       <Card>
         <Row justify="end" gutter={16}>
           <Col>
-            <Button 
+            <Button
               size="large"
               onClick={() => form.resetFields()}
             >
@@ -631,8 +666,8 @@ export default function Settings() {
             </Button>
           </Col>
           <Col>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               size="large"
               icon={<SaveOutlined />}
               loading={loading}

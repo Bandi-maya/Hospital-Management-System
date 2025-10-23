@@ -3,7 +3,10 @@ import { v4 as uuidv4 } from "uuid";
 import {
     Table, Input, Button, Modal, Select, DatePicker,
     message, Card, Tag, Tooltip, Popconfirm,
-    Space, Row, Col, Statistic, Descriptions, Divider
+    Space, Row, Col, Statistic, Descriptions, Divider,
+    Skeleton, Switch, Dropdown, Menu, Progress, Badge,
+    Avatar, List, Tabs, Form, InputNumber, Radio,
+    Steps, Timeline, Result, Empty, Alert, Spin
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -15,7 +18,52 @@ import {
     ThunderboltOutlined, SecurityScanOutlined, RocketOutlined,
     CreditCardOutlined, BankOutlined, WalletOutlined,
     ArrowUpOutlined, ArrowDownOutlined, IdcardOutlined,
-    PhoneOutlined, EnvironmentOutlined, SafetyCertificateOutlined
+    PhoneOutlined, EnvironmentOutlined, SafetyCertificateOutlined,
+    DownloadOutlined, UploadOutlined, FilterOutlined,
+    SettingOutlined, MoreOutlined, StarOutlined,
+    HeartOutlined, ShareAltOutlined, ExportOutlined,
+    ImportOutlined, CloudDownloadOutlined, CloudUploadOutlined,
+    BarcodeOutlined, QrcodeOutlined, ScanOutlined,
+    TransactionOutlined, MoneyCollectOutlined, FundOutlined,
+    AccountBookOutlined, AuditOutlined, ReconciliationOutlined,
+    PieChartOutlined, BarChartOutlined, LineChartOutlined,
+    AppstoreOutlined, ShopOutlined, ShoppingCartOutlined,
+    GiftOutlined, TrophyOutlined, CrownOutlined,
+    FireOutlined, LikeOutlined, DislikeOutlined,
+    MessageOutlined, NotificationOutlined, BellOutlined,
+    InfoCircleOutlined, ExclamationCircleOutlined,
+    WarningOutlined, IssuesCloseOutlined, StopOutlined,
+    PauseCircleOutlined, PlayCircleOutlined, StepForwardOutlined,
+    StepBackwardOutlined, FastForwardOutlined, FastBackwardOutlined,
+    CaretUpOutlined, CaretDownOutlined, CaretLeftOutlined,
+    CaretRightOutlined, VerticalLeftOutlined, VerticalRightOutlined,
+    ForwardOutlined, BackwardOutlined, RollbackOutlined,
+    EnterOutlined, RetweetOutlined, SwapOutlined,
+    SwapLeftOutlined, SwapRightOutlined, WifiOutlined,
+    GlobalOutlined, DesktopOutlined, LaptopOutlined,
+    MobileOutlined, TabletOutlined, CameraOutlined,
+    PictureOutlined, SoundOutlined, CustomerServiceOutlined,
+    VideoCameraOutlined, PlaySquareOutlined, PauseOutlined,
+    FolderOpenOutlined, FolderOutlined, FileTextOutlined,
+    FileAddOutlined, FileExcelOutlined, FileWordOutlined,
+    FilePptOutlined, FileImageOutlined, FileZipOutlined,
+    FileUnknownOutlined, FileMarkdownOutlined, FilePdfOutlined as FilePdfFilled,
+    HomeOutlined, InboxOutlined, PaperClipOutlined,
+    TagOutlined, TagsOutlined, PushpinOutlined,
+    PhoneFilled, MobileFilled, TabletFilled,
+    AudioFilled, VideoCameraFilled, NotificationFilled,
+    MessageFilled, HeartFilled, StarFilled,
+    CrownFilled, TrophyFilled, FireFilled,
+    LikeFilled, DislikeFilled, InfoCircleFilled,
+    ExclamationCircleFilled, WarningFilled,
+    QuestionCircleOutlined, QuestionCircleFilled,
+    MinusCircleOutlined, MinusCircleFilled,
+    PlusCircleOutlined, PlusCircleFilled,
+    FrownOutlined, FrownFilled, MehOutlined,
+    MehFilled, SmileOutlined, SmileFilled,
+    PoweroffOutlined, LogoutOutlined, LoginOutlined,
+    UserSwitchOutlined, UsergroupAddOutlined, UsergroupDeleteOutlined,
+    UserAddOutlined, UserDeleteOutlined, TeamOutlined as TeamFilled
 } from "@ant-design/icons";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
@@ -24,6 +72,7 @@ import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { getApi } from "@/ApiService";
 import { toast } from "sonner";
+import { getDate } from "date-fns";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -36,6 +85,8 @@ declare module 'jspdf' {
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+const { TabPane } = Tabs;
+const { Step } = Steps;
 
 type Payment = {
     id: string;
@@ -43,16 +94,16 @@ type Payment = {
     email: string;
     amount: number;
     date: string;
-    method: "Cash" | "Card" | "UPI" | "Net Banking";
-    status: "Paid" | "Pending" | "Failed";
+    method: "CASH" | "Card" | "UPI" | "Net Banking";
+    status: "PAID" | "PENDING" | "FAILED";
 };
 
 const defaultPayments: Payment[] = [
-    { id: uuidv4(), customerName: "John Doe", email: "john@example.com", amount: 500, date: "2025-09-01", method: "Card", status: "Paid" },
-    { id: uuidv4(), customerName: "Jane Smith", email: "jane@example.com", amount: 1200, date: "2025-09-05", method: "UPI", status: "Pending" },
-    { id: uuidv4(), customerName: "Bob Johnson", email: "bob@example.com", amount: 750, date: "2025-09-10", method: "Cash", status: "Failed" },
-    { id: uuidv4(), customerName: "Alice Brown", email: "alice@example.com", amount: 300, date: "2025-09-15", method: "Net Banking", status: "Paid" },
-    { id: uuidv4(), customerName: "Charlie Wilson", email: "charlie@example.com", amount: 950, date: "2025-09-20", method: "Card", status: "Pending" },
+    { id: uuidv4(), customerName: "John Doe", email: "john@example.com", amount: 500, date: "2025-09-01", method: "Card", status: "PAID" },
+    { id: uuidv4(), customerName: "Jane Smith", email: "jane@example.com", amount: 1200, date: "2025-09-05", method: "UPI", status: "PENDING" },
+    { id: uuidv4(), customerName: "Bob Johnson", email: "bob@example.com", amount: 750, date: "2025-09-10", method: "CASH", status: "FAILED" },
+    { id: uuidv4(), customerName: "Alice Brown", email: "alice@example.com", amount: 300, date: "2025-09-15", method: "Net Banking", status: "PAID" },
+    { id: uuidv4(), customerName: "Charlie Wilson", email: "charlie@example.com", amount: 950, date: "2025-09-20", method: "Card", status: "PENDING" },
 ];
 
 export default function Payments() {
@@ -65,11 +116,29 @@ export default function Payments() {
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [methodFilter, setMethodFilter] = useState<string>("all");
     const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [autoRefresh, setAutoRefresh] = useState(true);
+    const [tableLoading, setTableLoading] = useState(false);
+    const [statsLoading, setStatsLoading] = useState(true);
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 10,
+        total: 0,
+    });
 
+    const handleTableChange = (newPagination: any) => {
+        (newPagination.current, newPagination.pageSize);
+    };
+    // Simulate data loading
     useEffect(() => {
-        getApi("/payment")
+        setPayments(defaultPayments);
+        setLoading(false);
+        setStatsLoading(false);
+        setTableLoading(false);
+    }, []);
+
+    function getPayments(page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter, method = methodFilter) {
+        getApi(`/payment?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}&method=${method === 'all' ? '' : method}`)
             .then((data) => {
                 if (!data.error) {
                     setPayments(data.data)
@@ -79,6 +148,10 @@ export default function Payments() {
                 }
             })
             .catch((err) => toast.error("Error occurred while getting payments"))
+    }
+
+    useEffect(() => {
+        getPayments()
     }, []);
 
     // Auto refresh notifier
@@ -91,47 +164,45 @@ export default function Payments() {
         }
     }, [autoRefresh]);
 
-    const filteredPayments = payments
-    //     const filteredPayments = React.useMemo(() => payments
-    //     // .filter(payment => {
-    //         // const lowerSearchTerm = searchTerm.toLowerCase();
-    //         // const matchesSearch = payment.customerName.toLowerCase().includes(lowerSearchTerm) || payment.email.toLowerCase().includes(lowerSearchTerm);
-    //         // const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
-    //         // const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
-    //         // const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
-    //         // return matchesSearch && matchesStatus && matchesMethod && matchesDate;
-    // }), [payments, searchTerm, statusFilter, methodFilter, dateRange]);
+    // const filteredPayments = payments.filter(payment => {
+    //     const lowerSearchTerm = searchTerm.toLowerCase();
+    //     const matchesSearch = payment.customerName.toLowerCase().includes(lowerSearchTerm) || payment.email.toLowerCase().includes(lowerSearchTerm);
+    //     const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+    //     const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
+    //     const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
+    //     return matchesSearch && matchesStatus && matchesMethod && matchesDate;
+    // });
 
     // Statistics
     const stats = React.useMemo(() => {
         const total = payments.length;
-        const paid = payments.filter(p => p.status === "Paid").length;
-        const pending = payments.filter(p => p.status === "Pending").length;
-        const failed = payments.filter(p => p.status === "Failed").length;
+        const PAID = payments.filter(p => p.status === "PAID").length;
+        const PENDING = payments.filter(p => p.status === "PENDING").length;
+        const FAILED = payments.filter(p => p.status === "FAILED").length;
 
         const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-        const paidAmount = payments.filter(p => p.status === "Paid").reduce((sum, p) => sum + p.amount, 0);
-        const pendingAmount = payments.filter(p => p.status === "Pending").reduce((sum, p) => sum + p.amount, 0);
-        const failedAmount = payments.filter(p => p.status === "Failed").reduce((sum, p) => sum + p.amount, 0);
+        const PAIDAmount = payments.filter(p => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
+        const PENDINGAmount = payments.filter(p => p.status === "PENDING").reduce((sum, p) => sum + p.amount, 0);
+        const FAILEDAmount = payments.filter(p => p.status === "FAILED").reduce((sum, p) => sum + p.amount, 0);
 
-        const cashPayments = payments.filter(p => p.method === "Cash").length;
+        const CASHPayments = payments.filter(p => p.method === "CASH").length;
         const cardPayments = payments.filter(p => p.method === "Card").length;
         const upiPayments = payments.filter(p => p.method === "UPI").length;
         const netBankingPayments = payments.filter(p => p.method === "Net Banking").length;
 
-        const successRate = total > 0 ? (paid / total) * 100 : 0;
+        const successRate = total > 0 ? (PAID / total) * 100 : 0;
         const averagePayment = total > 0 ? totalAmount / total : 0;
 
         return {
             total,
-            paid,
-            pending,
-            failed,
+            PAID,
+            PENDING,
+            FAILED,
             totalAmount,
-            paidAmount,
-            pendingAmount,
-            failedAmount,
-            cashPayments,
+            PAIDAmount,
+            PENDINGAmount,
+            FAILEDAmount,
+            CASHPayments,
             cardPayments,
             upiPayments,
             netBankingPayments,
@@ -148,10 +219,14 @@ export default function Payments() {
     }, []);
 
     const handleDeletePayment = (id: string) => {
-        const updated = payments.filter(p => p.id !== id);
-        setPayments(updated);
-        localStorage.setItem("payments", JSON.stringify(updated));
-        message.success("Payment deleted successfully");
+        setTableLoading(true);
+        setTimeout(() => {
+            const updated = payments.filter(p => p.id !== id);
+            setPayments(updated);
+            localStorage.setItem("payments", JSON.stringify(updated));
+            message.success("Payment deleted successfully");
+            setTableLoading(false);
+        }, 500);
     };
 
     const handleSavePayment = () => {
@@ -182,7 +257,7 @@ export default function Payments() {
         const pageHeight = doc.internal.pageSize.getHeight();
         const brandColor = '#4A90E2';
 
-        if (status === 'Paid') {
+        if (status === 'PAID') {
             doc.saveGraphicsState();
             doc.setFontSize(80);
             doc.setTextColor('#D0F0C0');
@@ -230,13 +305,13 @@ export default function Payments() {
     };
 
     const handleBulkExport = () => {
-        if (!filteredPayments.length) return message.warning("No payments to export");
+        if (!payments.length) return message.warning("No payments to export");
         const doc = new jsPDF();
         const brandColor = '#16A085';
 
-        const totalReportAmount = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
-        const paidCount = filteredPayments.filter(p => p.status === 'Paid').length;
-        const tableData = filteredPayments.map((p, i) => [i + 1, p.customerName, dayjs(p.date).format('YYYY-MM-DD'), p.method, p.status, `$${p.amount.toFixed(2)}`]);
+        const totalReportAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+        const PAIDCount = payments.filter(p => p.status === 'PAID').length;
+        const tableData = payments.map((p, i) => [i + 1, p.customerName, dayjs(p.date).format('YYYY-MM-DD'), p.method, p.status, `$${p.amount.toFixed(2)}`]);
 
         autoTable(doc, {
             head: [['#', 'Customer', 'Date', 'Method', 'Status', 'Amount']],
@@ -258,7 +333,7 @@ export default function Payments() {
                         theme: 'grid',
                         body: [
                             [{ content: 'Report Summary', colSpan: 2, styles: { fontStyle: 'bold', fillColor: '#ECF0F1', textColor: brandColor } }],
-                            ['Total Transactions', `${filteredPayments.length} (Paid: ${paidCount})`],
+                            ['Total Transactions', `${payments.length} (PAID: ${PAIDCount})`],
                             ['Total Amount', `$${totalReportAmount.toFixed(2)}`]
                         ],
                         margin: { left: data.settings.margin.left, right: data.settings.margin.right },
@@ -271,17 +346,17 @@ export default function Payments() {
         });
 
         doc.save(`Payments_Report_${dayjs().format('YYYY-MM-DD')}.pdf`);
-        message.success(`Exported ${filteredPayments.length} payments`);
+        message.success(`Exported ${payments.length} payments`);
     };
 
-    const getStatusColor = (status: string) => ({ "Paid": "green", "Pending": "orange", "Failed": "red" }[status] || "blue");
-    const getMethodColor = (method: string) => ({ "Cash": "blue", "Card": "purple", "UPI": "geekblue", "Net Banking": "cyan" }[method] || "default");
+    const getStatusColor = (status: string) => ({ "PAID": "green", "PENDING": "orange", "FAILED": "red" }[status] || "blue");
+    const getMethodColor = (method: string) => ({ "CASH": "blue", "Card": "purple", "UPI": "geekblue", "Net Banking": "cyan" }[method] || "default");
 
     const getStatusIcon = (status: string) => {
         const icons = {
-            Paid: <CheckCircleOutlined />,
-            Pending: <ClockCircleOutlined />,
-            Failed: <CloseCircleOutlined />,
+            PAID: <CheckCircleOutlined />,
+            PENDING: <ClockCircleOutlined />,
+            FAILED: <CloseCircleOutlined />,
         };
         return icons[status as keyof typeof icons];
     };
@@ -293,6 +368,36 @@ export default function Payments() {
         setDateRange(null);
     }, []);
 
+    const moreActionsMenu = (
+        <Menu
+            items={[
+                {
+                    key: 'import',
+                    icon: <ImportOutlined />,
+                    label: 'Import Payments',
+                },
+                {
+                    key: 'export',
+                    icon: <ExportOutlined />,
+                    label: 'Export All Data',
+                },
+                {
+                    key: 'settings',
+                    icon: <SettingOutlined />,
+                    label: 'Payment Settings',
+                },
+                {
+                    type: 'divider',
+                },
+                {
+                    key: 'help',
+                    icon: <QuestionCircleOutlined />,
+                    label: 'Help & Support',
+                },
+            ]}
+        />
+    );
+
     const columns: ColumnsType<Payment> = [
         {
             title: (
@@ -302,15 +407,13 @@ export default function Payments() {
                 </Space>
             ),
             key: "customer",
-            render: (_, record) => (
+            render: (_, record: any) => (
                 <Space>
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <UserOutlined className="text-blue-600" />
-                    </div>
+                    <Avatar size="large" icon={<UserOutlined />} className="bg-blue-100 text-blue-600" />
                     <div>
-                        <div style={{ fontWeight: "bold" }}>{record.customerName}</div>
+                        <div style={{ fontWeight: "bold" }}>{record?.billing?.order?.user?.name}</div>
                         <div style={{ fontSize: "12px", color: "#666" }}>
-                            <MailOutlined /> {record.email}
+                            <MailOutlined /> {record?.billing?.order?.user?.email}
                         </div>
                     </div>
                 </Space>
@@ -362,7 +465,7 @@ export default function Payments() {
             dataIndex: "method",
             key: "method",
             render: (method) => (
-                <Tag color={getMethodColor(method)} className="font-medium">
+                <Tag color={getMethodColor(method)} className="font-medium" icon={<CreditCardOutlined />}>
                     {method}
                 </Tag>
             )
@@ -374,7 +477,7 @@ export default function Payments() {
                     Status
                 </Space>
             ),
-            dataIndex: "status",
+            dataIndex: ["billing", "status"],
             key: "status",
             render: (status) => (
                 <Space direction="vertical">
@@ -445,9 +548,7 @@ export default function Payments() {
                 <div>
                     {/* Payment Header */}
                     <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <DollarOutlined className="w-8 h-8 text-blue-600" />
-                        </div>
+                        <Avatar size={80} icon={<DollarOutlined />} className="bg-blue-100 text-blue-600 mb-4" />
                         <h2 style={{ margin: '8px 0', color: '#1890ff' }}>{formPayment.customerName}</h2>
                         <Space>
                             <Tag color={getMethodColor(formPayment.method || '')} icon={<CreditCardOutlined />}>
@@ -460,67 +561,32 @@ export default function Payments() {
                     </div>
 
                     <Descriptions bordered column={1} size="small">
-                        <Descriptions.Item label={
-                            <Space>
-                                <IdcardOutlined />
-                                Payment ID
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><IdcardOutlined />Payment ID</Space>}>
                             {formPayment.id}
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <UserOutlined />
-                                Customer Name
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><UserOutlined />Customer Name</Space>}>
                             {formPayment.customerName}
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <MailOutlined />
-                                Email
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><MailOutlined />Email</Space>}>
                             {formPayment.email}
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <DollarOutlined />
-                                Amount
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><DollarOutlined />Amount</Space>}>
                             <span className="font-bold text-green-600 text-lg">
                                 ${formPayment.amount?.toFixed(2)}
                             </span>
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <CalendarOutlined />
-                                Payment Date
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><CalendarOutlined />Payment Date</Space>}>
                             {formPayment.date ? dayjs(formPayment.date).format('MMM DD, YYYY') : ''}
                             <div style={{ fontSize: '12px', color: '#666' }}>
                                 ({formPayment.date ? dayjs(formPayment.date).fromNow() : ''})
                             </div>
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <SafetyCertificateOutlined />
-                                Payment Method
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><SafetyCertificateOutlined />Payment Method</Space>}>
                             <Tag color={getMethodColor(formPayment.method || '')}>
                                 {formPayment.method}
                             </Tag>
                         </Descriptions.Item>
-                        <Descriptions.Item label={
-                            <Space>
-                                <DashboardOutlined />
-                                Payment Status
-                            </Space>
-                        }>
+                        <Descriptions.Item label={<Space><DashboardOutlined />Payment Status</Space>}>
                             <Tag color={getStatusColor(formPayment.status || '')} icon={getStatusIcon(formPayment.status || '')}>
                                 {formPayment.status}
                             </Tag>
@@ -548,7 +614,6 @@ export default function Payments() {
             );
         }
 
-        // Edit/Add Mode - Return to original form layout
         return (
             <div className="space-y-4 pt-4">
                 <Input
@@ -565,12 +630,12 @@ export default function Payments() {
                     disabled={!isEditMode}
                     prefix={<MailOutlined />}
                 />
-                <Input
-                    type="number"
+                <InputNumber
                     placeholder="Amount"
                     value={formPayment.amount}
-                    onChange={e => setFormPayment({ ...formPayment, amount: Number(e.target.value) })}
+                    onChange={val => setFormPayment({ ...formPayment, amount: Number(val) })}
                     disabled={!isEditMode}
+                    style={{ width: "100%" }}
                     prefix={<DollarOutlined />}
                 />
                 <DatePicker
@@ -586,7 +651,7 @@ export default function Payments() {
                     style={{ width: "100%" }}
                     placeholder="Select Payment Method"
                 >
-                    <Option value="Cash">Cash</Option>
+                    <Option value="CASH">CASH</Option>
                     <Option value="Card">Card</Option>
                     <Option value="UPI">UPI</Option>
                     <Option value="Net Banking">Net Banking</Option>
@@ -598,9 +663,9 @@ export default function Payments() {
                     style={{ width: "100%" }}
                     placeholder="Select Status"
                 >
-                    <Option value="Paid">Paid</Option>
-                    <Option value="Pending">Pending</Option>
-                    <Option value="Failed">Failed</Option>
+                    <Option value="PAID">PAID</Option>
+                    <Option value="PENDING">PENDING</Option>
+                    <Option value="FAILED">FAILED</Option>
                 </Select>
             </div>
         );
@@ -625,15 +690,23 @@ export default function Payments() {
 
     const getModalFooter = () => {
         if (isViewMode) {
-            // Only show Close button in view mode
-            return [<Button key="close" onClick={() => setIsModalOpen(false)}>Close</Button>];
+            return [
+                <Button key="export" icon={<FilePdfOutlined />} onClick={() => formPayment.id && handleExportPaymentPDF(formPayment as Payment)}>
+                    Export PDF
+                </Button>,
+                <Button key="close" type="primary" onClick={() => setIsModalOpen(false)}>
+                    Close
+                </Button>
+            ];
         }
 
         if (isEditMode) {
             return [
-                <Button key="back" onClick={() => setIsModalOpen(false)}>Cancel</Button>,
-                <Button key="submit" type="primary" loading={loading} onClick={handleSavePayment} className="bg-blue-600 hover:bg-blue-700">
-                    {formPayment.id ? "Update" : "Add"}
+                <Button key="back" onClick={() => setIsModalOpen(false)}>
+                    Cancel
+                </Button>,
+                <Button key="submit" type="primary" loading={loading} onClick={handleSavePayment} className="bg-blue-600 hover:bg-blue-700" icon={formPayment.id ? <EditOutlined /> : <PlusOutlined />}>
+                    {formPayment.id ? "Update Payment" : "Add Payment"}
                 </Button>
             ];
         }
@@ -641,15 +714,58 @@ export default function Payments() {
         return [<Button key="back" onClick={() => setIsModalOpen(false)}>Close</Button>];
     };
 
+    // Skeleton components
+    const StatisticSkeleton = () => (
+        <Card className="shadow-sm">
+            <Skeleton active paragraph={{ rows: 1 }} />
+        </Card>
+    );
+
+    const TableSkeleton = () => (
+        <Card className="shadow-md rounded-lg">
+            <Skeleton active paragraph={{ rows: 8 }} />
+        </Card>
+    );
+
+    if (loading) {
+        return (
+            <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+                {/* Header Skeleton */}
+                <Card className="bg-white shadow-sm border-0">
+                    <Skeleton active avatar paragraph={{ rows: 1 }} />
+                </Card>
+
+                {/* Statistics Skeleton */}
+                <Row gutter={[16, 16]}>
+                    {[...Array(6)].map((_, i) => (
+                        <Col key={i} xs={24} sm={12} md={8} lg={4}>
+                            <StatisticSkeleton />
+                        </Col>
+                    ))}
+                </Row>
+
+                {/* Payment Methods Skeleton */}
+                <Row gutter={[16, 16]}>
+                    {[...Array(4)].map((_, i) => (
+                        <Col key={i} xs={24} sm={12} md={6}>
+                            <StatisticSkeleton />
+                        </Col>
+                    ))}
+                </Row>
+
+                {/* Table Skeleton */}
+                <TableSkeleton />
+            </div>
+        );
+    }
+
     return (
         <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
             {/* Header */}
             <Card className="bg-white shadow-sm border-0">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
                     <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <DollarOutlined className="w-6 h-6 text-blue-600" />
-                        </div>
+                        <Avatar size={48} icon={<DollarOutlined />} className="bg-blue-100 text-blue-600" />
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Billing & Payments</h1>
                             <p className="text-gray-600 mt-1">Manage and track all payment transactions</p>
@@ -660,16 +776,13 @@ export default function Payments() {
                             <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
                                 <SyncOutlined className="w-4 h-4 text-gray-600" />
                                 <span className="text-sm text-gray-600">Auto Refresh</span>
-                                <div
-                                    className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                                        }`}
-                                    onClick={() => setAutoRefresh(!autoRefresh)}
-                                >
-                                    <div
-                                        className={`w-3 h-3 rounded-full bg-white transform transition-transform ${autoRefresh ? 'translate-x-4' : 'translate-x-1'
-                                            }`}
-                                    />
-                                </div>
+                                <Switch
+                                    size="small"
+                                    checked={autoRefresh}
+                                    onChange={setAutoRefresh}
+                                    checkedChildren="On"
+                                    unCheckedChildren="Off"
+                                />
                             </div>
                         </Tooltip>
 
@@ -678,6 +791,12 @@ export default function Payments() {
                                 Reset Filters
                             </Button>
                         </Tooltip>
+
+                        <Dropdown overlay={moreActionsMenu} placement="bottomRight">
+                            <Button icon={<MoreOutlined />}>
+                                More Actions
+                            </Button>
+                        </Dropdown>
 
                         <Tooltip title="Add New Payment">
                             <Button
@@ -697,67 +816,91 @@ export default function Payments() {
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Total Payments"
-                            value={stats.total}
-                            prefix={<TeamOutlined />}
-                            valueStyle={{ color: '#3f8600' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Total Payments"
+                                value={stats.total}
+                                prefix={<TeamOutlined />}
+                                valueStyle={{ color: '#3f8600' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Total Amount"
-                            value={stats.totalAmount}
-                            prefix="$"
-                            precision={2}
-                            valueStyle={{ color: '#1890ff' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Total Amount"
+                                value={stats.totalAmount}
+                                prefix="$"
+                                precision={2}
+                                valueStyle={{ color: '#1890ff' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Paid Amount"
-                            value={stats.paidAmount}
-                            prefix="$"
-                            precision={2}
-                            valueStyle={{ color: '#52c41a' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="PAID Amount"
+                                value={stats.PAIDAmount}
+                                prefix="$"
+                                precision={2}
+                                valueStyle={{ color: '#52c41a' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Pending Amount"
-                            value={stats.pendingAmount}
-                            prefix="$"
-                            precision={2}
-                            valueStyle={{ color: '#faad14' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="PENDING Amount"
+                                value={stats.PENDINGAmount}
+                                prefix="$"
+                                precision={2}
+                                valueStyle={{ color: '#faad14' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Success Rate"
-                            value={stats.successRate}
-                            suffix="%"
-                            precision={1}
-                            valueStyle={{ color: '#52c41a' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Success Rate"
+                                value={stats.successRate}
+                                suffix="%"
+                                precision={1}
+                                valueStyle={{ color: '#52c41a' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Avg Payment"
-                            value={stats.averagePayment}
-                            prefix="$"
-                            precision={2}
-                            valueStyle={{ color: '#722ed1' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Avg Payment"
+                                value={stats.averagePayment}
+                                prefix="$"
+                                precision={2}
+                                valueStyle={{ color: '#722ed1' }}
+                            />
+                        )}
                     </Card>
                 </Col>
             </Row>
@@ -766,42 +909,58 @@ export default function Payments() {
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Card Payments"
-                            value={stats.cardPayments}
-                            prefix={<CreditCardOutlined />}
-                            valueStyle={{ color: '#1890ff' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Card Payments"
+                                value={stats.cardPayments}
+                                prefix={<CreditCardOutlined />}
+                                valueStyle={{ color: '#1890ff' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="UPI Payments"
-                            value={stats.upiPayments}
-                            prefix={<BankOutlined />}
-                            valueStyle={{ color: '#722ed1' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="UPI Payments"
+                                value={stats.upiPayments}
+                                prefix={<BankOutlined />}
+                                valueStyle={{ color: '#722ed1' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Cash Payments"
-                            value={stats.cashPayments}
-                            prefix={<WalletOutlined />}
-                            valueStyle={{ color: '#fa8c16' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="CASH Payments"
+                                value={stats.CASHPayments}
+                                prefix={<WalletOutlined />}
+                                valueStyle={{ color: '#fa8c16' }}
+                            />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
-                        <Statistic
-                            title="Net Banking"
-                            value={stats.netBankingPayments}
-                            prefix={<BankOutlined />}
-                            valueStyle={{ color: '#13c2c2' }}
-                        />
+                        {statsLoading ? (
+                            <Skeleton active paragraph={{ rows: 1 }} />
+                        ) : (
+                            <Statistic
+                                title="Net Banking"
+                                value={stats.netBankingPayments}
+                                prefix={<BankOutlined />}
+                                valueStyle={{ color: '#13c2c2' }}
+                            />
+                        )}
                     </Card>
                 </Col>
             </Row>
@@ -813,14 +972,13 @@ export default function Payments() {
                         <div className="flex items-center space-x-2">
                             <TeamOutlined className="w-5 h-5" />
                             <span className="text-lg font-semibold">All Payments</span>
-                            <Tag color="blue" className="ml-2">
-                                {filteredPayments.length}
-                            </Tag>
+                            <Badge count={payments.length} showZero color="blue" />
                         </div>
                         <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                            <Input
+                            <Input.Search
                                 placeholder="Search customer or email..."
                                 value={searchTerm}
+                                onSearch={() => getPayments(pagination.current, pagination.pageSize, searchTerm)}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 prefix={<SearchOutlined />}
                                 allowClear
@@ -828,26 +986,34 @@ export default function Payments() {
                             />
                             <Select
                                 value={statusFilter}
-                                onChange={setStatusFilter}
+                                onChange={(value) => {
+                                    setStatusFilter(value)
+                                    getPayments(pagination.current, pagination.pageSize, searchTerm, value)
+                                }}
                                 style={{ width: 150 }}
                                 placeholder="Filter by status"
+                                suffixIcon={<FilterOutlined />}
                             >
                                 <Option value="all">All Status</Option>
-                                <Option value="Paid">Paid</Option>
-                                <Option value="Pending">Pending</Option>
-                                <Option value="Failed">Failed</Option>
+                                <Option value="PAID">PAID</Option>
+                                <Option value="PENDING">PENDING</Option>
+                                <Option value="FAILED">FAILED</Option>
                             </Select>
                             <Select
                                 value={methodFilter}
-                                onChange={setMethodFilter}
+                                onChange={(value) => {
+                                    setMethodFilter(value)
+                                    getPayments(pagination.current, pagination.pageSize, searchTerm, statusFilter, value)
+                                }}
                                 style={{ width: 150 }}
                                 placeholder="Filter by method"
+                                suffixIcon={<FilterOutlined />}
                             >
                                 <Option value="all">All Methods</Option>
-                                <Option value="Cash">Cash</Option>
-                                <Option value="Card">Card</Option>
+                                <Option value="CASH">CASH</Option>
+                                <Option value="CARD">Card</Option>
                                 <Option value="UPI">UPI</Option>
-                                <Option value="Net Banking">Net Banking</Option>
+                                <Option value="ONLINE">ONLINE</Option>
                             </Select>
                             <RangePicker
                                 value={dateRange}
@@ -867,21 +1033,34 @@ export default function Payments() {
 
             {/* Payments Table */}
             <Card className="shadow-md rounded-lg">
-                <Table
-                    dataSource={filteredPayments}
-                    columns={columns}
-                    rowKey="id"
-                    pagination={{
-                        pageSize: 10,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) =>
-                            `${range[0]}-${range[1]} of ${total} payments`,
-                    }}
-                    scroll={{ x: 900 }}
-                    rowClassName="hover:bg-gray-50"
-                    loading={loading}
-                />
+                {tableLoading ? (
+                    <TableSkeleton />
+                ) : payments.length > 0 ? (
+                    <Table
+                        dataSource={payments}
+                        columns={columns}
+                        rowKey="id"
+                        onChange={handleTableChange}
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) =>
+                                `${range[0]}-${range[1]} of ${total} payments`,
+                        }}
+                        scroll={{ x: 900 }}
+                        rowClassName="hover:bg-gray-50"
+                    />
+                ) : (
+                    <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="No payments found"
+                    >
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal('add')}>
+                            Add First Payment
+                        </Button>
+                    </Empty>
+                )}
             </Card>
 
             {/* Payment Modal */}

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input as AntInput, Table as AntdTable } from "antd";
 import { toast } from "sonner";
 import { getApi, PutApi, DeleteApi } from "@/ApiService";
 import {
@@ -59,7 +60,7 @@ interface Appointment {
   doctor: any;
   appointment_date: string;
   appointment_start_time: string;
-  status: "Pending" | "Confirmed" | "Completed";
+  status: "CANCELED" | "CONFIRMED" | "SCHEDULED";
   patient_id: string;
   doctor_id: string;
 }
@@ -203,10 +204,19 @@ export default function AppointmentManagement() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   const handleChange = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  useEffect(() => {
+    loadData(pagination.current, pagination.pageSize, searchTerm, statusFilter)
+  }, [statusFilter])
 
   const handleSubmit = () => {
     setIsSubmitting(true);
@@ -252,9 +262,9 @@ export default function AppointmentManagement() {
       .finally(() => setLoadingActionId(null));
   };
 
-  function loadData() {
+  function loadData(page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) {
     setLoading(true);
-    getApi('/appointment')
+    getApi(`/appointment?page=${page}&limit=${limit}&q=${searchQuery}&status=${statusFilter === 'all' ? "" : statusFilter}`)
       .then((data) => {
         if (!data.error) {
           setAppointments(data.data);
@@ -328,27 +338,131 @@ export default function AppointmentManagement() {
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "Completed": return "default";
-      case "Confirmed": return "secondary";
-      case "Pending": return "destructive";
+      case "SCHEDULED": return "default";
+      case "CONFIRMED": return "secondary";
+      case "CANCELED": return "destructive";
       default: return "outline";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Completed": return "text-green-600 bg-green-50 border-green-200";
-      case "Confirmed": return "text-blue-600 bg-blue-50 border-blue-200";
-      case "Pending": return "text-orange-600 bg-orange-50 border-orange-200";
+      case "SCHEDULED": return "text-green-600 bg-green-50 border-green-200";
+      case "CONFIRMED": return "text-blue-600 bg-blue-50 border-blue-200";
+      case "CANCELED": return "text-orange-600 bg-orange-50 border-orange-200";
       default: return "";
     }
   };
 
   const stats = {
     total: appointments.length,
-    pending: appointments.filter(app => app.status === "Pending").length,
-    confirmed: appointments.filter(app => app.status === "Confirmed").length,
-    completed: appointments.filter(app => app.status === "Completed").length,
+    pending: appointments.filter(app => app.status === "CANCELED").length,
+    confirmed: appointments.filter(app => app.status === "CONFIRMED").length,
+    completed: appointments.filter(app => app.status === "SCHEDULED").length,
+  };
+
+  const columns = [
+    {
+      title: "Patient",
+      dataIndex: ['patient', 'username'],
+      key: "",
+      width: 100
+    },
+    {
+      title: "Doctor",
+      dataIndex: ['doctor', 'username'],
+      key: "",
+      width: 100
+    },
+    {
+      title: "Date",
+      dataIndex: "appointment_date",
+      key: "",
+      width: 100
+    },
+    {
+      title: "Token",
+      dataIndex: "token_number",
+      key: "",
+      width: 100
+    },
+    {
+      title: "Time",
+      dataIndex: "appointment_start_time",
+      key: "",
+      width: 100
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "",
+      width: 100,
+      render: (_: any, record: any) => (
+        <Badge
+          variant={getStatusVariant(record.status)}
+          className={`font-medium ${getStatusColor(record.status)}`}
+        >
+          {record.status}
+        </Badge>
+      )
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 150,
+      render: (_: any, record: any) => (
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-2">
+            {record.status !== "SCHEDULED" && (
+              <Select
+                value={record.status}
+                onValueChange={(status: Appointment["status"]) =>
+                  handleUpdateStatus(record.id, status)
+                }
+                disabled={loadingActionId === record.id}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CANCELED">CANCELED</SelectItem>
+                  <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+                  <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            <div className="flex gap-1 ml-2">
+              <ActionButton
+                icon={<Eye className="w-4 h-4" />}
+                label="View Details"
+                onClick={() => handleView(record)}
+                loading={loadingActionId === record.id}
+              />
+
+              <ActionButton
+                icon={<Edit className="w-4 h-4" />}
+                label="Edit Appointment"
+                onClick={() => handleEdit(record)}
+                loading={loadingActionId === record.id}
+              />
+
+              <ActionButton
+                icon={<Trash2 className="w-4 h-4 text-red-500" />} // 🔴 Red by default
+                label="Delete Appointment"
+                onClick={() => handleDeleteClick(record)}
+                loading={loadingActionId === record.id}
+              />
+
+            </div>
+          </div>
+        </TableCell>
+      ),
+    },
+  ];
+
+  const handleTableChange = (newPagination: any) => {
+    loadData(newPagination.current, newPagination.pageSize);
   };
 
   // if (loading && appointments.length === 0) {
@@ -375,7 +489,7 @@ export default function AppointmentManagement() {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => navigate("/calendar")}
+                onClick={() => navigate("/appointments/calendar")}
                 className="h-12 px-6"
               >
                 <Calendar className="w-4 h-4 mr-2" />
@@ -416,7 +530,7 @@ export default function AppointmentManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-sm font-medium text-gray-600">CANCELED</p>
                   <p className="text-2xl font-bold text-orange-600">{stats.pending}</p>
                 </div>
                 <div className="p-2 bg-orange-100 rounded-lg">
@@ -430,7 +544,7 @@ export default function AppointmentManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Confirmed</p>
+                  <p className="text-sm font-medium text-gray-600">CONFIRMED</p>
                   <p className="text-2xl font-bold text-blue-600">{stats.confirmed}</p>
                 </div>
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -444,7 +558,7 @@ export default function AppointmentManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Completed</p>
+                  <p className="text-sm font-medium text-gray-600">SCHEDULED</p>
                   <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
                 </div>
                 <div className="p-2 bg-green-100 rounded-lg">
@@ -469,11 +583,12 @@ export default function AppointmentManagement() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <Input
+                <AntInput.Search
                   placeholder="Search patients, doctors, or dates..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 h-12"
+                  onSearch={() => { loadData(pagination.current, pagination.pageSize, searchTerm) }}
                 />
               </div>
             </div>
@@ -484,9 +599,9 @@ export default function AppointmentManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="CANCELED">CANCELED</SelectItem>
+                  <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+                  <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -515,109 +630,128 @@ export default function AppointmentManagement() {
                 <TableSkeleton />
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50 hover:bg-gray-50">
-                    <TableHead className="font-semibold">Patient</TableHead>
-                    <TableHead className="font-semibold">Doctor</TableHead>
-                    <TableHead className="font-semibold">Date</TableHead>
-                    <TableHead className="font-semibold">Time</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAppointments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        <div className="flex flex-col items-center justify-center">
-                          <Calendar className="w-12 h-12 text-gray-300 mb-2" />
-                          <p className="text-gray-500 text-lg">No appointments found</p>
-                          <p className="text-gray-400 text-sm">
-                            {searchTerm || statusFilter !== "all"
-                              ? "Try adjusting your search or filters"
-                              : "Create your first appointment"
-                            }
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredAppointments.map(app => (
-                      <TableRow key={app.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-gray-400" />
-                            {app?.patient?.username || "N/A"}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Stethoscope className="w-4 h-4 text-gray-400" />
-                            Dr. {app?.doctor?.username || "N/A"}
-                          </div>
-                        </TableCell>
-                        <TableCell>{app.appointment_date}</TableCell>
-                        <TableCell>{app.appointment_start_time}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={getStatusVariant(app.status)}
-                            className={`font-medium ${getStatusColor(app.status)}`}
-                          >
-                            {app.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {app.status !== "Completed" && (
-                              <Select
-                                value={app.status}
-                                onValueChange={(status: Appointment["status"]) =>
-                                  handleUpdateStatus(app.id, status)
-                                }
-                                disabled={loadingActionId === app.id}
-                              >
-                                <SelectTrigger className="w-[140px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Pending">Pending</SelectItem>
-                                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                                  <SelectItem value="Completed">Completed</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
+              <AntdTable
+                dataSource={filteredAppointments}
+                columns={columns}
+                rowKey={"id"}
+                pagination={
+                  {
+                    current: pagination.current,
+                    pageSize: pagination.pageSize,
+                    total: pagination.total,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total, range) =>
+                      `${range[0]}-${range[1]} of ${total} RECEPTIONISTs`,
+                  }
+                }
+                onChange={handleTableChange}
+                scroll={{ x: 1000 }}
+                loading={false} // We handle loading ourselves with skeleton
+              />
+              // <Table>
+              //   <TableHeader>
+              //     <TableRow className="bg-gray-50 hover:bg-gray-50">
+              //       <TableHead className="font-semibold">Patient</TableHead>
+              //       <TableHead className="font-semibold">Doctor</TableHead>
+              //       <TableHead className="font-semibold">Date</TableHead>
+              //       <TableHead className="font-semibold">Time</TableHead>
+              //       <TableHead className="font-semibold">Status</TableHead>
+              //       <TableHead className="font-semibold text-right">Actions</TableHead>
+              //     </TableRow>
+              //   </TableHeader>
+              //   <TableBody>
+              //     {filteredAppointments.length === 0 ? (
+              //       <TableRow>
+              //         <TableCell colSpan={6} className="text-center py-8">
+              //           <div className="flex flex-col items-center justify-center">
+              //             <Calendar className="w-12 h-12 text-gray-300 mb-2" />
+              //             <p className="text-gray-500 text-lg">No appointments found</p>
+              //             <p className="text-gray-400 text-sm">
+              //               {searchTerm || statusFilter !== "all"
+              //                 ? "Try adjusting your search or filters"
+              //                 : "Create your first appointment"
+              //               }
+              //             </p>
+              //           </div>
+              //         </TableCell>
+              //       </TableRow>
+              //     ) : (
+              //       filteredAppointments.map(app => (
+              //         <TableRow key={app.id} className="hover:bg-gray-50">
+              //           <TableCell className="font-medium">
+              //             <div className="flex items-center gap-2">
+              //               <User className="w-4 h-4 text-gray-400" />
+              //               {app?.patient?.username || "N/A"}
+              //             </div>
+              //           </TableCell>
+              //           <TableCell>
+              //             <div className="flex items-center gap-2">
+              //               <Stethoscope className="w-4 h-4 text-gray-400" />
+              //               Dr. {app?.doctor?.username || "N/A"}
+              //             </div>
+              //           </TableCell>
+              //           <TableCell>{app.appointment_date}</TableCell>
+              //           <TableCell>{app.appointment_start_time}</TableCell>
+              //           <TableCell>
+              //             <Badge
+              //               variant={getStatusVariant(app.status)}
+              //               className={`font-medium ${getStatusColor(app.status)}`}
+              //             >
+              //               {app.status}
+              //             </Badge>
+              //           </TableCell>
+              //           <TableCell className="text-right">
+              //             <div className="flex items-center justify-end gap-2">
+              //               {app.status !== "SCHEDULED" && (
+              //                 <Select
+              //                   value={app.status}
+              //                   onValueChange={(status: Appointment["status"]) =>
+              //                     handleUpdateStatus(app.id, status)
+              //                   }
+              //                   disabled={loadingActionId === app.id}
+              //                 >
+              //                   <SelectTrigger className="w-[140px]">
+              //                     <SelectValue />
+              //                   </SelectTrigger>
+              //                   <SelectContent>
+              //                     <SelectItem value="CANCELED">CANCELED</SelectItem>
+              //                     <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+              //                     <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
+              //                   </SelectContent>
+              //                 </Select>
+              //               )}
 
-                            <div className="flex gap-1 ml-2">
-                              <ActionButton
-                                icon={<Eye className="w-4 h-4" />}
-                                label="View Details"
-                                onClick={() => handleView(app)}
-                                loading={loadingActionId === app.id}
-                              />
+              //               <div className="flex gap-1 ml-2">
+              //                 <ActionButton
+              //                   icon={<Eye className="w-4 h-4" />}
+              //                   label="View Details"
+              //                   onClick={() => handleView(app)}
+              //                   loading={loadingActionId === app.id}
+              //                 />
 
-                              <ActionButton
-                                icon={<Edit className="w-4 h-4" />}
-                                label="Edit Appointment"
-                                onClick={() => handleEdit(app)}
-                                loading={loadingActionId === app.id}
-                              />
+              //                 <ActionButton
+              //                   icon={<Edit className="w-4 h-4" />}
+              //                   label="Edit Appointment"
+              //                   onClick={() => handleEdit(app)}
+              //                   loading={loadingActionId === app.id}
+              //                 />
 
-                              <ActionButton
-                                icon={<Trash2 className="w-4 h-4 text-red-500" />} // 🔴 Red by default
-                                label="Delete Appointment"
-                                onClick={() => handleDeleteClick(app)}
-                                loading={loadingActionId === app.id}
-                              />
+              //                 <ActionButton
+              //                   icon={<Trash2 className="w-4 h-4 text-red-500" />} // 🔴 Red by default
+              //                   label="Delete Appointment"
+              //                   onClick={() => handleDeleteClick(app)}
+              //                   loading={loadingActionId === app.id}
+              //                 />
 
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              //               </div>
+              //             </div>
+              //           </TableCell>
+              //         </TableRow>
+              //       ))
+              //     )}
+              //   </TableBody>
+              // </Table>
             )}
           </div>
         </CardContent>
@@ -756,9 +890,9 @@ export default function AppointmentManagement() {
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Confirmed">Confirmed</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="CANCELED">CANCELED</SelectItem>
+                    <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+                    <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

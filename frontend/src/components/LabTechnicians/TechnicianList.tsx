@@ -61,9 +61,9 @@ export default function TechnicianList() {
     extraFields: false,
     table: false
   });
-    const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  
+
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -94,10 +94,10 @@ export default function TechnicianList() {
     }
   };
 
-  const loadTechnicians = async (page = 1, limit = 10) => {
+  const loadTechnicians = async (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) => {
     setTableLoading(true);
     try {
-      const data = await getApi(`/users?user_type=LABTECHNICIAN&page=${page}&limit=${limit}`);
+      const data = await getApi(`/users?user_type=LABTECHNICIAN&page=${page}&limit=${limit}&q=${searchQuery}`);
       if (!data?.error) {
         setPagination(prev => ({
           ...prev,
@@ -204,7 +204,7 @@ export default function TechnicianList() {
   const handleEdit = (record: any) => {
     setSelectedTechnician(record);
     form.setFieldsValue({
-      extra_fields: {...record.extra_fields?.fields_data??{}},
+      extra_fields: { ...record.extra_fields?.fields_data ?? {} },
       department_id: record.department_id,
       date_of_birth: record.date_of_birth?.split("T")[0],
       gender: record.gender,
@@ -497,7 +497,7 @@ export default function TechnicianList() {
         </Space>
       </div>
 
-      
+
       <Card className="border-0 shadow-sm mb-15">
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -510,15 +510,16 @@ export default function TechnicianList() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <Input
+                <Input.Search
                   placeholder="Search patients, doctors, or dates..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 h-12"
+                  onSearch={() => { loadTechnicians(pagination.current, pagination.pageSize, searchTerm) }}
                 />
               </div>
             </div>
-            <div className="w-full md:w-48">
+            {/* <div className="w-full md:w-48">
               <UISelect value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-12">
                   <SelectValue placeholder="Filter by status" />
@@ -530,7 +531,7 @@ export default function TechnicianList() {
                   <SelectItem value="Completed">Completed</SelectItem>
                 </SelectContent>
               </UISelect>
-            </div>
+            </div> */}
             <UIButton variant="outline" className="h-12 px-6">
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -555,7 +556,7 @@ export default function TechnicianList() {
               total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
-              showTotal: (total, range) => 
+              showTotal: (total, range) =>
                 `${range[0]}-${range[1]} of ${total} technicians`,
             }
           }

@@ -172,16 +172,6 @@ export default function AddNurse({ onAddNurse }: AddNurseProps) {
         }
     };
 
-    useEffect(() => {
-        showLoader();
-        const fetchData = async () => {
-            await Promise.all([getExtraFields(), getDepartments()]);
-            // Hide fullscreen loader after all data is loaded
-            setTimeout(() => setShowFullscreenLoader(false), 500);
-        };
-        fetchData();
-    }, []);
-
     const handleSubmit = async (values: any) => {
         setIsLoading(true);
         showLoader();

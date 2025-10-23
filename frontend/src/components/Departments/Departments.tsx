@@ -28,7 +28,30 @@ import {
   Switch,
   Collapse,
   Typography,
-  Flex
+  Flex,
+  Skeleton,
+  Dropdown,
+  Menu,
+  Steps,
+  Result,
+  Spin,
+  FloatButton,
+  QRCode,
+  Segmented,
+  notification,
+  Drawer,
+  ColorPicker,
+  theme,
+  App,
+  Grid,
+  Layout,
+  Breadcrumb,
+  Empty,
+  Image,
+  Upload,
+  Rate,
+  List,
+  Calendar
 } from "antd";
 import {
   UserOutlined,
@@ -71,7 +94,118 @@ import {
   FormOutlined,
   FieldBinaryOutlined,
   BuildOutlined,
-  ClusterOutlined
+  ClusterOutlined,
+  MoreOutlined,
+  CloudDownloadOutlined,
+  CloudUploadOutlined,
+  BarcodeOutlined,
+  QrcodeOutlined,
+  ScanOutlined,
+  TransactionOutlined,
+  MoneyCollectOutlined,
+  FundOutlined,
+  AccountBookOutlined,
+  AuditOutlined,
+  ReconciliationOutlined,
+  ShopOutlined,
+  ShoppingCartOutlined,
+  GiftOutlined,
+  TrophyOutlined,
+  LikeOutlined,
+  DislikeOutlined,
+  NotificationOutlined,
+  ExclamationCircleOutlined,
+  IssuesCloseOutlined,
+  StopOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+  StepForwardOutlined,
+  StepBackwardOutlined,
+  FastForwardOutlined,
+  FastBackwardOutlined,
+  CaretUpOutlined,
+  CaretDownOutlined,
+  CaretLeftOutlined,
+  CaretRightOutlined,
+  VerticalLeftOutlined,
+  VerticalRightOutlined,
+  ForwardOutlined,
+  BackwardOutlined,
+  RollbackOutlined,
+  EnterOutlined,
+  RetweetOutlined,
+  SwapOutlined,
+  SwapLeftOutlined,
+  SwapRightOutlined,
+  WifiOutlined,
+  GlobalOutlined,
+  DesktopOutlined,
+  LaptopOutlined,
+  MobileOutlined,
+  TabletOutlined,
+  CameraOutlined,
+  PictureOutlined,
+  SoundOutlined,
+  CustomerServiceOutlined,
+  VideoCameraOutlined,
+  PlaySquareOutlined,
+  PauseOutlined,
+  FolderOpenOutlined,
+  FolderOutlined,
+  FileAddOutlined,
+  FileExcelOutlined,
+  FileWordOutlined,
+  FilePptOutlined,
+  FileImageOutlined,
+  FileZipOutlined,
+  FileUnknownOutlined,
+  FileMarkdownOutlined,
+  FilePdfOutlined,
+  InboxOutlined,
+  PaperClipOutlined,
+  TagOutlined,
+  TagsOutlined,
+  PushpinOutlined,
+  PhoneFilled,
+  MobileFilled,
+  TabletFilled,
+  AudioFilled,
+  VideoCameraFilled,
+  NotificationFilled,
+  MessageFilled,
+  HeartFilled,
+  StarFilled,
+  CrownFilled,
+  TrophyFilled,
+  FireFilled,
+  LikeFilled,
+  DislikeFilled,
+  InfoCircleFilled,
+  ExclamationCircleFilled,
+  WarningFilled,
+  QuestionCircleOutlined,
+  QuestionCircleFilled,
+  MinusCircleOutlined,
+  MinusCircleFilled,
+  PlusCircleOutlined,
+  PlusCircleFilled,
+  FrownOutlined,
+  FrownFilled,
+  MehOutlined,
+  MehFilled,
+  SmileOutlined,
+  SmileFilled,
+  PoweroffOutlined,
+  LogoutOutlined,
+  LoginOutlined,
+  UsergroupAddOutlined,
+  UsergroupDeleteOutlined,
+  UserDeleteOutlined,
+  TeamOutlined as TeamFilled,
+  ImportOutlined,
+  SettingOutlined,
+  BarChartOutlined,
+  FileTextOutlined
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { toast } from "sonner";
@@ -81,6 +215,10 @@ import dayjs from "dayjs";
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+const { TabPane } = Tabs;
+const { Panel } = Collapse;
+const { useToken } = theme;
+const { Step } = Steps;
 
 export interface DepartmentInterface {
   id: number;
@@ -104,17 +242,51 @@ export default function Department() {
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentInterface | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [activeTab, setActiveTab] = useState("departments");
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
+  const handleTableChange = (newPagination: any) => {
+    loadData(newPagination.current, newPagination.pageSize);
+  };
 
   const [form] = Form.useForm();
+  const { token } = useToken();
 
-  const loadData = () => {
+  // Skeleton components
+  const StatisticSkeleton = () => (
+    <Card>
+      <Skeleton active paragraph={{ rows: 1 }} />
+    </Card>
+  );
+
+  const TableSkeleton = () => (
+    <Card>
+      <Skeleton active paragraph={{ rows: 6 }} />
+    </Card>
+  );
+
+  const CardSkeleton = () => (
+    <Card>
+      <Skeleton active avatar paragraph={{ rows: 3 }} />
+    </Card>
+  );
+
+  const loadData = (page = 1, limit = 10, searchQuery = searchText, status = statusFilter) => {
     setIsLoading(true);
-    getApi('/departments')
+    setTableLoading(true);
+    setStatsLoading(true);
+    getApi(`/departments?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : 'ACTIVE'}`)
       .then((data) => {
         if (!data.error) {
           setDepartments(data.data);
@@ -125,22 +297,16 @@ export default function Department() {
       .catch((error) => {
         console.error("Error fetching departments:", error);
         toast.error("Failed to fetch departments");
-      }).finally(() => setIsLoading(false));
+      }).finally(() => {
+        setIsLoading(false);
+        setTableLoading(false);
+        setStatsLoading(false);
+      });
   };
 
   useEffect(() => {
     loadData();
   }, []);
-
-  useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(() => {
-        loadData()
-        message.info("🔄 Auto-refresh: Department data reloaded");
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh]);
 
   const handleOpenModal = (department: DepartmentInterface | null = null) => {
     if (department) {
@@ -228,21 +394,51 @@ export default function Department() {
     ).length,
     totalDoctors: 0,
     totalPatients: 0
-    // totalDoctors: departments.reduce((acc, d) => acc + (d.doctorCount || 0), 0),
-    // totalPatients: departments.reduce((acc, d) => acc + (d.patientCount || 0), 0)
   };
+
+  // More actions menu
+  const moreActionsMenu = (
+    <Menu
+      items={[
+        {
+          key: 'export',
+          icon: <ExportOutlined />,
+          label: 'Export Departments',
+        },
+        {
+          key: 'import',
+          icon: <ImportOutlined />,
+          label: 'Import Data',
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'settings',
+          icon: <SettingOutlined />,
+          label: 'Department Settings',
+        },
+        {
+          key: 'help',
+          icon: <QuestionCircleOutlined />,
+          label: 'Help & Support',
+        },
+      ]}
+    />
+  );
 
   // UI Helpers
   const getStatusColor = (status: string) => ({ 'ACTIVE': 'green', 'INACTIVE': 'red' }[status] || 'default');
   const getStatusIcon = (status: string) => ({ 'Active': <CheckCircleOutlined />, 'Inactive': <CloseCircleOutlined /> }[status]);
 
-  const filteredDepartments = departments.filter((department) => {
-    const matchesSearch = searchText === "" ||
-      department.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      department.description.toLowerCase().includes(searchText.toLowerCase());
-    const matchesStatus = statusFilter === "all" || department.is_active === (statusFilter === "ACTIVE");
-    return matchesSearch && matchesStatus;
-  });
+  const filteredDepartments = departments
+  // .filter((department) => {
+  //   const matchesSearch = searchText === "" ||
+  //     department.name.toLowerCase().includes(searchText.toLowerCase()) ||
+  //     department.description.toLowerCase().includes(searchText.toLowerCase());
+  //   const matchesStatus = statusFilter === "all" || department.is_active === (statusFilter === "ACTIVE");
+  //   return matchesSearch && matchesStatus;
+  // });
 
   const columns: ColumnsType<DepartmentInterface> = [
     {
@@ -261,8 +457,7 @@ export default function Department() {
             <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{record.name}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>{record.description}</div>
             <div style={{ fontSize: '12px', color: '#999' }}>
-              {/* <TeamOutlined /> {record.doctorCount || 0} doctors •
-              <UserOutlined style={{ marginLeft: '8px' }} /> {record.patientCount || 0} patients */}
+              <CalendarOutlined /> Created: {dayjs(record.created_at).format('MMM D, YYYY')}
             </div>
           </div>
         </Flex>
@@ -273,17 +468,16 @@ export default function Department() {
       key: 'status',
       render: (_, record) => (
         <Space direction="vertical">
-          <Tag color={getStatusColor(record.is_active ? "ACTIVE" : "INACTIVE")} icon={getStatusIcon(record.is_active ? "ACTIVE" : "INACTIVE")} style={{ fontWeight: 'bold' }}>
+          <Tag
+            color={getStatusColor(record.is_active ? "ACTIVE" : "INACTIVE")}
+            icon={record.is_active ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+            style={{ fontWeight: 'bold' }}
+          >
             {record.is_active ? "ACTIVE" : "INACTIVE"}
           </Tag>
-          {record.created_at && (
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              <CalendarOutlined /> Created: {dayjs(record.created_at).format('MMM D, YYYY')}
-            </div>
-          )}
           {record.updated_at && (
             <div style={{ fontSize: '12px', color: '#999' }}>
-              Updated: {dayjs(record.updated_at).fromNow()}
+              <SyncOutlined /> Updated: {dayjs(record.updated_at).fromNow()}
             </div>
           )}
         </Space>
@@ -294,8 +488,20 @@ export default function Department() {
       key: 'actions',
       render: (_, record) => (
         <Space>
+          <Tooltip title="View Details">
+            <Button
+              icon={<EyeOutlined />}
+              shape="circle"
+              type="primary"
+              ghost
+            />
+          </Tooltip>
           <Tooltip title="Edit Department">
-            <Button icon={<EditOutlined />} shape="circle" onClick={() => handleOpenModal(record)} />
+            <Button
+              icon={<EditOutlined />}
+              shape="circle"
+              onClick={() => handleOpenModal(record)}
+            />
           </Tooltip>
           <Tooltip title="Delete Department">
             <Popconfirm
@@ -307,27 +513,53 @@ export default function Department() {
               okType="danger"
               icon={<CloseCircleOutlined style={{ color: 'red' }} />}
             >
-              <Button disabled icon={<DeleteOutlined />} shape="circle" danger />
+              <Button icon={<DeleteOutlined />} shape="circle" danger />
             </Popconfirm>
           </Tooltip>
+          <Dropdown overlay={moreActionsMenu} trigger={['click']}>
+            <Button icon={<MoreOutlined />} shape="circle" />
+          </Dropdown>
         </Space>
       ),
     },
   ];
 
+  if (isLoading) {
+    return (
+
+      <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+        {/* Header Skeleton */}
+        <CardSkeleton />
+
+        {/* Statistics Skeleton */}
+        <Row gutter={[16, 16]}>
+          {[...Array(6)].map((_, i) => (
+            <Col key={i} xs={24} sm={12} md={8} lg={4}>
+              <StatisticSkeleton />
+            </Col>
+          ))}
+        </Row>
+
+        {/* Table Skeleton */}
+        <TableSkeleton />
+      </div>
+
+    );
+  }
+
   return (
     <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
-      <Card style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%)', color: 'white' }}>
+      <Card style={{ color: 'black' }}>
         <Flex justify="space-between" align="center">
           <div>
             <Space size="large">
-              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '10px' }}>
-                <BuildOutlined style={{ fontSize: '36px' }} />
-              </div>
+              <Avatar size={64} icon={<BuildOutlined />} style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }} />
               <div>
-                <Title level={2} style={{ color: 'white', margin: 0 }}>🏥 Department Management</Title>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', margin: 0 }}><DashboardOutlined /> Manage hospital departments and specialties</Text>
+                <Title level={2} style={{ color: 'black', margin: 0 }}>🏥 Department Management</Title>
+                <Text style={{ color: 'rgba(0, 0, 0, 0.8)', margin: 0 }}>
+                  <DashboardOutlined /> Manage hospital departments and specialties
+                </Text>
               </div>
             </Space>
           </div>
@@ -340,6 +572,11 @@ export default function Department() {
                 onChange={setAutoRefresh}
               />
             </Tooltip>
+            <Dropdown overlay={moreActionsMenu} placement="bottomRight">
+              <Button icon={<SettingOutlined />} style={{ color: 'black' }} size="large" ghost>
+                Settings
+              </Button>
+            </Dropdown>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -355,12 +592,85 @@ export default function Department() {
 
       {/* Statistics Cards */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><BuildOutlined /> Total Departments</Space>} value={stats.total} valueStyle={{ color: '#ff6b6b' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><CheckCircleOutlined /> Active</Space>} value={stats.active} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><TeamOutlined /> Total Doctors</Space>} value={stats.totalDoctors} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><UserOutlined /> Total Patients</Space>} value={stats.totalPatients} valueStyle={{ color: '#722ed1' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><ClockCircleOutlined /> Recent Added</Space>} value={stats.recentAdded} valueStyle={{ color: '#fa8c16' }} /></Card></Col>
-        <Col xs={24} sm={12} md={8} lg={4}><Card><Statistic title={<Space><DashboardOutlined /> Utilization</Space>} value={Math.round((stats.active / (stats.total || 1)) * 100)} suffix="%" valueStyle={{ color: '#36cfc9' }} /></Card></Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><BuildOutlined /> Total Departments</Space>}
+                value={stats.total}
+                valueStyle={{ color: '#ff6b6b' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><CheckCircleOutlined /> Active</Space>}
+                value={stats.active}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><TeamOutlined /> Total Doctors</Space>}
+                value={stats.totalDoctors}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><UserOutlined /> Total Patients</Space>}
+                value={stats.totalPatients}
+                valueStyle={{ color: '#722ed1' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><ClockCircleOutlined /> Recent Added</Space>}
+                value={stats.recentAdded}
+                valueStyle={{ color: '#fa8c16' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><DashboardOutlined /> Utilization</Space>}
+                value={Math.round((stats.active / (stats.total || 1)) * 100)}
+                suffix="%"
+                valueStyle={{ color: '#36cfc9' }}
+              />
+            )}
+          </Card>
+        </Col>
       </Row>
 
       {/* Tabs for Different Views */}
@@ -376,22 +686,49 @@ export default function Department() {
           <div className="space-y-6">
             <Card>
               <Flex wrap="wrap" gap="middle" align="center" style={{ marginBottom: '16px' }}>
-                <Input
+                <Input.Search
                   placeholder="🔍 Search departments, descriptions..."
                   prefix={<SearchOutlined />}
+                  onSearch={() => loadData(pagination.current, pagination.pageSize, searchText)}
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   style={{ width: 300 }}
                   size="large"
                 />
-                <Select value={statusFilter} onChange={setStatusFilter} placeholder="Filter by Status" style={{ width: 150 }} size="large">
+                <Select
+                  value={statusFilter}
+                  onChange={(val) => {
+                    loadData(pagination.current, pagination.pageSize, searchText, val)
+                    setStatusFilter(val)
+                  }}
+                  placeholder="Filter by Status"
+                  style={{ width: 150 }}
+                  size="large"
+                >
                   <Option value="all">All Status</Option>
                   <Option value="ACTIVE">Active</Option>
                   <Option value="INACTIVE">Inactive</Option>
                 </Select>
                 <Space>
-                  <Button icon={<ReloadOutlined />} onClick={() => { setSearchText(''); setStatusFilter('all'); }}>Reset</Button>
-                  <Button icon={<ExportOutlined />}>Export</Button>
+                  <Button
+                    icon={<ReloadOutlined />}
+                    onClick={() => { setSearchText(''); setStatusFilter('all'); }}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    icon={<ExportOutlined />}
+                    onClick={() => setDrawerVisible(true)}
+                  >
+                    Export
+                  </Button>
+                  <Button
+                    icon={<CloudDownloadOutlined />}
+                    type="primary"
+                    ghost
+                  >
+                    Quick Actions
+                  </Button>
                 </Space>
               </Flex>
               <Alert
@@ -417,20 +754,38 @@ export default function Department() {
                 </Space>
               }
             >
-              <Table
-                columns={columns}
-                dataSource={filteredDepartments}
-                rowKey="id"
-                loading={isLoading}
-                scroll={{ x: 800 }}
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} departments`,
-                }}
-              />
+              {tableLoading ? (
+                <TableSkeleton />
+              ) : filteredDepartments.length > 0 ? (
+                <Table
+                  columns={columns}
+                  dataSource={filteredDepartments}
+                  rowKey="id"
+                  loading={tableLoading}
+                  onChange={handleTableChange}
+                  scroll={{ x: 800 }}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total, range) =>
+                      `${range[0]}-${range[1]} of ${total} departments`,
+                  }}
+                />
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No departments found matching your criteria"
+                >
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => handleOpenModal()}
+                  >
+                    Add First Department
+                  </Button>
+                </Empty>
+              )}
             </Card>
           </div>
         </Tabs.TabPane>
@@ -439,44 +794,55 @@ export default function Department() {
           <Row gutter={[16, 16]}>
             <Col span={12}>
               <Card title="Department Distribution">
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                  <PieChartOutlined style={{ fontSize: '48px', color: '#ff6b6b' }} />
-                  <div style={{ marginTop: '16px' }}>
-                    <Progress
-                      type="circle"
-                      percent={Math.round((stats.active / (stats.total || 1)) * 100)}
-                      strokeColor="#52c41a"
-                    />
+                {statsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <Skeleton active paragraph={{ rows: 4 }} />
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <PieChartOutlined style={{ fontSize: '48px', color: '#ff6b6b' }} />
                     <div style={{ marginTop: '16px' }}>
-                      <Tag color="green">Active: {stats.active}</Tag>
-                      <Tag color="red">Inactive: {stats.inactive}</Tag>
+                      <Progress
+                        type="circle"
+                        percent={Math.round((stats.active / (stats.total || 1)) * 100)}
+                        strokeColor="#52c41a"
+                      />
+                      <div style={{ marginTop: '16px' }}>
+                        <Tag color="green">Active: {stats.active}</Tag>
+                        <Tag color="red">Inactive: {stats.inactive}</Tag>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </Card>
             </Col>
             <Col span={12}>
               <Card title="Recent Department Activity">
-                <Timeline>
-                  {departments.slice(0, 5).map(department => (
-                    <Timeline.Item
-                      key={department.id}
-                      color={getStatusColor(department.is_active ? "ACTIVE" : "INACTIVE")}
-                      dot={getStatusIcon(department.is_active ? "ACTIVE" : "INACTIVE")}
-                    >
-                      <Space direction="vertical" size={0}>
-                        <div style={{ fontWeight: 'bold' }}>{department.name}</div>
-                        <div style={{ color: '#666', fontSize: '12px' }}>
-                          {department.description}
-                        </div>
-                        <div style={{ color: '#999', fontSize: '12px' }}>
-                          {/* <TeamOutlined /> {department.doctorCount || 0} doctors •
-                          <UserOutlined style={{ marginLeft: '8px' }} /> {department.patientCount || 0} patients */}
-                        </div>
-                      </Space>
-                    </Timeline.Item>
-                  ))}
-                </Timeline>
+                {statsLoading ? (
+                  <Skeleton active paragraph={{ rows: 5 }} />
+                ) : departments.length > 0 ? (
+                  <Timeline>
+                    {departments.slice(0, 5).map(department => (
+                      <Timeline.Item
+                        key={department.id}
+                        color={getStatusColor(department.is_active ? "ACTIVE" : "INACTIVE")}
+                        dot={department.is_active ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                      >
+                        <Space direction="vertical" size={0}>
+                          <div style={{ fontWeight: 'bold' }}>{department.name}</div>
+                          <div style={{ color: '#666', fontSize: '12px' }}>
+                            {department.description}
+                          </div>
+                          <div style={{ color: '#999', fontSize: '12px' }}>
+                            <CalendarOutlined /> Created: {dayjs(department.created_at).format('MMM D, YYYY')}
+                          </div>
+                        </Space>
+                      </Timeline.Item>
+                    ))}
+                  </Timeline>
+                ) : (
+                  <Empty description="No department activity recorded" />
+                )}
               </Card>
             </Col>
           </Row>
@@ -497,43 +863,142 @@ export default function Department() {
         okText={selectedDepartment ? "Update Department" : "Add Department"}
         width={600}
         destroyOnClose
+        confirmLoading={isLoading}
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="name"
-                label="Department Name"
+                label={
+                  <Space>
+                    <BuildOutlined />
+                    Department Name
+                  </Space>
+                }
                 rules={[{ required: true, message: "Please enter department name" }]}
               >
-                <Input prefix={<BuildOutlined />} placeholder="Enter department name" />
+                <Input prefix={<BuildOutlined />} placeholder="Enter department name" size="large" />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
                 name="status"
-                label="Status"
+                label={
+                  <Space>
+                    <SafetyCertificateOutlined />
+                    Status
+                  </Space>
+                }
                 rules={[{ required: true }]}
               >
-                <Select placeholder="Select status">
-                  <Option value="ACTIVE">Active</Option>
-                  <Option value="INACTIVE">Inactive</Option>
+                <Select placeholder="Select status" size="large">
+                  <Option value="ACTIVE">
+                    <Space>
+                      <CheckCircleOutlined />
+                      Active
+                    </Space>
+                  </Option>
+                  <Option value="INACTIVE">
+                    <Space>
+                      <CloseCircleOutlined />
+                      Inactive
+                    </Space>
+                  </Option>
                 </Select>
               </Form.Item>
             </Col>
           </Row>
           <Form.Item
             name="description"
-            label="Description"
+            label={
+              <Space>
+                <FileTextOutlined />
+                Description
+              </Space>
+            }
             rules={[{ required: true, message: "Please enter department description" }]}
           >
             <TextArea
               rows={3}
               placeholder="Enter detailed description of this department and its services"
+              showCount
+              maxLength={500}
             />
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Quick Actions Drawer */}
+      <Drawer
+        title="Quick Actions"
+        placement="right"
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        width={400}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <Card size="small" title="Data Management">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Button icon={<CloudDownloadOutlined />} block>
+                Download Report
+              </Button>
+              <Button icon={<CloudUploadOutlined />} block>
+                Upload Data
+              </Button>
+              <Button icon={<SyncOutlined />} block onClick={() => loadData()}>
+                Refresh Data
+              </Button>
+            </Space>
+          </Card>
+
+          <Card size="small" title="Department Operations">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Button
+                icon={<PlusOutlined />}
+                type="primary"
+                block
+                onClick={() => {
+                  setDrawerVisible(false);
+                  handleOpenModal();
+                }}
+              >
+                New Department
+              </Button>
+              <Button icon={<TeamOutlined />} block>
+                Manage Staff
+              </Button>
+              <Button icon={<BarChartOutlined />} block>
+                View Analytics
+              </Button>
+            </Space>
+          </Card>
+        </Space>
+      </Drawer>
+
+      {/* Floating Action Button */}
+      {/* <FloatButton.Group
+          shape="circle"
+          style={{ right: 24 }}
+          icon={<ThunderboltOutlined />}
+        >
+          <FloatButton
+            icon={<PlusOutlined />}
+            tooltip="Add Department"
+            onClick={() => handleOpenModal()}
+          />
+          <FloatButton
+            icon={<SyncOutlined />}
+            tooltip="Refresh"
+            onClick={loadData}
+          />
+          <FloatButton
+            icon={<SettingOutlined />}
+            tooltip="Settings"
+            onClick={() => setDrawerVisible(true)}
+          />
+          <FloatButton.BackTop visibilityHeight={0} />
+        </FloatButton.Group> */}
     </div>
   );
 }

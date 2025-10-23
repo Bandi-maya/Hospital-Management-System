@@ -1,182 +1,1243 @@
-import React, { useEffect, useState } from "react";
-import { 
-  Table, 
-  Input, 
-  Select, 
-  Tag, 
-  Button, 
-  Space, 
-  Form, 
-  Modal, 
+// import React, { useEffect, useState } from "react";
+// import {
+//   Table,
+//   Input,
+//   Select,
+//   Tag,
+//   Button,
+//   Space,
+//   Form,
+//   Modal,
+//   Card,
+//   Tooltip,
+//   Popconfirm,
+//   message,
+//   Skeleton,
+//   Row,
+//   Col,
+//   Statistic,
+//   Badge,
+//   Descriptions,
+//   Divider
+// } from "antd";
+// import type { ColumnsType } from "antd/es/table";
+// import { useNavigate } from "react-router-dom";
+// import {
+//   SearchOutlined,
+//   PlusOutlined,
+//   EyeOutlined,
+//   ReloadOutlined,
+//   TeamOutlined,
+//   DashboardOutlined,
+//   UserOutlined,
+//   ExperimentOutlined,
+//   CalendarOutlined,
+//   ThunderboltOutlined,
+//   RocketOutlined,
+//   SyncOutlined,
+//   FileTextOutlined,
+//   PlayCircleOutlined,
+//   CheckCircleOutlined,
+//   ClockCircleOutlined,
+//   ExclamationCircleOutlined,
+//   FileDoneOutlined
+// } from "@ant-design/icons";
+// import { toast } from "sonner";
+// import { getApi, PostApi, PutApi } from "@/ApiService";
+// import TextArea from "antd/es/input/TextArea";
+// import { motion } from "framer-motion";
+
+// const { Option } = Select;
+
+// // Skeleton Loader Components
+// const HeaderSkeleton = () => (
+//   <Card className="bg-white shadow-sm border-0">
+//     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+//       <div className="flex items-center space-x-3">
+//         <Skeleton.Avatar active size="large" />
+//         <div>
+//           <Skeleton.Input active size="large" style={{ width: 200 }} />
+//           <div className="mt-1">
+//             <Skeleton.Input active size="small" style={{ width: 250 }} />
+//           </div>
+//         </div>
+//       </div>
+//       <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+//         <Skeleton.Button active size="small" style={{ width: 120 }} />
+//         <Skeleton.Button active size="small" style={{ width: 100 }} />
+//         <Skeleton.Button active size="small" style={{ width: 140 }} />
+//       </div>
+//     </div>
+//   </Card>
+// );
+
+// const StatsSkeleton = () => (
+//   <Row gutter={[16, 16]}>
+//     {[...Array(4)].map((_, index) => (
+//       <Col key={index} xs={24} sm={12} lg={6}>
+//         <Card className="text-center shadow-sm">
+//           <Skeleton.Input active size="large" style={{ width: 60, height: 32, margin: '0 auto' }} />
+//           <div className="mt-2">
+//             <Skeleton.Input active size="small" style={{ width: 80, margin: '0 auto' }} />
+//           </div>
+//         </Card>
+//       </Col>
+//     ))}
+//   </Row>
+// );
+
+// const TableSkeleton = () => (
+//   <Card className="shadow-md rounded-lg">
+//     <div className="p-4">
+//       {[...Array(5)].map((_, index) => (
+//         <div key={index} className="flex items-center space-x-4 p-4 border-b animate-pulse">
+//           <Skeleton.Avatar active size="default" />
+//           <div className="flex-1 space-y-2">
+//             <Skeleton.Input active size="small" style={{ width: '60%' }} />
+//             <Skeleton.Input active size="small" style={{ width: '40%' }} />
+//           </div>
+//           <div className="space-y-2">
+//             <Skeleton.Input active size="small" style={{ width: 80 }} />
+//             <Skeleton.Input active size="small" style={{ width: 60 }} />
+//           </div>
+//           <Skeleton.Button active size="small" style={{ width: 120 }} />
+//         </div>
+//       ))}
+//     </div>
+//   </Card>
+// );
+
+// // Enhanced Action Button Component
+// const ActionButton = ({
+//   icon,
+//   label,
+//   onClick,
+//   type = "default",
+//   danger = false,
+//   loading = false,
+//   disabled = false
+// }: {
+//   icon: React.ReactNode;
+//   label: string;
+//   onClick: () => void;
+//   type?: "primary" | "default" | "dashed" | "link";
+//   danger?: boolean;
+//   loading?: boolean;
+//   disabled?: boolean;
+// }) => (
+//   <Tooltip title={label}>
+//     <motion.div
+//       whileHover={{ scale: disabled ? 1 : 1.05 }}
+//       whileTap={{ scale: disabled ? 1 : 0.95 }}
+//       transition={{ type: "spring", stiffness: 400, damping: 17 }}
+//     >
+//       <Button
+//         type={type}
+//         danger={danger}
+//         icon={icon}
+//         loading={loading}
+//         onClick={onClick}
+//         disabled={disabled}
+//         className={`
+//           flex items-center justify-center 
+//           transition-all duration-200 ease-in-out
+//           w-10 h-10 rounded-full
+//           ${danger ? 'border-red-500 text-red-600 hover:bg-red-50' : ''}
+//           ${type === 'primary' ? '' : 'border-gray-300'}
+//           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+//         `}
+//         style={{
+//           minWidth: '40px'
+//         }}
+//       />
+//     </motion.div>
+//   </Tooltip>
+// );
+
+// export default function TestResults() {
+//   const [results, setResults] = useState([]);
+//   const [search, setSearch] = useState("");
+//   const [filter, setFilter] = useState<"all" | "PENDING" | "IN_PROGRESS" | "COMPLETED">("all");
+//   const [autoRefresh, setAutoRefresh] = useState(true);
+//   const navigate = useNavigate();
+//   const [isModalOpen, setIsModalOpen] = useState(false);
+//   const [isAddReportModalOpen, setIsAddReportModalOpen] = useState(false);
+//   const [form] = Form.useForm();
+//   const [form1] = Form.useForm();
+//   const [tests, setTests] = useState([]);
+//   const [patients, setPatients] = useState([]);
+//   const [selectedResult, setSelectedResult] = useState(null);
+//   const [loading, setLoading] = useState(false);
+//   const [actionLoading, setActionLoading] = useState<string | null>(null);
+//   const loginData = JSON.parse(localStorage.getItem("loginData") || "{}");
+
+//   async function loadPatients() {
+//     await getApi("/users?user_type=PATIENT")
+//       .then((data) => {
+//         if (!data?.error) {
+//           setPatients(data.data);
+//         }
+//         else {
+//           toast.error(data.error);
+//           console.error("Error fetching user patients:", data.error);
+//         }
+//       }).catch((error) => {
+//         toast.error("Error fetching user patients");
+//         console.error("Error deleting user patients:", error);
+//       });
+//   }
+
+//   async function loadTests() {
+//     await getApi("/lab-tests")
+//       .then((data) => {
+//         if (!data?.error) {
+//           setTests(data.data);
+//         }
+//         else {
+//           toast.error(data.error);
+//           console.error("Error fetching lab tests:", data.error);
+//         }
+//       }).catch((error) => {
+//         toast.error("Error fetching lab tests");
+//         console.error("Error deleting lab tests:", error);
+//       });
+//   }
+
+//   async function loadData() {
+//     setLoading(true);
+//     await getApi("/lab-requests")
+//       .then((data) => {
+//         if (!data?.error) {
+//           setResults(data.data);
+//         }
+//         else {
+//           toast.error(data.error);
+//           console.error("Error fetching user fields:", data.error);
+//         }
+//       }).catch((error) => {
+//         console.error("Error deleting user field:", error);
+//       })
+//       .finally(() => {
+//         setLoading(false);
+//       });
+//   }
+
+//   useEffect(() => {
+//     loadPatients()
+//     loadTests()
+//     loadData();
+//   }, []);
+
+//   // Auto refresh notifier
+//   useEffect(() => {
+//     if (autoRefresh) {
+//       const interval = setInterval(() => {
+//         message.info("🔄 Auto-refresh: Test results data reloaded");
+//         loadData();
+//       }, 30000);
+//       return () => clearInterval(interval);
+//     }
+//   }, [autoRefresh]);
+
+//   const filteredResults = results.filter((result: any) =>
+//     filter === "all" || result.status === filter
+//   ).filter((result: any) =>
+//     result.patient?.username?.toLowerCase().includes(search.toLowerCase()) ||
+//     result.test?.name?.toLowerCase().includes(search.toLowerCase())
+//   );
+
+//   const getStatusColor = (status: string) => {
+//     switch (status) {
+//       case "COMPLETED": return "green";
+//       case "IN_PROGRESS": return "blue";
+//       case "PENDING": return "orange";
+//       default: return "default";
+//     }
+//   };
+
+//   const getStatusIcon = (status: string) => {
+//     switch (status) {
+//       case "COMPLETED": return <CheckCircleOutlined />;
+//       case "IN_PROGRESS": return <SyncOutlined />;
+//       case "PENDING": return <ClockCircleOutlined />;
+//       default: return <DashboardOutlined />;
+//     }
+//   };
+
+//   const getStatusText = (status: string) => {
+//     return status.replace('_', ' ');
+//   };
+
+//   const resetFilters = () => {
+//     setSearch("");
+//     setFilter("all");
+//   };
+
+//   // Calculate statistics
+//   const stats = {
+//     totalRequests: results.length,
+//     pendingRequests: results.filter((r: any) => r.status === "PENDING").length,
+//     inProgressRequests: results.filter((r: any) => r.status === "IN_PROGRESS").length,
+//     completedRequests: results.filter((r: any) => r.status === "COMPLETED").length
+//   };
+
+//   const columns = [
+//     {
+//       title: (
+//         <Space>
+//           <UserOutlined className="text-blue-600" />
+//           Patient Information
+//         </Space>
+//       ),
+//       key: "patient",
+//       render: (_, record: any) => (
+//         <Space>
+//           <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center border border-blue-200">
+//             <UserOutlined className="w-6 h-6 text-blue-600" />
+//           </div>
+//           <div>
+//             <div className="font-semibold text-gray-900">{record.patient?.username}</div>
+//             <div className="text-sm text-gray-500">
+//               Requested by: {record.requester?.username}
+//             </div>
+//             <div className="text-xs text-gray-400 mt-1">
+//               Patient ID: {record.patient_id}
+//             </div>
+//           </div>
+//         </Space>
+//       ),
+//     },
+//     {
+//       title: (
+//         <Space>
+//           <ExperimentOutlined className="text-purple-600" />
+//           Test Information
+//         </Space>
+//       ),
+//       dataIndex: ["test", "name"],
+//       key: "testTypes",
+//       render: (testName: string, record: any) => (
+//         <Space direction="vertical" size={0}>
+//           <div className="font-semibold text-gray-900">{testName}</div>
+//           <div className="text-sm text-gray-500">
+//             Laboratory Test
+//           </div>
+//           {record.test?.description && (
+//             <div className="text-xs text-gray-400 mt-1">
+//               {record.test.description.length > 50
+//                 ? `${record.test.description.substring(0, 50)}...`
+//                 : record.test.description
+//               }
+//             </div>
+//           )}
+//         </Space>
+//       ),
+//     },
+//     {
+//       title: (
+//         <Space>
+//           <CalendarOutlined className="text-orange-600" />
+//           Timeline
+//         </Space>
+//       ),
+//       key: "dates",
+//       render: (_, record: any) => (
+//         <Space direction="vertical" size={0}>
+//           <div className="font-semibold text-gray-900">
+//             {new Date(record.created_at).toLocaleDateString()}
+//           </div>
+//           <div className="text-xs text-gray-500">
+//             Created Date
+//           </div>
+//           <div className="text-xs text-gray-400 mt-1">
+//             Updated: {new Date(record.updated_at).toLocaleDateString()}
+//           </div>
+//         </Space>
+//       ),
+//     },
+//     {
+//       title: (
+//         <Space>
+//           <DashboardOutlined className="text-green-600" />
+//           Status
+//         </Space>
+//       ),
+//       dataIndex: "status",
+//       key: "status",
+//       render: (status: string) => (
+//         <Space direction="vertical" size={0}>
+//           <Tag
+//             color={getStatusColor(status)}
+//             icon={getStatusIcon(status)}
+//             className="font-semibold"
+//           >
+//             {getStatusText(status)}
+//           </Tag>
+//           <div className="text-xs text-gray-500">
+//             Current Status
+//           </div>
+//         </Space>
+//       ),
+//     },
+//     {
+//       title: (
+//         <Space>
+//           <ThunderboltOutlined className="text-blue-600" />
+//           Actions
+//         </Space>
+//       ),
+//       key: "actions",
+//       render: (_, record: any) => (
+//         <Space size="small">
+//           <ActionButton
+//             icon={<PlayCircleOutlined />}
+//             label={record.status === "COMPLETED" ? "Test Completed" : "Start Test"}
+//             type="primary"
+//             danger={false}
+//             loading={actionLoading === `start-${record.id}`}
+//             onClick={() => inProgressLabRequest(record)}
+//             disabled={record.status === "COMPLETED"}
+//           />
+
+//           <ActionButton
+//             icon={<EyeOutlined />}
+//             label="View Report"
+//             type="default"
+//             onClick={() =>
+//               navigate("/laboratory/reports", {
+//                 state: {
+//                   patientName: record.patient?.username,
+//                   testIds: [record.test_id],
+//                 },
+//               })
+//             }
+//           />
+
+//           <ActionButton
+//             icon={<FileTextOutlined />}
+//             label={record.status === "COMPLETED" ? "Report Already Added" : "Add Report"}
+//             type="primary"
+//             loading={actionLoading === `report-${record.id}`}
+//             onClick={() => {
+//               setSelectedResult(record);
+//               setIsAddReportModalOpen(true);
+//             }}
+//             disabled={record.status === "COMPLETED"}
+//           />
+//         </Space>
+//       ),
+//     },
+//   ];
+
+//   const handleSubmit = async (values: any) => {
+//     setActionLoading('create');
+//     const newPatient: any = {
+//       patient_id: values.patient_id,
+//       test_id: values.test_id,
+//       status: "PENDING",
+//     };
+
+//     await PostApi(`/lab-requests`, newPatient)
+//       .then((data) => {
+//         if (!data?.error) {
+//           toast.success("Test request added successfully!");
+//           setIsModalOpen(false);
+//           form.resetFields();
+//           loadData();
+//         }
+//         else {
+//           console.error("Error fetching user fields:", data.error);
+//           toast.error("Failed to add test request");
+//         }
+//       }).catch((error) => {
+//         console.error("Error deleting user field:", error);
+//         toast.error("Failed to add test request");
+//       })
+//       .finally(() => {
+//         setActionLoading(null);
+//       });
+//   };
+
+//   const inProgressLabRequest = async (values: any) => {
+//     setActionLoading(`start-${values.id}`);
+//     await PutApi(`/lab-requests`, {
+//       id: values.id,
+//       test_id: values.test_id,
+//       patient_id: values.patient_id,
+//       status: "IN_PROGRESS"
+//     })
+//       .then((data) => {
+//         if (!data?.error) {
+//           toast.success("Test started successfully!");
+//           loadData();
+//         }
+//         else {
+//           console.error("Error updating lab request:", data.error);
+//           toast.error("Failed to start test");
+//         }
+//       }).catch((error) => {
+//         console.error("Error updating lab request:", error);
+//         toast.error("Failed to start test");
+//       })
+//       .finally(() => {
+//         setActionLoading(null);
+//       });
+//   };
+
+//   const handleSubmit1 = async (values: any) => {
+//     setActionLoading(`report-${selectedResult.id}`);
+//     const newPatient: any = {
+//       request_id: selectedResult.id,
+//       report_data: { data: values.report_data },
+//     };
+
+//     Promise.all([
+//       PostApi(`/lab-reports`, newPatient),
+//       PutApi(`/lab-requests`, {
+//         id: selectedResult.id,
+//         test_id: selectedResult.test_id,
+//         patient_id: selectedResult.patient_id,
+//         reported_by: loginData.user_id,
+//         status: "COMPLETED"
+//       })
+//     ]).then(([data, data1]) => {
+//       if (!data?.error) {
+//         toast.success("Report added successfully!");
+//         setIsAddReportModalOpen(false);
+//         form1.resetFields();
+//         loadData();
+//       }
+//       else {
+//         console.error("Error adding lab report:", data.error);
+//         toast.error("Failed to add report");
+//       }
+//       if (!data1?.error) {
+//         setIsAddReportModalOpen(false);
+//       }
+//       else {
+//         console.error("Error updating lab request:", data1.error);
+//       }
+//     }).catch((error) => {
+//       console.error("Error in report submission:", error);
+//       toast.error("Failed to add report");
+//     })
+//       .finally(() => {
+//         setActionLoading(null);
+//       });
+//   };
+
+//   return (
+//     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+//       {/* Header */}
+//       {loading ? (
+//         <HeaderSkeleton />
+//       ) : (
+//         <Card className="bg-white shadow-sm border-0">
+//           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+//             <div className="flex items-center space-x-3">
+//               <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+//                 <ExperimentOutlined className="w-8 h-8 text-blue-600" />
+//               </div>
+//               <div>
+//                 <h1 className="text-3xl font-bold text-gray-900">Laboratory Results</h1>
+//                 <p className="text-gray-600 mt-1">Manage and track all laboratory test results and reports</p>
+//               </div>
+//             </div>
+//             <div className="flex flex-wrap gap-3 mt-4 lg:mt-0">
+//               <Tooltip title="Auto Refresh">
+//                 <div className="flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-lg border">
+//                   <SyncOutlined className="w-4 h-4 text-gray-600" />
+//                   <span className="text-sm text-gray-700 font-medium">Auto Refresh</span>
+//                   <div
+//                     className={`w-10 h-5 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+//                       }`}
+//                     onClick={() => setAutoRefresh(!autoRefresh)}
+//                   >
+//                     <div
+//                       className={`w-3 h-3 rounded-full bg-white transform transition-transform mt-1 ${autoRefresh ? 'translate-x-6' : 'translate-x-1'
+//                         }`}
+//                     />
+//                   </div>
+//                 </div>
+//               </Tooltip>
+
+//               <Tooltip title="Reset Filters">
+//                 <Button
+//                   icon={<ReloadOutlined />}
+//                   onClick={resetFilters}
+//                   className="border-gray-300"
+//                 >
+//                   Reset
+//                 </Button>
+//               </Tooltip>
+
+//               <Tooltip title="Add New Test Request">
+//                 <motion.div
+//                   whileHover={{ scale: 1.02 }}
+//                   whileTap={{ scale: 0.98 }}
+//                 >
+//                   <Button
+//                     type="primary"
+//                     icon={<PlusOutlined />}
+//                     onClick={() => {
+//                       form.resetFields();
+//                       setIsModalOpen(true);
+//                     }}
+//                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-md"
+//                     size="large"
+//                   >
+//                     <RocketOutlined /> New Test Request
+//                   </Button>
+//                 </motion.div>
+//               </Tooltip>
+//             </div>
+//           </div>
+//         </Card>
+//       )}
+
+//       {/* Statistics Cards */}
+//       {loading ? (
+//         <StatsSkeleton />
+//       ) : (
+//         <Row gutter={[16, 16]}>
+//           <Col xs={24} sm={12} lg={6}>
+//             <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+//               <Statistic
+//                 title="Total Requests"
+//                 value={stats.totalRequests}
+//                 prefix={<FileDoneOutlined className="text-blue-600" />}
+//                 valueStyle={{ color: '#1d4ed8' }}
+//               />
+//             </Card>
+//           </Col>
+//           <Col xs={24} sm={12} lg={6}>
+//             <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-orange-50 to-orange-100">
+//               <Statistic
+//                 title="Pending"
+//                 value={stats.pendingRequests}
+//                 prefix={<ClockCircleOutlined className="text-orange-600" />}
+//                 valueStyle={{ color: '#ea580c' }}
+//               />
+//             </Card>
+//           </Col>
+//           <Col xs={24} sm={12} lg={6}>
+//             <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+//               <Statistic
+//                 title="In Progress"
+//                 value={stats.inProgressRequests}
+//                 prefix={<SyncOutlined className="text-blue-600" />}
+//                 valueStyle={{ color: '#2563eb' }}
+//               />
+//             </Card>
+//           </Col>
+//           <Col xs={24} sm={12} lg={6}>
+//             <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-green-50 to-green-100">
+//               <Statistic
+//                 title="Completed"
+//                 value={stats.completedRequests}
+//                 prefix={<CheckCircleOutlined className="text-green-600" />}
+//                 valueStyle={{ color: '#16a34a' }}
+//               />
+//             </Card>
+//           </Col>
+//         </Row>
+//       )}
+
+//       {/* Search and Filter Section */}
+//       <Card className="bg-white shadow-sm border-0">
+//         <div className="p-6">
+//           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+//             <div className="flex items-center space-x-3">
+//               <TeamOutlined className="w-6 h-6 text-blue-600" />
+//               <span className="text-xl font-semibold text-gray-900">Test Results</span>
+//               <Tag color="blue" className="ml-2 text-lg font-semibold px-3 py-1">
+//                 {filteredResults.length} results
+//               </Tag>
+//             </div>
+//             <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+//               <Input
+//                 placeholder="Search by patient name or test type..."
+//                 value={search}
+//                 onChange={(e) => setSearch(e.target.value)}
+//                 prefix={<SearchOutlined className="text-gray-400" />}
+//                 allowClear
+//                 size="large"
+//                 style={{ width: 300 }}
+//                 className="rounded-lg"
+//               />
+//               <Select
+//                 value={filter}
+//                 onChange={(value) => setFilter(value)}
+//                 style={{ width: 200 }}
+//                 placeholder="Filter by status"
+//                 size="large"
+//               >
+//                 <Option value="all">All Status</Option>
+//                 <Option value="PENDING">Pending</Option>
+//                 <Option value="IN_PROGRESS">In Progress</Option>
+//                 <Option value="COMPLETED">Completed</Option>
+//               </Select>
+//             </div>
+//           </div>
+//         </div>
+//       </Card>
+
+//       {/* Results Table */}
+//       {loading ? (
+//         <TableSkeleton />
+//       ) : (
+//         <Card className="shadow-lg rounded-xl border-0 overflow-hidden">
+//           <Table
+//             columns={columns}
+//             dataSource={filteredResults}
+//             rowKey="id"
+//             pagination={{
+//               pageSize: 10,
+//               showSizeChanger: true,
+//               showQuickJumper: true,
+//               showTotal: (total, range) =>
+//                 `${range[0]}-${range[1]} of ${total} results`,
+//               className: "px-6 py-4"
+//             }}
+//             scroll={{ x: "max-content" }}
+//             rowClassName="hover:bg-blue-50 transition-colors duration-200"
+//             className="rounded-lg"
+//           />
+//         </Card>
+//       )}
+
+//       {/* Add Test Request Modal */}
+//       <Modal
+//         title={
+//           <Space>
+//             <div className="p-2 bg-green-100 rounded-lg">
+//               <PlusOutlined className="text-green-600" />
+//             </div>
+//             <span className="text-lg font-semibold">New Lab Test Request</span>
+//           </Space>
+//         }
+//         open={isModalOpen}
+//         onCancel={() => setIsModalOpen(false)}
+//         onOk={() => form.submit()}
+//         okText="Create Request"
+//         confirmLoading={actionLoading === 'create'}
+//         width={600}
+//         styles={{
+//           body: { padding: '24px' }
+//         }}
+//       >
+//         <Form form={form} layout="vertical" onFinish={handleSubmit}>
+//           <Form.Item
+//             name="patient_id"
+//             label="Patient"
+//             rules={[{ required: true, message: "Please select patient" }]}
+//           >
+//             <Select
+//               showSearch
+//               placeholder="Select patient"
+//               size="large"
+//               filterOption={(input, option: any) =>
+//                 (option?.label ?? "")?.toLowerCase()?.includes(input?.toLowerCase())
+//               }
+//               options={patients.map((t) => ({ value: t.id, label: t.username }))}
+//             />
+//           </Form.Item>
+
+//           <Form.Item
+//             name="test_id"
+//             label="Test Type"
+//             rules={[{ required: true, message: "Please select test" }]}
+//           >
+//             <Select
+//               showSearch
+//               placeholder="Select test"
+//               size="large"
+//               filterOption={(input, option: any) =>
+//                 (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+//               }
+//               options={tests.map((t) => ({ value: t.id, label: t.name }))}
+//             />
+//           </Form.Item>
+//         </Form>
+//       </Modal>
+
+//       {/* Add Report Modal */}
+//       <Modal
+//         title={
+//           <Space>
+//             <div className="p-2 bg-blue-100 rounded-lg">
+//               <FileTextOutlined className="text-blue-600" />
+//             </div>
+//             <span className="text-lg font-semibold">Add Laboratory Report</span>
+//           </Space>
+//         }
+//         open={isAddReportModalOpen}
+//         onCancel={() => setIsAddReportModalOpen(false)}
+//         onOk={() => form1.submit()}
+//         okText="Submit Report"
+//         confirmLoading={actionLoading?.startsWith('report-')}
+//         width={700}
+//         styles={{
+//           body: { padding: '24px' }
+//         }}
+//       >
+//         {selectedResult && (
+//           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+//             <div className="grid grid-cols-2 gap-4 text-sm">
+//               <div>
+//                 <span className="font-medium text-gray-700">Patient:</span>
+//                 <span className="ml-2">{selectedResult.patient?.username}</span>
+//               </div>
+//               <div>
+//                 <span className="font-medium text-gray-700">Test:</span>
+//                 <span className="ml-2">{selectedResult.test?.name}</span>
+//               </div>
+//               <div>
+//                 <span className="font-medium text-gray-700">Request ID:</span>
+//                 <span className="ml-2">{selectedResult.id}</span>
+//               </div>
+//               <div>
+//                 <span className="font-medium text-gray-700">Status:</span>
+//                 <Tag color={getStatusColor(selectedResult.status)} className="ml-2">
+//                   {getStatusText(selectedResult.status)}
+//                 </Tag>
+//               </div>
+//             </div>
+//           </div>
+//         )}
+
+//         <Form form={form1} layout="vertical" onFinish={handleSubmit1}>
+//           <Form.Item
+//             name="report_data"
+//             label="Test Results & Findings"
+//             rules={[{ required: true, message: "Please enter test results and findings" }]}
+//           >
+//             <TextArea
+//               rows={6}
+//               placeholder="Enter detailed test results, observations, findings, and recommendations..."
+//               size="large"
+//             />
+//           </Form.Item>
+//         </Form>
+//       </Modal>
+//     </div>
+//   );
+// }
+import { useState, useEffect } from "react";
+import {
+  Table,
+  Input,
+  Button,
+  Modal,
+  Form,
+  Select,
   Card,
+  Space,
+  Tag,
   Tooltip,
   Popconfirm,
-  message
+  message,
+  Descriptions,
+  Divider,
+  Skeleton,
+  Row,
+  Col,
+  Statistic,
+  Badge
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useNavigate } from "react-router-dom";
-import { 
-  SearchOutlined, 
-  PlusOutlined, 
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
   EyeOutlined,
   ReloadOutlined,
   TeamOutlined,
   DashboardOutlined,
+  ShoppingCartOutlined,
   UserOutlined,
-  ExperimentOutlined,
+  PhoneOutlined,
   CalendarOutlined,
   ThunderboltOutlined,
   RocketOutlined,
   SyncOutlined,
-  FileTextOutlined,
-  PlayCircleOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined
+  CloseCircleOutlined,
+  MedicineBoxOutlined,
+  ExclamationCircleOutlined,
+  FileTextOutlined
 } from "@ant-design/icons";
 import { toast } from "sonner";
-import { getApi, PostApi, PutApi } from "@/ApiService";
-import TextArea from "antd/es/input/TextArea";
+import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
+import { motion } from "framer-motion";
 
 const { Option } = Select;
 
-interface Test {
+interface PurchaseOrder {
   id: number;
-  patientName: string;
-  testType: string;
-  date: string;
-  status: "Available" | "Not Available" | "Completed";
+  user_id: number;
+  received_date: string;
+  taken_by: string;
+  taken_by_phone_no: string;
+  created_at?: string;
+  updated_at?: string;
+  medicines: {
+    medicine_id: number;
+    quantity: number;
+    order_date: string;
+  }[];
+  lab_tests: {
+    test_id: number;
+  }[];
+  user?: any;
+  medicine_details?: any[];
 }
 
-interface PatientTests {
-  patientName: string;
-  testTypes: string[];
-  dates: string[];
-  statuses: string[];
-  ids: number[];
+interface Medicine {
+  id: number;
+  name: string;
 }
+
+// Skeleton Loader Components
+const HeaderSkeleton = () => (
+  <Card className="bg-white shadow-sm border-0">
+    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+      <div className="flex items-center space-x-3">
+        <Skeleton.Avatar active size="large" />
+        <div>
+          <Skeleton.Input active size="large" style={{ width: 200 }} />
+          <div className="mt-1">
+            <Skeleton.Input active size="small" style={{ width: 250 }} />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+        <Skeleton.Button active size="small" style={{ width: 120 }} />
+        <Skeleton.Button active size="small" style={{ width: 100 }} />
+        <Skeleton.Button active size="small" style={{ width: 140 }} />
+      </div>
+    </div>
+  </Card>
+);
+
+const StatsSkeleton = () => (
+  <Row gutter={[16, 16]}>
+    {[...Array(4)].map((_, index) => (
+      <Col key={index} xs={24} sm={12} lg={6}>
+        <Card className="text-center shadow-sm">
+          <Skeleton.Input active size="large" style={{ width: 60, height: 32, margin: '0 auto' }} />
+          <div className="mt-2">
+            <Skeleton.Input active size="small" style={{ width: 80, margin: '0 auto' }} />
+          </div>
+        </Card>
+      </Col>
+    ))}
+  </Row>
+);
+
+const TableSkeleton = () => (
+  <Card className="shadow-md rounded-lg">
+    <div className="p-4">
+      {[...Array(5)].map((_, index) => (
+        <div key={index} className="flex items-center space-x-4 p-4 border-b animate-pulse">
+          <Skeleton.Avatar active size="default" />
+          <div className="flex-1 space-y-2">
+            <Skeleton.Input active size="small" style={{ width: '60%' }} />
+            <Skeleton.Input active size="small" style={{ width: '40%' }} />
+          </div>
+          <div className="space-y-2">
+            <Skeleton.Input active size="small" style={{ width: 80 }} />
+            <Skeleton.Input active size="small" style={{ width: 60 }} />
+          </div>
+          <Skeleton.Button active size="small" style={{ width: 120 }} />
+        </div>
+      ))}
+    </div>
+  </Card>
+);
+
+// Enhanced Action Button Component
+const ActionButton = ({
+  icon,
+  label,
+  onClick,
+  type = "default",
+  danger = false,
+  loading = false
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  type?: "primary" | "default" | "dashed" | "link";
+  danger?: boolean;
+  loading?: boolean;
+}) => (
+  <Tooltip title={label}>
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+    >
+      <Button
+        type={type}
+        danger={danger}
+        icon={icon}
+        loading={loading}
+        onClick={onClick}
+        className={`
+          flex items-center justify-center 
+          transition-all duration-200 ease-in-out
+          w-10 h-10 rounded-full
+          ${danger ? 'border-red-500 text-red-600 hover:bg-red-50' : ''}
+          ${type === 'primary' ? '' : 'border-gray-300'}
+        `}
+        style={{
+          minWidth: '40px'
+        }}
+      />
+    </motion.div>
+  </Tooltip>
+);
 
 export default function TestResults() {
-  const [results, setResults] = useState<Test[]>([]);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "Available" | "Not Available" | "Completed">("all");
+  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const navigate = useNavigate();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAddReportModalOpen, setIsAddReportModalOpen] = useState(false);
   const [form] = Form.useForm();
-  const [form1] = Form.useForm();
-  const [tests, setTests] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+  const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
+  const [search, setSearch] = useState("");
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [patients, setPatients] = useState([]);
-  const [selectedResult, setSelectedResult] = useState(null);
-  const loginData = JSON.parse(localStorage.getItem("loginData") || "{}");
-
-  async function loadPatients() {
-    await getApi("/users?user_type=PATIENT")
-      .then((data) => {
-        if (!data?.error) {
-          setPatients(data.data);
-        }
-        else {
-          toast.error(data.error);
-          console.error("Error fetching user patients:", data.error);
-        }
-      }).catch((error) => {
-        toast.error("Error fetching user patients");
-        console.error("Error deleting user patients:", error);
-      });
-  }
-
-  async function loadTests() {
-    await getApi("/lab-tests")
-      .then((data) => {
-        if (!data?.error) {
-          setTests(data.data);
-        }
-        else {
-          toast.error(data.error);
-          console.error("Error fetching lab tests:", data.error);
-        }
-      }).catch((error) => {
-        toast.error("Error fetching lab tests");
-        console.error("Error deleting lab tests:", error);
-      });
-  }
-
-  async function loadData() {
-    await getApi("/lab-requests")
-      .then((data) => {
-        if (!data?.error) {
-          setResults(data.data);
-        }
-        else {
-          toast.error(data.error);
-          console.error("Error fetching user fields:", data.error);
-        }
-      }).catch((error) => {
-        console.error("Error deleting user field:", error);
-      });
-  }
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const loginData = JSON.parse(localStorage.getItem("loginData") || '{"user_id":8}');
+  const [loadingActionId, setLoadingActionId] = useState<any | null>(null);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   useEffect(() => {
-    loadPatients()
-    loadTests()
-    loadData();
+    fetchOrders();
+    fetchPatients();
+    fetchMedicines();
   }, []);
 
-  // Auto refresh notifier
-  useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(() => {
-        message.info("🔄 Auto-refresh: Test results data reloaded");
-      }, 30000);
-      return () => clearInterval(interval);
+  const handleAddOrUpdateBilling = (values: any) => {
+    if (!values.patient_id || !values.medicines || values.medicines.length === 0) {
+      toast.error("Please fill all required fields");
+      return;
     }
-  }, [autoRefresh]);
 
-  const filteredResults = results
-    .filter((pt: any) => filter === "all" || pt.statuses.includes(filter));
+    setLoadingActionId(selectedOrder?.id);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "COMPLETED": return "green";
-      case "IN_PROGRESS": return "blue";
-      case "PENDING": return "orange";
-      default: return "default";
+    const billingData = {
+      prescription_id: selectedOrder?.id,
+      patient_id: values.patient_id,
+      medicines: values.medicines,
+      tests: values.tests || [],
+      surgeries: values.surgeries || [],
+      notes: values.notes || "",
+    };
+
+    PostApi('/billing', billingData)
+      .then((data) => {
+        if (!data.error) {
+          fetchOrders();
+          toast.success("Billing added successfully!");
+          // setIsBillingModalOpen(false);
+          setSelectedOrder(null);
+        } else {
+          toast.error(data.error);
+        }
+      }).catch((err) => {
+        console.error("Error: ", err);
+        toast.error("Error occurred while adding billing.");
+      }).finally(() => setLoadingActionId(null));
+  };
+
+  // Auto refresh notifier
+  // useEffect(() => {
+  //   if (autoRefresh) {
+  //     const interval = setInterval(() => {
+  //       message.info("🔄 Auto-refresh: Purchase orders data reloaded");
+  //       fetchOrders();
+  //     }, 30000);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [autoRefresh]);
+
+  const fetchOrders = async (page = 1, limit = 10, searchQuery = search) => {
+    setLoading(true);
+    getApi(`/orders?order_type=lab_test&page=${page}&limit=${limit}&q=${searchQuery}`)
+      .then((res) => {
+        if (!res.error) {
+          setOrders(res.data);
+        } else {
+          toast.error("Failed to load orders.");
+        }
+      })
+      .catch(() => toast.error("Server error while fetching orders"))
+      .finally(() => setLoading(false));
+  };
+
+  const fetchPatients = () => {
+    getApi("/users?user_type=DOCTOR")
+      .then((res) => {
+        if (!res.error) {
+          setPatients(res.data);
+        } else {
+          toast.error("Failed to load patients.");
+        }
+      })
+      .catch(() => toast.error("Server error while fetching patients"));
+  };
+
+  const fetchMedicines = () => {
+    getApi("/lab-tests")
+      .then((res) => {
+        if (!res.error) {
+          setMedicines(res.data);
+        } else {
+          toast.error("Failed to load medicines.");
+        }
+      })
+      .catch(() => toast.error("Server error while fetching medicines"));
+  };
+
+  const handleAddOrUpdate = (values: any) => {
+    if (!values.user_id || !values.items || values.items.length === 0) {
+      toast.error("Fill all required fields and add at least one item.");
+      return;
+    }
+
+    setActionLoading(editingOrder ? 'update' : 'create');
+
+    const orderData = {
+      ...values,
+      lab_tests: values.items,
+      created_by: loginData.user_id
+    };
+
+    if (editingOrder) {
+      PutApi("/orders", { ...editingOrder, ...orderData })
+        .then((res) => {
+          if (!res.error) {
+            toast.success("Order updated successfully");
+            setIsModalOpen(false);
+            fetchOrders();
+            form.resetFields();
+            setEditingOrder(null);
+          } else {
+            toast.error(res.error || "Failed to update order");
+          }
+        })
+        .catch(() => toast.error("Server error while updating order"))
+        .finally(() => setActionLoading(null));
+    } else {
+      PostApi("/orders", orderData)
+        .then((res) => {
+          if (!res.error) {
+            toast.success("Order added successfully");
+            setIsModalOpen(false);
+            fetchOrders();
+            form.resetFields();
+          } else {
+            toast.error(res.error || "Failed to add order");
+          }
+        })
+        .catch(() => toast.error("Server error while adding order"))
+        .finally(() => setActionLoading(null));
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "COMPLETED": return <CheckCircleOutlined />;
-      case "IN_PROGRESS": return <SyncOutlined />;
-      case "PENDING": return <ClockCircleOutlined />;
-      default: return <DashboardOutlined />;
-    }
+  const handleDeleteOrder = (order: PurchaseOrder) => {
+    setActionLoading(order.id.toString());
+    Modal.confirm({
+      title: "Delete Purchase Order?",
+      content: "Are you sure you want to delete this purchase order? This action cannot be undone.",
+      okText: "Yes, Delete",
+      cancelText: "Cancel",
+      okType: "danger",
+      icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
+      onOk() {
+        DeleteApi(`/orders?id=${order.id}`)
+          .then((res) => {
+            if (!res.error) {
+              toast.success("Order deleted successfully");
+              fetchOrders();
+            } else {
+              toast.error(res.error || "Failed to delete order");
+            }
+          })
+          .catch(() => toast.error("Server error while deleting order"))
+          .finally(() => setActionLoading(null));
+      },
+      onCancel() {
+        setActionLoading(null);
+      }
+    });
+  };
+
+  const handleEdit = (order: PurchaseOrder) => {
+    setEditingOrder(order);
+    form.setFieldsValue({
+      ...order,
+      user_id: order.user_id,
+      items: order.lab_tests || [],
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleView = (order: PurchaseOrder) => {
+    setSelectedOrder(order);
+    setIsViewModalOpen(true);
   };
 
   const resetFilters = () => {
     setSearch("");
-    setFilter("all");
   };
 
-  const columns = [
+  const filteredOrders = orders
+  // .filter(order =>
+  //   order.user_id.toString().includes(search) ||
+  //   order.received_date.includes(search) ||
+  //   order.taken_by?.toLowerCase().includes(search.toLowerCase()) ||
+  //   order.user?.username?.toLowerCase().includes(search.toLowerCase())
+  // );
+
+  // Calculate statistics
+  const stats = {
+    totalOrders: orders.length,
+    todayOrders: orders.filter(order => order.received_date === new Date().toISOString().split('T')[0]).length,
+    totalItems: orders.reduce((sum, order) => sum + (order.lab_tests?.length || 0), 0),
+    pendingOrders: orders.filter(order => !order.received_date).length
+  };
+
+  const columns: ColumnsType<PurchaseOrder> = [
     {
       title: (
         <Space>
-          <UserOutlined />
-          Patient Info
+          <ShoppingCartOutlined className="text-blue-600" />
+          Order Information
         </Space>
       ),
-      key: "patient",
-      render: (_, record: any) => (
+      key: "order",
+      render: (_, record: PurchaseOrder) => (
         <Space>
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <UserOutlined className="text-blue-600" />
+          <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center border border-blue-200">
+            <FileTextOutlined className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <div style={{ fontWeight: "bold" }}>{record.patient?.username}</div>
-            <div style={{ fontSize: "12px", color: "#666" }}>
-              Requested by: {record.requester?.username}
+            <div className="font-semibold text-gray-900">Order #{record.id}</div>
+            <div className="text-sm text-gray-500">
+              Patient: {record.user?.username || record.user_id}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              Created: {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}
             </div>
           </div>
         </Space>
@@ -185,56 +1246,18 @@ export default function TestResults() {
     {
       title: (
         <Space>
-          <ExperimentOutlined />
-          Test Info
+          <MedicineBoxOutlined className="text-orange-600" />
+          Items Summary
         </Space>
       ),
-      dataIndex: ["test", "name"],
-      key: "testTypes",
-      render: (testName: string) => (
+      key: "items",
+      render: (_, record: PurchaseOrder) => (
         <Space direction="vertical" size={0}>
-          <span style={{ fontWeight: "500" }}>{testName}</span>
-          <div style={{ fontSize: "12px", color: "#999" }}>
-            Laboratory Test
-          </div>
-        </Space>
-      ),
-    },
-    {
-      title: (
-        <Space>
-          <CalendarOutlined />
-          Dates
-        </Space>
-      ),
-      key: "dates",
-      render: (_, record: any) => (
-        <Space direction="vertical" size={0}>
-          <div style={{ fontWeight: "500" }}>
-            Created: {new Date(record.created_at).toLocaleDateString()}
-          </div>
-          <div style={{ fontSize: "12px", color: "#999" }}>
-            Updated: {new Date(record.updated_at).toLocaleDateString()}
-          </div>
-        </Space>
-      ),
-    },
-    {
-      title: (
-        <Space>
-          <DashboardOutlined />
-          Status
-        </Space>
-      ),
-      dataIndex: "status",
-      key: "status",
-      render: (status: string) => (
-        <Space direction="vertical">
-          <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
-            {status.replace('_', ' ')}
+          <Tag color="blue" className="font-bold text-lg">
+            {record.lab_tests?.length || 0}
           </Tag>
-          <div style={{ fontSize: "12px", color: "#666" }}>
-            Current Status
+          <div className="text-xs text-gray-500">
+            Lab Test Items
           </div>
         </Space>
       ),
@@ -242,311 +1265,463 @@ export default function TestResults() {
     {
       title: (
         <Space>
-          <ThunderboltOutlined />
+          <ThunderboltOutlined className="text-blue-600" />
           Actions
         </Space>
       ),
       key: "actions",
-      render: (_, record: any) => (
-        <Space>
-          <Tooltip title="Start Test">
-            <Button
-              icon={<PlayCircleOutlined />}
-              type="primary"
-              disabled={record.status === "COMPLETED"}
-              onClick={() => inProgressLabRequest(record)}
-            >
-              Start Test
-            </Button>
-          </Tooltip>
-          <Tooltip title="View Report">
-            <Button
-              icon={<EyeOutlined />}
-              type="default"
-              onClick={() =>
-                navigate("/laboratory/reports", {
-                  state: {
-                    patientName: record.patientName,
-                    testIds: record.ids,
-                  },
-                })
-              }
-            >
-              View Report
-            </Button>
-          </Tooltip>
-          <Tooltip title="Add Report">
-            <Button
-              icon={<FileTextOutlined />}
-              type="primary"
-              disabled={record.status === "COMPLETED"}
-              onClick={() => {
-                setSelectedResult(record);
-                setIsAddReportModalOpen(true);
-              }}
-            >
-              Add Report
-            </Button>
-          </Tooltip>
+      render: (_, record: PurchaseOrder) => (
+        <Space size="small">
+          <ActionButton
+            icon={<EyeOutlined />}
+            label="View Details"
+            onClick={() => handleView(record)}
+            loading={actionLoading === record.id.toString()}
+          />
+
+          <ActionButton
+            icon={<EditOutlined />}
+            label="Edit Order"
+            onClick={() => handleEdit(record)}
+            loading={actionLoading === record.id.toString()}
+          />
+
+          <ActionButton
+            icon={<DeleteOutlined />}
+            label="Delete Order"
+            onClick={() => handleDeleteOrder(record)}
+            danger
+            loading={actionLoading === record.id.toString()}
+          />
         </Space>
       ),
     },
   ];
 
-  const handleSubmit = async (values: any) => {
-    const newPatient: any = {
-      patient_id: values.patient_id,
-      test_id: values.test_id,
-      status: "PENDING",
-    };
-
-    await PostApi(`/lab-requests`, newPatient)
-      .then((data) => {
-        if (!data?.error) {
-          toast.success("Test request added successfully!");
-          setIsModalOpen(false);
-          form.resetFields();
-          loadData()
-        }
-        else {
-          console.error("Error fetching user fields:", data.error);
-        }
-      }).catch((error) => {
-        console.error("Error deleting user field:", error);
-      });
+  const handleTableChange = (newPagination: any) => {
+    fetchOrders(newPagination.current, newPagination.pageSize);
   };
 
-  const inProgressLabRequest = async (values: any) => {
-    Promise.all([
-      PutApi(`/lab-requests`, { id: values.id, test_id: values.test_id, patient_id: values.patient_id, status: "IN_PROGRESS" })
-    ]).then(([data]) => {
-      if (!data?.error) {
-        toast.success("Test started successfully!");
-        loadData()
-      }
-      else {
-        console.error("Error fetching user fields:", data.error);
-      }
-    }).catch((error) => {
-      console.error("Error deleting user field:", error);
-    })
-  };
-
-  const handleSubmit1 = async (values: any) => {
-    const newPatient: any = {
-      request_id: selectedResult.id,
-      report_data: { data: values.report_data },
-    };
-
-    Promise.all([
-      PostApi(`/lab-reports`, newPatient),
-      PutApi(`/lab-requests`, { id: selectedResult.id, test_id: selectedResult.test_id, patient_id: selectedResult.patient_id, reported_by: selectedResult.reported_by, status: "COMPLETED" })
-    ]).then(([data, data1]) => {
-      if (!data?.error) {
-        toast.success("Report added successfully!");
-        setIsAddReportModalOpen(false);
-        form1.resetFields();
-        loadData()
-      }
-      else {
-        console.error("Error fetching user fields:", data.error);
-      }
-      if (!data1?.error) {
-        setIsAddReportModalOpen(false);
-      }
-      else {
-        console.error("Error fetching user fields:", data1.error);
-      }
-    }).catch((error) => {
-      console.error("Error deleting user field:", error);
-    })
-  };
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <Card className="bg-white shadow-sm border-0">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ExperimentOutlined className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Laboratory Results</h1>
-              <p className="text-gray-600 mt-1">Manage and track all laboratory test results</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
-            <Tooltip title="Auto Refresh">
-              <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
-                <SyncOutlined className="w-4 h-4 text-gray-600" />
-                <span className="text-sm text-gray-600">Auto Refresh</span>
-                <div 
-                  className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${
-                    autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                  }`}
-                  onClick={() => setAutoRefresh(!autoRefresh)}
-                >
-                  <div 
-                    className={`w-3 h-3 rounded-full bg-white transform transition-transform ${
-                      autoRefresh ? 'translate-x-4' : 'translate-x-1'
-                    }`}
-                  />
-                </div>
+      {loading ? (
+        <HeaderSkeleton />
+      ) : (
+        <Card className="bg-white shadow-sm border-0">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                <ShoppingCartOutlined className="w-8 h-8 text-blue-600" />
               </div>
-            </Tooltip>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Test Results</h1>
+                <p className="text-gray-600 mt-1">Manage all medicine purchase orders and inventory</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-4 lg:mt-0">
+              <Tooltip title="Auto Refresh">
+                <div className="flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-lg border">
+                  <SyncOutlined className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm text-gray-700 font-medium">Auto Refresh</span>
+                  <div
+                    className={`w-10 h-5 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                    onClick={() => setAutoRefresh(!autoRefresh)}
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full bg-white transform transition-transform mt-1 ${autoRefresh ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                    />
+                  </div>
+                </div>
+              </Tooltip>
 
-            <Tooltip title="Reset Filters">
-              <Button icon={<ReloadOutlined />} onClick={resetFilters}>
-                Reset Filters
-              </Button>
-            </Tooltip>
+              <Tooltip title="Reset Filters">
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={resetFilters}
+                  className="border-gray-300"
+                >
+                  Reset
+                </Button>
+              </Tooltip>
 
-            <Tooltip title="Add New Test Request">
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />} 
-                onClick={() => {
-                  form.resetFields();
-                  setIsModalOpen(true);
-                }} 
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <RocketOutlined /> Add Test
-              </Button>
-            </Tooltip>
+              <Tooltip title="Create New Order">
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                      setEditingOrder(null);
+                      form.resetFields();
+                      setIsModalOpen(true);
+                    }}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-md"
+                    size="large"
+                  >
+                    <RocketOutlined /> New Purchase Order
+                  </Button>
+                </motion.div>
+              </Tooltip>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
+
+      {/* Statistics Cards */}
+      {loading ? (
+        <StatsSkeleton />
+      ) : (
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+              <Statistic
+                title="Total Orders"
+                value={stats.totalOrders}
+                prefix={<ShoppingCartOutlined className="text-blue-600" />}
+                valueStyle={{ color: '#1d4ed8' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-green-50 to-green-100">
+              <Statistic
+                title="Today's Orders"
+                value={stats.todayOrders}
+                prefix={<CalendarOutlined className="text-green-600" />}
+                valueStyle={{ color: '#16a34a' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-orange-50 to-orange-100">
+              <Statistic
+                title="Total Items"
+                value={stats.totalItems}
+                prefix={<MedicineBoxOutlined className="text-orange-600" />}
+                valueStyle={{ color: '#ea580c' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-red-50 to-red-100">
+              <Statistic
+                title="Pending Orders"
+                value={stats.pendingOrders}
+                prefix={<ExclamationCircleOutlined className="text-red-600" />}
+                valueStyle={{ color: '#dc2626' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {/* Search and Filter Section */}
       <Card className="bg-white shadow-sm border-0">
         <div className="p-6">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <TeamOutlined className="w-5 h-5" />
-              <span className="text-lg font-semibold">All Test Results</span>
-              <Tag color="blue" className="ml-2">
-                {filteredResults.length}
+            <div className="flex items-center space-x-3">
+              <TeamOutlined className="w-6 h-6 text-blue-600" />
+              <span className="text-xl font-semibold text-gray-900">Test Results</span>
+              <Tag color="blue" className="ml-2 text-lg font-semibold px-3 py-1">
+                {filteredOrders.length} orders
               </Tag>
             </div>
             <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-              <Input 
-                placeholder="Search by patient..." 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)} 
-                prefix={<SearchOutlined />} 
-                allowClear 
-                style={{ width: 250 }}
+              <Input.Search
+                placeholder="Search orders by patient, date, or collector..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                prefix={<SearchOutlined className="text-gray-400" />}
+                allowClear
+                size="large"
+                onSearch={() => { fetchOrders(pagination.current, pagination.pageSize, search) }}
+                style={{ width: 350 }}
+                className="rounded-lg"
               />
-              <Select 
-                value={filter} 
-                onChange={(value) => setFilter(value)} 
-                style={{ width: 180 }} 
-                placeholder="Filter by status"
-              >
-                <Option value="all">All Status</Option>
-                <Option value="Available">Available</Option>
-                <Option value="Not Available">Not Available</Option>
-                <Option value="Completed">Completed</Option>
-              </Select>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Results Table */}
-      <Card className="shadow-md rounded-lg">
-        <Table
-          columns={columns}
-          dataSource={filteredResults}
-          rowKey="id"
-          pagination={{ 
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => 
-              `${range[0]}-${range[1]} of ${total} results`,
-          }}
-          scroll={{ x: "max-content" }}
-          rowClassName="hover:bg-gray-50"
-        />
-      </Card>
+      {/* Orders Table */}
+      {loading ? (
+        <TableSkeleton />
+      ) : (
+        <Card className="shadow-lg rounded-xl border-0 overflow-hidden">
+          <Table
+            columns={columns}
+            dataSource={filteredOrders}
+            rowKey="id"
+            onChange={handleTableChange}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} of ${total} orders`,
+              className: "px-6 py-4"
+            }}
+            scroll={{ x: "max-content" }}
+            rowClassName="hover:bg-blue-50 transition-colors duration-200"
+            className="rounded-lg"
+          />
+        </Card>
+      )}
 
-      {/* Add Test Request Modal */}
+      {/* Add/Edit Order Modal */}
       <Modal
         title={
           <Space>
-            <PlusOutlined />
-            Add Lab Test Request
+            <div className={`p-2 rounded-lg ${editingOrder ? 'bg-orange-100' : 'bg-green-100'}`}>
+              {editingOrder ? <EditOutlined className="text-orange-600" /> : <PlusOutlined className="text-green-600" />}
+            </div>
+            <span className="text-lg font-semibold">
+              {editingOrder ? "Edit Order" : "New Order"}
+            </span>
           </Space>
         }
         open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingOrder(null);
+          form.resetFields();
+        }}
         onOk={() => form.submit()}
-        okText="Add Request"
-        width={600}
+        okText={editingOrder ? "Update Order" : "Create Order"}
+        confirmLoading={actionLoading === 'create' || actionLoading === 'update'}
+        width={800}
+        styles={{
+          body: { padding: '24px' }
+        }}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.Item
-            name="patient_id"
-            label="Patient Name"
-            rules={[{ required: true, message: "Please select patient" }]}
-          >
-            <Select
-              showSearch
-              placeholder="Select patient"
-              filterOption={(input, option: any) =>
-                (option?.label ?? "")?.toLowerCase()?.includes(input?.toLowerCase())
-              }
-              options={patients.map((t) => ({ value: t.id, label: t.username }))}
-            />
-          </Form.Item>
+        <Form form={form} layout="vertical" onFinish={handleAddOrUpdate}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="user_id"
+                label="Patient"
+                rules={[{ required: true, message: "Please select patient" }]}
+              >
+                <Select
+                  placeholder="Select patient"
+                  size="large"
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {patients.map((patient: any) => (
+                    <Option key={patient.id} value={patient.id}>
+                      {patient.username}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            name="test_id"
-            label="Test"
-            rules={[{ required: true, message: "Please select test" }]}
-          >
-            <Select
-              mode="multiple"
-              showSearch
-              placeholder="Select test(s)"
-              filterOption={(input, option: any) =>
-                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-              }
-              options={tests.map((t) => ({ value: t.id, label: t.name }))}
-            />
-          </Form.Item>
+          <Divider>Order Items</Divider>
+
+          <Form.List name="items">
+            {(fields, { add, remove }) => (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-medium text-gray-700">Lab Test Items</label>
+                  <Button
+                    type="dashed"
+                    onClick={() => add()}
+                    icon={<PlusOutlined />}
+                    size="large"
+                    className="border-blue-300 text-blue-600"
+                  >
+                    Add Medicine Item
+                  </Button>
+                </div>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Card key={key} size="small" className="mb-4 border-l-4 border-l-blue-500">
+                    <div className="grid grid-cols-3 gap-4">
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'test_id']}
+                        label="Lab Test"
+                        rules={[{ required: true, message: 'Please select lab test' }]}
+                      >
+                        <Select
+                          placeholder="Select lab test"
+                          size="large"
+                          showSearch
+                        >
+                          {medicines.map(medicine => (
+                            <Option key={medicine.id} value={medicine.id}>
+                              {medicine.name}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'status']}
+                        label="Status"
+                        rules={[{ required: true, message: 'Please select status' }]}
+                      >
+                        <Select
+                          placeholder="Select status"
+                          size="large"
+                          showSearch
+                        >
+                          <Option value="PENDING">Pending</Option>
+                          <Option value="IN_PROGRESS">In Progress</Option>
+                          <Option value="COMPLETED">Completed</Option>
+                        </Select>
+                      </Form.Item>
+                    </div>
+                    <div className="text-right mt-3">
+                      <Button
+                        danger
+                        onClick={() => remove(name)}
+                        icon={<DeleteOutlined />}
+                        size="middle"
+                      >
+                        Remove Item
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </>
+            )}
+          </Form.List>
         </Form>
       </Modal>
 
-      {/* Add Report Modal */}
+      {/* View Order Modal */}
       <Modal
         title={
           <Space>
-            <FileTextOutlined />
-            Add Lab Report
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <EyeOutlined className="text-blue-600" />
+            </div>
+            <span className="text-lg font-semibold">Order Details</span>
           </Space>
         }
-        open={isAddReportModalOpen}
-        onCancel={() => setIsAddReportModalOpen(false)}
-        onOk={() => form1.submit()}
-        okText="Add Report"
-        width={600}
-      >
-        <Form form={form1} layout="vertical" onFinish={handleSubmit1}>
-          <Form.Item
-            name="report_data"
-            label="Report Data"
-            rules={[{ required: true, message: "Please enter report data" }]}
+        open={isViewModalOpen}
+        onCancel={() => {
+          setIsViewModalOpen(false);
+          setSelectedOrder(null);
+        }}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => setIsViewModalOpen(false)}
+            size="large"
           >
-            <TextArea
-              rows={4}
-              placeholder="Enter test results, observations, and findings..."
-            />
-          </Form.Item>
-        </Form>
+            Close
+          </Button>
+        ]}
+        width={700}
+      >
+        {selectedOrder && (
+          <div className="space-y-6">
+            <div className="flex items-center space-x-4 p-4 bg-blue-50 rounded-lg">
+              <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center border border-blue-200">
+                <FileTextOutlined className="w-8 h-8 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Order #{selectedOrder.id}</h3>
+                <p className="text-gray-600">Purchase order details and items</p>
+              </div>
+            </div>
+
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card size="small" className="border-l-4 border-l-blue-500">
+                  <Statistic
+                    title="Patient"
+                    value={selectedOrder.user?.username || selectedOrder.user_id}
+                    valueStyle={{ color: '#1d4ed8', fontSize: '16px' }}
+                  />
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small" className="border-l-4 border-l-green-500">
+                  <Statistic
+                    title="Items Count"
+                    value={selectedOrder.lab_tests?.length || 0}
+                    valueStyle={{ color: '#16a34a' }}
+                  />
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small" className="border-l-4 border-l-purple-500">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-700">Collected By</div>
+                    <div className="font-semibold text-lg">{selectedOrder.taken_by}</div>
+                    <div className="text-sm text-gray-600">{selectedOrder.taken_by_phone_no}</div>
+                  </div>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small" className="border-l-4 border-l-orange-500">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-700">Received Date</div>
+                    <div className="font-semibold text-lg">{selectedOrder.received_date || "Not Received"}</div>
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+
+            <Divider>Order Items</Divider>
+
+            {selectedOrder.lab_tests && selectedOrder.lab_tests.length > 0 ? (
+              <Table
+                size="small"
+                dataSource={selectedOrder.lab_tests}
+                pagination={false}
+                rowKey={(record, index) => `${record.test_id}-${index}`}
+                columns={[
+                  {
+                    title: 'Medicine',
+                    key: 'medicine',
+                    render: (_, record) => {
+                      const medicine = medicines.find(m => m.id === record.test_id);
+                      return (
+                        <div className="font-medium">
+                          {medicine?.name || `Medicine ID: ${record.test_id}`}
+                        </div>
+                      );
+                    }
+                  },
+                  {
+                    title: 'Quantity',
+                    dataIndex: 'quantity',
+                    key: 'quantity',
+                    render: (quantity) => (
+                      <Tag color="blue" className="font-bold">
+                        {quantity}
+                      </Tag>
+                    )
+                  },
+                  {
+                    title: 'Order Date',
+                    dataIndex: 'order_date',
+                    key: 'order_date',
+                    render: (date) => (
+                      <div className="text-gray-600">{date}</div>
+                    )
+                  },
+                ]}
+              />
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <MedicineBoxOutlined className="text-4xl mb-2 text-gray-300" />
+                <div>No items in this order</div>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

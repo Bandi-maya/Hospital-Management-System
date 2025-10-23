@@ -178,9 +178,10 @@ export default function CalendarView() {
   }, [selectedDate, selectedDoctor]);
 
   // Get appointments for the selected date
-  const dailyAppointments = appointments.filter(
-    app => app.appointment_date.split("T")[0] === selectedDate.toISOString().split("T")[0]
-  );
+  const dailyAppointments = appointments;
+  // .filter(
+    // app => app.appointment_date.split("T")[0] === selectedDate.toISOString().split("T")[0]
+  // );
 
   const getStatusVariant = (status: string) => {
     switch (status) {

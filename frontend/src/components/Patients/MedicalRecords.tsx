@@ -131,7 +131,7 @@ export default function MedicalRecords() {
   const apiConfig = {
     '1': { endpoint: "/medical-records", stateKey: "medicalRecords", setter: setMedicalRecords },
     '2': { endpoint: "/prescriptions", stateKey: "prescriptions", setter: setPrescriptions },
-    '3': { endpoint: "/medicines", stateKey: "medicines", setter: setMedicines },
+    '3': { endpoint: "/purchase-orders", stateKey: "medicines", setter: setMedicines },
     '4': { endpoint: "/lab-requests", stateKey: "labTests", setter: setLabTests },
     '5': { endpoint: "/surgery", stateKey: "surgeries", setter: setSurgeries },
     '6': { endpoint: "/appointment", stateKey: "consultations", setter: setConsultations },
@@ -145,7 +145,7 @@ export default function MedicalRecords() {
 
     setLoadingStates(prev => ({ ...prev, [config.stateKey]: true }));
 
-    getApi(config.endpoint)
+    getApi(config.endpoint + `?q=${search}`)
       .then((data) => {
         if (!data.error) {
           config.setter(data.data);
@@ -182,19 +182,19 @@ export default function MedicalRecords() {
       });
   }
 
-  useEffect(() => {
-    if (!search) {
-      setFilteredPatients(patients);
-    } else {
-      const lower = search.toLowerCase();
-      const filtered = patients.filter(patient =>
-        patient?.user?.name?.toLowerCase().includes(lower) ||
-        patient?.id?.toString().includes(search) ||
-        patient?.notes?.toLowerCase().includes(lower)
-      );
-      setFilteredPatients(filtered);
-    }
-  }, [search, patients]);
+  // useEffect(() => {
+  //   if (!search) {
+  //     setFilteredPatients(patients);
+  //   } else {
+  //     const lower = search.toLowerCase();
+  //     const filtered = patients.filter(patient =>
+  //       patient?.user?.name?.toLowerCase().includes(lower) ||
+  //       patient?.id?.toString().includes(search) ||
+  //       patient?.notes?.toLowerCase().includes(lower)
+  //     );
+  //     setFilteredPatients(filtered);
+  //   }
+  // }, [search, patients]);
 
   const handleAddRecord = () => {
     if (!selectedPatient) return;
@@ -1079,6 +1079,7 @@ export default function MedicalRecords() {
           placeholder="Search patients, records..."
           allowClear
           value={search}
+          onSearch={() => loadData()}
           onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: 300 }}
           size="large"

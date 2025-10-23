@@ -568,7 +568,7 @@ export default function AddPharmacist({ onAddNurse }: AddNurseProps) {
         try {
             const data = await getApi("/user-fields");
             if (!data?.error) {
-                setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "NURSE"));
+                setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "PHARMACIST"));
             } else {
                 message.error("Error fetching user fields: " + data.error);
             }
@@ -594,16 +594,6 @@ export default function AddPharmacist({ onAddNurse }: AddNurseProps) {
             setLoadingStates(prev => ({ ...prev, departments: false }));
         }
     };
-
-    useEffect(() => {
-        showLoader();
-        const fetchData = async () => {
-            await Promise.all([getExtraFields(), getDepartments()]);
-            // Hide fullscreen loader after all data is loaded
-            setTimeout(() => setShowFullscreenLoader(false), 500);
-        };
-        fetchData();
-    }, []);
 
     const handleSubmit = async (values: any) => {
         setIsLoading(true);
