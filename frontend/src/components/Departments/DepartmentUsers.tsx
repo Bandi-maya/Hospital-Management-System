@@ -98,6 +98,7 @@ interface DepartmentStats {
 
 export default function DepartmentUsers() {
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
+  const [data, setData] = useState<any>({});
   const [users, setUsers] = useState<User[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentInterface | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,15 +109,15 @@ export default function DepartmentUsers() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
+  // const [pagination, setPagination] = useState({
+  //   current: 1,
+  //   pageSize: 10,
+  //   total: 0,
+  // });
 
-  const handleTableChange = (newPagination: any) => {
-    getUsersByDepartment(selectedDepartment.id, newPagination.current, newPagination.pageSize);
-  };
+  // const handleTableChange = (newPagination: any) => {
+  //   getUsersByDepartment(selectedDepartment.id, newPagination.current, newPagination.pageSize);
+  // };
 
   // Skeleton components
   const StatisticSkeleton = () => (
@@ -137,11 +138,14 @@ export default function DepartmentUsers() {
     </Card>
   );
 
-  function getUsersByDepartment(departmentId: number, page = 1, limit = 10, searchQuery = searchText, role = selectedRole) {
+  // function getUsersByDepartment(departmentId: number, page = 1, limit = 10, searchQuery = searchText, role = selectedRole) {
+  function getUsersByDepartment(departmentId: number, searchQuery = searchText, role = selectedRole) {
     setTableLoading(true);
-    getApi(`/users?department_id=${departmentId}&page=${page}&limit=${limit}&q=${searchQuery}&user_type=${role === 'all' ? '' : role}`)
+    // getApi(`/users?department_id=${departmentId}&page=${page}&limit=${limit}&q=${searchQuery}&user_type=${role === 'all' ? '' : role}`)
+    getApi(`/users?department_id=${departmentId}&q=${searchQuery}&user_type=${role === 'all' ? '' : role}`)
       .then((data) => {
         if (!data.error) {
+          setData(data)
           setUsers(data.data);
         } else {
           console.error(data.error);
@@ -229,16 +233,14 @@ export default function DepartmentUsers() {
 
   // Statistics
   const stats: DepartmentStats = {
-    totalUsers: users.length,
-    activeUsers: users.filter(user => user.status === "ACTIVE").length,
-    inactiveUsers: users.filter(user => user.status === "INACTIVE").length,
-    doctors: users.filter(user => user.user_type?.id === 1).length,
-    nurses: users.filter(user => user.user_type?.id === 3).length,
-    patients: users.filter(user => user.user_type?.id === 2).length,
-    staff: users.filter(user => user.user_type?.id !== 1 && user.user_type?.id !== 2 && user.user_type?.id !== 3).length,
-    recentJoined: users.filter(user =>
-      dayjs(user.joinDate).isAfter(dayjs().subtract(30, 'day'))
-    ).length
+    totalUsers: data?.total_records,
+    activeUsers: data?.active_records,
+    inactiveUsers: data.inactive_records,
+    doctors: data?.doctor_users_count,
+    nurses: data?.nurse_users_count,
+    patients: data?.patient_users_count,
+    staff: data?.staff_users_count,
+    recentJoined: data?.recently_added,
   };
 
   // Filtered users based on search
@@ -459,7 +461,8 @@ export default function DepartmentUsers() {
               placeholder="🔍 Search users by name, email, or role..."
               prefix={<SearchOutlined />}
               value={searchText}
-              onSearch={() => getUsersByDepartment(selectedDepartment.id, pagination.current, pagination.pageSize, searchText)}
+              // onSearch={() => getUsersByDepartment(selectedDepartment.id, pagination.current, pagination.pageSize, searchText)}
+              onSearch={() => getUsersByDepartment(selectedDepartment.id, searchText)}
               onChange={(e) => setSearchText(e.target.value)}
               style={{ width: 300 }}
               size="large"
@@ -470,7 +473,8 @@ export default function DepartmentUsers() {
               style={{ width: 150 }}
               onChange={(val) => {
                 setSelectedRole(val)
-                getUsersByDepartment(selectedDepartment.id, pagination.current, pagination.pageSize, searchText, val)
+                getUsersByDepartment(selectedDepartment.id, searchText, val)
+                // getUsersByDepartment(selectedDepartment.id, pagination.current, pagination.pageSize, searchText, val)
               }}
               value={selectedRole}
               size="large"

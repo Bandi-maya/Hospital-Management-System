@@ -34,7 +34,7 @@
     import { getApi, PostApi } from "@/ApiService";
     import dayjs from "dayjs";
     import { motion } from "framer-motion";
-    import FullscreenLoader from "@/components/Loader/FullscreenLoader";
+    import FullscreenLoader from "@/Components/Loader/FullscreenLoader";
 
     interface AddPatientProps {
         onAddPatient?: (patient: Patient) => void;
@@ -145,6 +145,12 @@
         const showLoader = () => {
             setShowFullscreenLoader(true);
         };
+
+        useEffect(() => {
+            getExtraFields();
+            getDoctors();
+            getDepartments();
+        }, []);
 
         // Fetch Data
         const getExtraFields = async () => {

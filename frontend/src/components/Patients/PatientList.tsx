@@ -30,9 +30,9 @@ import {
   MedicineBoxOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
-import { countries } from "@/components/Patients/AddPatient";
-import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
-import { DepartmentInterface } from "@/components/Departments/Departments";
+import { countries } from "@/Components/Patients/AddPatient";
+import { DeleteApi, DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
+import { DepartmentInterface } from "@/Components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
 import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
@@ -71,6 +71,15 @@ export default function PatientList() {
   });
 
   const userTypeId = useMemo(() => extraFields?.[0]?.user_type, [extraFields]);
+
+  async function exportPatients(format = 'csv') {
+    try {
+      await DownloadApi(`/export?type=users&user_type=patient&format=${format}`, format);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Something went wrong while exporting.');
+    }
+  }
 
   const getExtraFields = () => {
     setLoadingStates(prev => ({ ...prev, extraFields: true }));
@@ -504,7 +513,7 @@ export default function PatientList() {
                 </SelectContent>
               </UISelect>
             </div> */}
-            <UIButton variant="outline" className="h-12 px-6">
+            <UIButton onClick={() => exportPatients()} variant="outline" className="h-12 px-6">
               <Download className="w-4 h-4 mr-2" />
               Export
             </UIButton>

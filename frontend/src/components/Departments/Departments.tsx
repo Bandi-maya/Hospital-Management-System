@@ -209,7 +209,7 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { toast } from "sonner";
-import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
+import { DeleteApi, getApi, PostApi, PutApi, DownloadApi } from "@/ApiService";
 import dayjs from "dayjs";
 
 const { Option } = Select;
@@ -240,6 +240,7 @@ interface DepartmentStats {
 
 export default function Department() {
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
+  const [data, setData] = useState<any>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentInterface | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -257,6 +258,7 @@ export default function Department() {
   });
 
   const handleTableChange = (newPagination: any) => {
+    setPagination(newPagination);
     loadData(newPagination.current, newPagination.pageSize);
   };
 
@@ -289,6 +291,7 @@ export default function Department() {
     getApi(`/departments?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : 'ACTIVE'}`)
       .then((data) => {
         if (!data.error) {
+          setData(data)
           setDepartments(data.data);
         } else {
           toast.error(data.error);
@@ -386,14 +389,12 @@ export default function Department() {
   };
 
   const stats: DepartmentStats = {
-    total: departments.length,
-    active: departments.filter((d) => d.is_active).length,
-    inactive: departments.filter((d) => !d.is_active).length,
-    recentAdded: departments.filter((d) =>
-      dayjs(d.created_at).isAfter(dayjs().subtract(7, 'day'))
-    ).length,
-    totalDoctors: 0,
-    totalPatients: 0
+    total: data?.total_records,
+    active: data?.active_records,
+    inactive: data?.inactive_records,
+    recentAdded: data?.recently_added,
+    totalDoctors: data?.doctor_users_count,
+    totalPatients: data.patient_users_count
   };
 
   // More actions menu
@@ -439,6 +440,14 @@ export default function Department() {
   //   const matchesStatus = statusFilter === "all" || department.is_active === (statusFilter === "ACTIVE");
   //   return matchesSearch && matchesStatus;
   // });
+  async function exportDepartments(format = 'csv') {
+    try {
+      await DownloadApi(`/export?type=departments&format=${format}`, format);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Something went wrong while exporting.');
+    }
+  }
 
   const columns: ColumnsType<DepartmentInterface> = [
     {
@@ -488,14 +497,14 @@ export default function Department() {
       key: 'actions',
       render: (_, record) => (
         <Space>
-          <Tooltip title="View Details">
+          {/* <Tooltip title="View Details">
             <Button
               icon={<EyeOutlined />}
               shape="circle"
               type="primary"
               ghost
             />
-          </Tooltip>
+          </Tooltip> */}
           <Tooltip title="Edit Department">
             <Button
               icon={<EditOutlined />}
@@ -516,9 +525,9 @@ export default function Department() {
               <Button icon={<DeleteOutlined />} shape="circle" danger />
             </Popconfirm>
           </Tooltip>
-          <Dropdown overlay={moreActionsMenu} trigger={['click']}>
+          {/* <Dropdown overlay={moreActionsMenu} trigger={['click']}>
             <Button icon={<MoreOutlined />} shape="circle" />
-          </Dropdown>
+          </Dropdown> */}
         </Space>
       ),
     },
@@ -572,11 +581,11 @@ export default function Department() {
                 onChange={setAutoRefresh}
               />
             </Tooltip>
-            <Dropdown overlay={moreActionsMenu} placement="bottomRight">
+            {/* <Dropdown overlay={moreActionsMenu} placement="bottomRight">
               <Button icon={<SettingOutlined />} style={{ color: 'black' }} size="large" ghost>
                 Settings
               </Button>
-            </Dropdown>
+            </Dropdown> */}
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -718,17 +727,18 @@ export default function Department() {
                   </Button>
                   <Button
                     icon={<ExportOutlined />}
-                    onClick={() => setDrawerVisible(true)}
+                    onClick={() => exportDepartments()}
+                  // onClick={() => setDrawerVisible(true)}
                   >
                     Export
                   </Button>
-                  <Button
+                  {/* <Button
                     icon={<CloudDownloadOutlined />}
                     type="primary"
                     ghost
                   >
                     Quick Actions
-                  </Button>
+                  </Button> */}
                 </Space>
               </Flex>
               <Alert
@@ -765,7 +775,9 @@ export default function Department() {
                   onChange={handleTableChange}
                   scroll={{ x: 800 }}
                   pagination={{
-                    pageSize: 10,
+                    pageSize: pagination.pageSize ?? 10,
+                    total: data.total_records,
+                    current: pagination.current,
                     showSizeChanger: true,
                     showQuickJumper: true,
                     showTotal: (total, range) =>

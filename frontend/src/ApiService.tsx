@@ -24,6 +24,31 @@ export function getApi(urlEndPoint, options: any = {}) {
     });
 }
 
+export function DownloadApi(urlEndPoint, format) {
+    const token = localStorage.getItem('auth_token');
+
+    return fetch(baseUrl + urlEndPoint, {
+        method: 'GET',
+        headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+        },
+
+    }).then(async response => {
+        const blob = await response.blob();
+        const fileName = format === 'excel' ? 'departments.xlsx' : 'departments.csv';
+
+        // 🔹 Create a link element and trigger download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    });
+}
+
 export function PostApi(urlEndPoint, data: any, options: any = {}) {
     const token = localStorage.getItem('auth_token');
     return fetch(baseUrl + urlEndPoint, {

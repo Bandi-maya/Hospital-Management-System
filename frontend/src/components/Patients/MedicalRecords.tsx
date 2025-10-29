@@ -107,6 +107,16 @@ export default function MedicalRecords() {
   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
+  const handleTableChange = (newPagination: any) => {
+    loadData(newPagination.current, newPagination.pageSize);
+  };
+
 
   // Form states
   const [medicineForm] = Form.useForm();
@@ -130,22 +140,22 @@ export default function MedicalRecords() {
   // API configuration for different tabs
   const apiConfig = {
     '1': { endpoint: "/medical-records", stateKey: "medicalRecords", setter: setMedicalRecords },
-    '2': { endpoint: "/prescriptions", stateKey: "prescriptions", setter: setPrescriptions },
-    '3': { endpoint: "/purchase-orders", stateKey: "medicines", setter: setMedicines },
-    '4': { endpoint: "/lab-requests", stateKey: "labTests", setter: setLabTests },
-    '5': { endpoint: "/surgery", stateKey: "surgeries", setter: setSurgeries },
+    '2': { endpoint: "/orders?order_type=prescription", stateKey: "prescriptions", setter: setPrescriptions },
+    '3': { endpoint: "/orders?order_type=medicine", stateKey: "medicines", setter: setMedicines },
+    '4': { endpoint: "/orders?order_type=lab_test", stateKey: "labTests", setter: setLabTests },
+    '5': { endpoint: "/orders?order_type=surgery", stateKey: "surgeries", setter: setSurgeries },
     '6': { endpoint: "/appointment", stateKey: "consultations", setter: setConsultations },
     '7': { endpoint: "/payment", stateKey: "payments", setter: setPayments },
     '8': { endpoint: "/billing", stateKey: "bills", setter: setBills }
   };
 
-  function loadData() {
+  function loadData(page = 1, limit = 10, searchQuery = search) {
     const config = apiConfig[activeTab];
     if (!config) return;
 
     setLoadingStates(prev => ({ ...prev, [config.stateKey]: true }));
 
-    getApi(config.endpoint + `?q=${search}`)
+    getApi(config.endpoint + (config.endpoint.includes('?') ? '&' : '?') + `page=${page}&limit=${limit}&q=${searchQuery}`)
       .then((data) => {
         if (!data.error) {
           config.setter(data.data);
@@ -495,6 +505,7 @@ export default function MedicalRecords() {
         <div className="overflow-x-auto">
           <Table
             dataSource={medicalRecords}
+            onChange={handleTableChange}
             rowKey="id"
             pagination={{ pageSize: 10 }}
             columns={[
@@ -637,6 +648,7 @@ export default function MedicalRecords() {
       ) : (
         <Table
           dataSource={medicines}
+          onChange={handleTableChange}
           columns={[
             { title: "Medicine Name", dataIndex: "name", key: "name" },
             { title: "Dosage", dataIndex: "dosage", key: "dosage" },
@@ -704,6 +716,7 @@ export default function MedicalRecords() {
       ) : (
         <Table
           dataSource={labTests}
+          onChange={handleTableChange}
           columns={[
             { title: "Test Name", dataIndex: "name", key: "name" },
             {
@@ -781,6 +794,7 @@ export default function MedicalRecords() {
       ) : (
         <Table
           dataSource={surgeries}
+          onChange={handleTableChange}
           columns={[
             { title: "Operation Name", dataIndex: "name", key: "name" },
             {
@@ -849,6 +863,7 @@ export default function MedicalRecords() {
       ) : (
         <Table
           dataSource={consultations}
+          onChange={handleTableChange}
           columns={[
             { title: "Doctor", dataIndex: "doctor", key: "doctor" },
             {
@@ -907,6 +922,7 @@ export default function MedicalRecords() {
       ) : (
         <Table
           dataSource={payments}
+          onChange={handleTableChange}
           columns={[
             {
               title: "Date",
@@ -988,6 +1004,7 @@ export default function MedicalRecords() {
       ) : (
         <Table
           dataSource={bills}
+          onChange={handleTableChange}
           columns={[
             {
               title: "Invoice #",
@@ -1079,7 +1096,7 @@ export default function MedicalRecords() {
           placeholder="Search patients, records..."
           allowClear
           value={search}
-          onSearch={() => loadData()}
+          onSearch={() => loadData(pagination.current, pagination.pageSize)}
           onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: 300 }}
           size="large"
@@ -1088,7 +1105,14 @@ export default function MedicalRecords() {
 
       <Tabs
         defaultActiveKey="1"
-        onChange={setActiveTab}
+        onChange={(value) => {
+          setPagination({
+            current: 1,
+            pageSize: 10,
+            total: 0
+          })
+          setActiveTab(value)
+        }}
         items={[
           {
             key: "1",

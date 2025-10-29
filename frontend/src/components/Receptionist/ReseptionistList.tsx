@@ -34,9 +34,9 @@ import {
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { countries } from "@/components/Patients/AddPatient";
-import { getApi, PostApi, PutApi } from "@/ApiService";
-import { DepartmentInterface } from "@/components/Departments/Departments";
+import { countries } from "@/Components/Patients/AddPatient";
+import { DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
+import { DepartmentInterface } from "@/Components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
 import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
@@ -76,6 +76,16 @@ export default function ReceptionistList() {
   }, [extraFields]);
 
   const navigate = useNavigate();
+
+
+  async function exportReseptionist(format = 'csv') {
+    try {
+      await DownloadApi(`/export?type=users&user_type=receptionist&format=${format}`, format);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Something went wrong while exporting.');
+    }
+  }
 
   // Fetch data functions
   const getExtraFields = async () => {
@@ -521,8 +531,8 @@ export default function ReceptionistList() {
                   onSearch={() => { loadNurses(pagination.current, pagination.pageSize, searchTerm) }}
                 />
               </div>
-            </div>  
-            
+            </div>
+
             {/* <div className="w-full md:w-48">
               <UISelect value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-12">
@@ -536,7 +546,7 @@ export default function ReceptionistList() {
                 </SelectContent>
               </UISelect>
             </div> */}
-            <UIButton variant="outline" className="h-12 px-6">
+            <UIButton onClick={() => exportReseptionist()} variant="outline" className="h-12 px-6">
               <Download className="w-4 h-4 mr-2" />
               Export
             </UIButton>

@@ -618,7 +618,7 @@ export default function WardStatus() {
       key: "actions",
       render: (record: Ward) => (
         <Space>
-          <Tooltip title="View Details">
+          {/* <Tooltip title="View Details">
             <Button
               icon={<EyeOutlined />}
               shape="circle"
@@ -629,7 +629,7 @@ export default function WardStatus() {
                 setViewModalVisible(true);
               }}
             />
-          </Tooltip>
+          </Tooltip> */}
           <Tooltip title="Edit Ward">
             <Button
               icon={<EditOutlined />}
@@ -653,9 +653,9 @@ export default function WardStatus() {
               <Button icon={<DeleteOutlined />} shape="circle" danger />
             </Popconfirm>
           </Tooltip>
-          <Dropdown overlay={moreActionsMenu} trigger={['click']}>
+          {/* <Dropdown overlay={moreActionsMenu} trigger={['click']}>
             <Button icon={<MoreOutlined />} shape="circle" />
-          </Dropdown>
+          </Dropdown> */}
         </Space>
       ),
     },
@@ -935,14 +935,14 @@ export default function WardStatus() {
                         <Button icon={<ExportOutlined />} onClick={handleExportData}>
                           Export
                         </Button>
-                        <Button
+                        {/* <Button
                           icon={<CloudDownloadOutlined />}
                           type="primary"
                           ghost
                           onClick={() => setDrawerVisible(true)}
                         >
                           Quick Actions
-                        </Button>
+                        </Button> */}
                       </Space>
                     </div>
                   </Card>

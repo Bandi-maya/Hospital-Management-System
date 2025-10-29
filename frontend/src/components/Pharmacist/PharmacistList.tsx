@@ -464,9 +464,9 @@ import {
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { countries } from "@/components/Patients/AddPatient";
-import { getApi, PostApi, PutApi } from "@/ApiService";
-import { DepartmentInterface } from "@/components/Departments/Departments";
+import { countries } from "@/Components/Patients/AddPatient";
+import { DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
+import { DepartmentInterface } from "@/Components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
 import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
@@ -723,6 +723,16 @@ export default function PharmacistList() {
     );
   };
 
+   async function exportPharmacists(format = 'csv') {
+    try {
+      await DownloadApi(`/export?type=users&user_type=pharmacist&format=${format}`, format);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Something went wrong while exporting.');
+    }
+  }
+
+
   // Skeleton columns for loading state
   const skeletonColumns = [
     {
@@ -964,7 +974,7 @@ export default function PharmacistList() {
                 </SelectContent>
               </UISelect>
             </div> */}
-            <UIButton variant="outline" className="h-12 px-6">
+            <UIButton onClick={() => exportPharmacists()} variant="outline" className="h-12 px-6">
               <Download className="w-4 h-4 mr-2" />
               Export
             </UIButton>
