@@ -47,6 +47,7 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
+import type { ColumnsType } from "antd/es/table";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -76,13 +77,56 @@ interface Department {
   description: string;
 }
 
+interface FormData {
+  name: string;
+  building: string;
+  floor: string;
+  wing: string;
+  room_number: string;
+  department_id: string;
+  status: string;
+  is_active: boolean;
+  notes: string;
+}
+
+interface ApiResponse {
+  data: OperationTheatre[];
+  total_records?: number;
+  error?: string;
+}
+
+interface Stats {
+  total: number;
+  available: number;
+  inUse: number;
+  underMaintenance: number;
+  active: number;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface ActionButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  type?: "primary" | "default" | "dashed" | "link" | "text";
+  danger?: boolean;
+  onClick?: () => void;
+  loading?: boolean;
+  confirm?: boolean;
+  confirmAction?: () => void;
+}
+
 const THEATRE_STATUS = {
   AVAILABLE: "Available",
   IN_USE: "In Use",
   UNDER_MAINTENANCE: "Under Maintenance",
   CLEANING: "Cleaning",
   OUT_OF_SERVICE: "Out of Service"
-};
+} as const;
 
 const STATUS_COLORS = {
   AVAILABLE: "green",
@@ -90,7 +134,7 @@ const STATUS_COLORS = {
   UNDER_MAINTENANCE: "orange",
   CLEANING: "purple",
   OUT_OF_SERVICE: "red"
-};
+} as const;
 
 const STATUS_ICONS = {
   AVAILABLE: CheckCircleOutlined,
@@ -98,7 +142,91 @@ const STATUS_ICONS = {
   UNDER_MAINTENANCE: ToolOutlined,
   CLEANING: EnvironmentOutlined,
   OUT_OF_SERVICE: CloseCircleOutlined
+} as const;
+
+// Enhanced Action Button Component
+const ActionButton: React.FC<ActionButtonProps> = ({
+  icon,
+  label,
+  type = "default",
+  danger = false,
+  onClick,
+  loading = false,
+  confirm = false,
+  confirmAction
+}) => {
+  const button = (
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+    >
+      <Tooltip title={label} placement="top">
+        <Button
+          type={type}
+          danger={danger}
+          icon={icon}
+          loading={loading}
+          onClick={onClick}
+          className={`
+            flex items-center justify-center 
+            transition-all duration-300 ease-in-out
+            ${!danger && type === "default" ?
+              'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
+            }
+            ${danger ?
+              'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
+            }
+            w-10 h-10 rounded-full
+          `}
+          style={{
+            minWidth: '40px',
+            border: '1px solid #d9d9d9'
+          }}
+        />
+      </Tooltip>
+    </motion.div>
+  );
+
+  return confirm ? (
+    <Popconfirm
+      title="Delete Operation Theatre"
+      description="Are you sure you want to delete this operation theatre?"
+      onConfirm={confirmAction}
+      okText="Yes"
+      cancelText="No"
+      okType="danger"
+      placement="top"
+    >
+      {button}
+    </Popconfirm>
+  ) : (
+    button
+  );
 };
+
+// Skeleton Components
+const SkeletonTable = () => (
+  <div className="space-y-4">
+    {[1, 2, 3, 4, 5].map((item) => (
+      <Card key={item} className="p-4 border-0 shadow-sm">
+        <Skeleton active paragraph={{ rows: 1 }} />
+      </Card>
+    ))}
+  </div>
+);
+
+const SkeletonStats = () => (
+  <Row gutter={[16, 16]}>
+    {[1, 2, 3, 4, 5].map((item) => (
+      <Col xs={24} sm={12} lg={6} key={item}>
+        <Card className="border-0 shadow-sm">
+          <Skeleton active paragraph={{ rows: 1 }} />
+        </Card>
+      </Col>
+    ))}
+  </Row>
+);
 
 export default function OperationTheatreManagement() {
   const [operationTheatres, setOperationTheatres] = useState<OperationTheatre[]>([]);
@@ -108,31 +236,14 @@ export default function OperationTheatreManagement() {
   const [selectedTheatre, setSelectedTheatre] = useState<OperationTheatre | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [form] = Form.useForm();
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
-  });
-
-  const handleTableChange = (newPagination: any) => {
-    loadData(newPagination.current, newPagination.pageSize);
-  };
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    building: "",
-    floor: "",
-    wing: "",
-    room_number: "",
-    department_id: "",
-    status: "AVAILABLE",
-    is_active: true,
-    notes: ""
   });
 
   // Load all data
@@ -140,46 +251,65 @@ export default function OperationTheatreManagement() {
     loadData();
   }, []);
 
-  const loadData = (page = 1, limit = 10, searchQuery = search, status = statusFilter, department = departmentFilter) => {
+  const loadData = async (
+    page = 1, 
+    limit = 10, 
+    searchQuery = search, 
+    status = statusFilter, 
+    department = departmentFilter
+  ) => {
     setLoading(true);
-    Promise.all([
-      getApi(`/operation-theatre?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}&department=${department === 'all' ? '' : department}`),
-      getApi('/departments')
-    ]).then(([theatresData, departmentsData]) => {
-      if (!theatresData?.error) setOperationTheatres(theatresData.data);
-      if (!departmentsData?.error) setDepartments(departmentsData.data);
-    }).catch(error => {
+    try {
+      const [theatresData, departmentsData] = await Promise.all([
+        getApi(`/operation-theatre?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}&department=${department === 'all' ? '' : department}`),
+        getApi('/departments')
+      ]);
+
+      if (!theatresData?.error) {
+        setOperationTheatres(theatresData.data || []);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          total: theatresData.total_records || 0
+        }));
+      } else {
+        toast.error(theatresData.error);
+      }
+
+      if (!departmentsData?.error) {
+        setDepartments(departmentsData.data || []);
+      } else {
+        toast.error(departmentsData.error);
+      }
+    } catch (error) {
       toast.error("Failed to load data");
       console.error("Error loading data:", error);
-    }).finally(() => setLoading(false));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTableChange = (newPagination: any) => {
+    loadData(newPagination.current, newPagination.pageSize);
   };
 
   const handleOpenModal = (theatre: OperationTheatre | null = null) => {
     if (theatre) {
       setSelectedTheatre(theatre);
-      form.setFieldValue("name", theatre.name)
-      form.setFieldValue("building", theatre.building)
-      form.setFieldValue("floor", theatre.floor)
-      form.setFieldValue("wing", theatre.wing)
-      form.setFieldValue("room_number", theatre.room_number)
-      form.setFieldValue("department_id", theatre.department_id)
-      form.setFieldValue("status", theatre.status)
-      form.setFieldValue("is_active", theatre.is_active)
-      form.setFieldValue("notes", theatre.notes)
-      setFormData({
+      form.setFieldsValue({
         name: theatre.name,
-        building: theatre.building || "",
-        floor: theatre.floor || "",
-        wing: theatre.wing || "",
-        room_number: theatre.room_number || "",
+        building: theatre.building,
+        floor: theatre.floor,
+        wing: theatre.wing,
+        room_number: theatre.room_number,
         department_id: theatre.department_id.toString(),
         status: theatre.status,
         is_active: theatre.is_active,
-        notes: theatre.notes || ""
+        notes: theatre.notes
       });
     } else {
       setSelectedTheatre(null);
-      setFormData({
+      form.setFieldsValue({
         name: "",
         building: "",
         floor: "",
@@ -199,184 +329,116 @@ export default function OperationTheatreManagement() {
     setIsViewModalOpen(true);
   };
 
-  const handleSubmit = () => {
-    form.validateFields().then(values => {
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      
       if (selectedTheatre) {
         setLoadingActionId(selectedTheatre.id);
-        PutApi(`/operation-theatre`, { ...formData, id: selectedTheatre.id })
-          .then(data => {
-            if (!data?.error) {
-              message.success("Operation theatre updated successfully!");
-              loadData();
-              setIsModalOpen(false);
-            } else {
-              message.error(data.error);
-            }
-          })
-          .catch(error => {
-            message.error("Error updating operation theatre");
-            console.error("Error updating operation theatre:", error);
-          })
-          .finally(() => setLoadingActionId(null));
+        const response = await PutApi(`/operation-theatre`, { 
+          ...values, 
+          id: selectedTheatre.id,
+          department_id: parseInt(values.department_id)
+        });
+        
+        if (!response?.error) {
+          message.success("Operation theatre updated successfully!");
+          loadData(pagination.current, pagination.pageSize);
+          setIsModalOpen(false);
+        } else {
+          message.error(response.error);
+        }
       } else {
-        PostApi('/operation-theatre', formData)
-          .then(data => {
-            if (!data?.error) {
-              message.success("Operation theatre created successfully!");
-              loadData();
-              setIsModalOpen(false);
-            } else {
-              message.error(data.error);
-            }
-          })
-          .catch(error => {
-            message.error("Error creating operation theatre");
-            console.error("Error creating operation theatre:", error);
-          });
+        const response = await PostApi('/operation-theatre', {
+          ...values,
+          department_id: parseInt(values.department_id)
+        });
+        
+        if (!response?.error) {
+          message.success("Operation theatre created successfully!");
+          loadData(pagination.current, pagination.pageSize);
+          setIsModalOpen(false);
+        } else {
+          message.error(response.error);
+        }
       }
-    });
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      message.error("Error processing request");
+    } finally {
+      setLoadingActionId(null);
+    }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     setLoadingActionId(id);
-    DeleteApi(`/operation-theatres/${id}`)
-      .then(data => {
-        if (!data?.error) {
-          message.success("Operation theatre deleted successfully!");
-          loadData();
-        } else {
-          message.error(data.error);
-        }
-      })
-      .catch(error => {
-        message.error("Error deleting operation theatre");
-        console.error("Error deleting operation theatre:", error);
-      })
-      .finally(() => setLoadingActionId(null));
+    try {
+      const response = await DeleteApi(`/operation-theatre/${id}`);
+      if (!response?.error) {
+        message.success("Operation theatre deleted successfully!");
+        loadData(pagination.current, pagination.pageSize);
+      } else {
+        message.error(response.error);
+      }
+    } catch (error) {
+      message.error("Error deleting operation theatre");
+      console.error("Error deleting operation theatre:", error);
+    } finally {
+      setLoadingActionId(null);
+    }
   };
 
-  const handleStatusChange = (theatreId: number, newStatus: string) => {
+  const handleStatusChange = async (theatreId: number, newStatus: string) => {
     setLoadingActionId(theatreId);
-    PutApi(`/operation-theatre/${theatreId}`, { status: newStatus })
-      .then(data => {
-        if (!data?.error) {
-          message.success(`Operation theatre status updated to ${THEATRE_STATUS[newStatus as keyof typeof THEATRE_STATUS]}`);
-          loadData();
-        } else {
-          message.error(data.error);
-        }
-      })
-      .catch(error => {
-        message.error("Error updating operation theatre status");
-        console.error("Error updating operation theatre status:", error);
-      })
-      .finally(() => setLoadingActionId(null));
+    try {
+      const response = await PutApi(`/operation-theatre/${theatreId}`, { status: newStatus });
+      if (!response?.error) {
+        message.success(`Operation theatre status updated to ${THEATRE_STATUS[newStatus as keyof typeof THEATRE_STATUS]}`);
+        loadData(pagination.current, pagination.pageSize);
+      } else {
+        message.error(response.error);
+      }
+    } catch (error) {
+      message.error("Error updating operation theatre status");
+      console.error("Error updating operation theatre status:", error);
+    } finally {
+      setLoadingActionId(null);
+    }
   };
 
-  const handleActiveToggle = (theatreId: number, isActive: boolean) => {
+  const handleActiveToggle = async (theatreId: number, isActive: boolean) => {
     setLoadingActionId(theatreId);
-    PutApi(`/operation-theatres/${theatreId}`, { is_active: isActive })
-      .then(data => {
-        if (!data?.error) {
-          message.success(`Operation theatre ${isActive ? 'activated' : 'deactivated'} successfully!`);
-          loadData();
-        } else {
-          message.error(data.error);
-        }
-      })
-      .catch(error => {
-        message.error("Error updating operation theatre status");
-        console.error("Error updating operation theatre status:", error);
-      })
-      .finally(() => setLoadingActionId(null));
+    try {
+      const response = await PutApi(`/operation-theatre/${theatreId}`, { is_active: isActive });
+      if (!response?.error) {
+        message.success(`Operation theatre ${isActive ? 'activated' : 'deactivated'} successfully!`);
+        loadData(pagination.current, pagination.pageSize);
+      } else {
+        message.error(response.error);
+      }
+    } catch (error) {
+      message.error("Error updating operation theatre status");
+      console.error("Error updating operation theatre status:", error);
+    } finally {
+      setLoadingActionId(null);
+    }
   };
 
-  // Enhanced Action Button Component
-  const ActionButton = ({
-    icon,
-    label,
-    type = "default",
-    danger = false,
-    onClick,
-    loading = false,
-    confirm = false,
-    confirmAction
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    type?: "primary" | "default" | "dashed" | "link" | "text";
-    danger?: boolean;
-    onClick?: () => void;
-    loading?: boolean;
-    confirm?: boolean;
-    confirmAction?: () => void;
-  }) => {
-    const button = (
-      <motion.div
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-      >
-        <Tooltip title={label} placement="top">
-          <Button
-            type={type}
-            danger={danger}
-            icon={icon}
-            loading={loading}
-            onClick={onClick}
-            className={`
-              flex items-center justify-center 
-              transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
-                'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
-              }
-              ${danger ?
-                'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
-              }
-              w-10 h-10 rounded-full
-            `}
-            style={{
-              minWidth: '40px',
-              border: '1px solid #d9d9d9'
-            }}
-          />
-        </Tooltip>
-      </motion.div>
-    );
+  const filteredTheatres = operationTheatres.filter(theatre => {
+    const matchesSearch =
+      theatre.name.toLowerCase().includes(search.toLowerCase()) ||
+      theatre.building?.toLowerCase().includes(search.toLowerCase()) ||
+      theatre.room_number?.toLowerCase().includes(search.toLowerCase()) ||
+      theatre.department?.name.toLowerCase().includes(search.toLowerCase());
 
-    return confirm ? (
-      <Popconfirm
-        title="Delete Operation Theatre"
-        description="Are you sure you want to delete this operation theatre?"
-        onConfirm={confirmAction}
-        okText="Yes"
-        cancelText="No"
-        okType="danger"
-        placement="top"
-      >
-        {button}
-      </Popconfirm>
-    ) : (
-      button
-    );
-  };
+    const matchesStatus = statusFilter === "all" || theatre.status === statusFilter;
+    const matchesDepartment = departmentFilter === "all" ||
+      theatre.department_id.toString() === departmentFilter;
 
-  const filteredTheatres = operationTheatres
-  // .filter(theatre => {
-  //   const matchesSearch =
-  //     theatre.name.toLowerCase().includes(search.toLowerCase()) ||
-  //     theatre.building?.toLowerCase().includes(search.toLowerCase()) ||
-  //     theatre.room_number?.toLowerCase().includes(search.toLowerCase()) ||
-  //     theatre.department?.name.toLowerCase().includes(search.toLowerCase());
+    return matchesSearch && matchesStatus && matchesDepartment;
+  });
 
-  //   const matchesStatus = statusFilter === "all" || theatre.status === statusFilter;
-  //   const matchesDepartment = departmentFilter === "all" ||
-  //     theatre.department_id.toString() === departmentFilter;
-
-  //   return matchesSearch && matchesStatus && matchesDepartment;
-  // });
-
-  const stats = {
+  const stats: Stats = {
     total: operationTheatres.length,
     available: operationTheatres.filter(t => t.status === "AVAILABLE" && t.is_active).length,
     inUse: operationTheatres.filter(t => t.status === "IN_USE").length,
@@ -389,7 +451,7 @@ export default function OperationTheatreManagement() {
     return <IconComponent className="text-sm" />;
   };
 
-  const columns = [
+  const columns: ColumnsType<OperationTheatre> = [
     {
       title: "Operation Theatre",
       dataIndex: "name",
@@ -438,7 +500,7 @@ export default function OperationTheatreManagement() {
       key: "department",
       render: (text: string) => (
         <Tag color="blue" className="px-2 py-1 rounded-full">
-          {text}
+          {text || "No department"}
         </Tag>
       ),
     },
@@ -557,28 +619,6 @@ export default function OperationTheatreManagement() {
     },
   ];
 
-  const SkeletonTable = () => (
-    <div className="space-y-4">
-      {[1, 2, 3, 4, 5].map((item) => (
-        <Card key={item} className="p-4 border-0 shadow-sm">
-          <Skeleton active paragraph={{ rows: 1 }} />
-        </Card>
-      ))}
-    </div>
-  );
-
-  const SkeletonStats = () => (
-    <Row gutter={[16, 16]}>
-      {[1, 2, 3, 4, 5].map((item) => (
-        <Col xs={24} sm={12} lg={6} key={item}>
-          <Card className="border-0 shadow-sm">
-            <Skeleton active paragraph={{ rows: 1 }} />
-          </Card>
-        </Col>
-      ))}
-    </Row>
-  );
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header Section */}
@@ -671,18 +711,19 @@ export default function OperationTheatreManagement() {
                 placeholder="Search operation theatres by name, building, room number, or department..."
                 prefix={<SearchOutlined />}
                 value={search}
-                onSearch={() => { loadData(pagination.current, pagination.pageSize, search) }}
+                onSearch={() => loadData(pagination.current, pagination.pageSize, search)}
                 onChange={(e) => setSearch(e.target.value)}
                 size="large"
                 className="hover:border-blue-400 focus:border-blue-500"
+                allowClear
               />
             </Col>
             <Col xs={24} sm={12} md={4}>
               <Select
                 value={statusFilter}
                 onChange={(value) => {
-                  setStatusFilter(value)
-                  loadData(pagination.current, pagination.pageSize, search, value)
+                  setStatusFilter(value);
+                  loadData(pagination.current, pagination.pageSize, search, value);
                 }}
                 placeholder="All Status"
                 size="large"
@@ -701,8 +742,8 @@ export default function OperationTheatreManagement() {
               <Select
                 value={departmentFilter}
                 onChange={(value) => {
-                  setDepartmentFilter(value)
-                  loadData(pagination.current, pagination.pageSize, search, statusFilter, value)
+                  setDepartmentFilter(value);
+                  loadData(pagination.current, pagination.pageSize, search, statusFilter, value);
                 }}
                 placeholder="All Departments"
                 size="large"
@@ -776,6 +817,7 @@ export default function OperationTheatreManagement() {
                       setSearch("");
                       setStatusFilter("all");
                       setDepartmentFilter("all");
+                      loadData(1, pagination.pageSize, "", "all", "all");
                     }}
                     className="mt-4"
                   >
@@ -789,8 +831,11 @@ export default function OperationTheatreManagement() {
               dataSource={filteredTheatres}
               columns={columns}
               rowKey="id"
+              onChange={handleTableChange}
               pagination={{
-                pageSize: 10,
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: pagination.total,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) =>
@@ -840,8 +885,6 @@ export default function OperationTheatreManagement() {
                 >
                   <Input
                     placeholder="Enter theatre name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     size="large"
                   />
                 </Form.Item>
@@ -854,8 +897,6 @@ export default function OperationTheatreManagement() {
                 >
                   <Select
                     placeholder="Select department"
-                    value={formData.department_id}
-                    onChange={(value) => setFormData(prev => ({ ...prev, department_id: value }))}
                     size="large"
                   >
                     {departments.map(dept => (
@@ -877,8 +918,6 @@ export default function OperationTheatreManagement() {
                 >
                   <Input
                     placeholder="Enter building name"
-                    value={formData.building}
-                    onChange={(e) => setFormData(prev => ({ ...prev, building: e.target.value }))}
                     size="large"
                   />
                 </Form.Item>
@@ -891,8 +930,6 @@ export default function OperationTheatreManagement() {
                 >
                   <Input
                     placeholder="Enter floor number"
-                    value={formData.floor}
-                    onChange={(e) => setFormData(prev => ({ ...prev, floor: e.target.value }))}
                     size="large"
                   />
                 </Form.Item>
@@ -908,8 +945,6 @@ export default function OperationTheatreManagement() {
                 >
                   <Input
                     placeholder="Enter wing/section"
-                    value={formData.wing}
-                    onChange={(e) => setFormData(prev => ({ ...prev, wing: e.target.value }))}
                     size="large"
                   />
                 </Form.Item>
@@ -922,8 +957,6 @@ export default function OperationTheatreManagement() {
                 >
                   <Input
                     placeholder="Enter room number"
-                    value={formData.room_number}
-                    onChange={(e) => setFormData(prev => ({ ...prev, room_number: e.target.value }))}
                     size="large"
                   />
                 </Form.Item>
@@ -937,8 +970,6 @@ export default function OperationTheatreManagement() {
                   name="status"
                 >
                   <Select
-                    value={formData.status}
-                    onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
                     size="large"
                   >
                     <Option value="AVAILABLE">Available</Option>
@@ -956,13 +987,11 @@ export default function OperationTheatreManagement() {
                 >
                   <div className="flex items-center space-x-3 pt-2">
                     <Switch
-                      checked={formData.is_active}
-                      onChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
                       checkedChildren="Active"
                       unCheckedChildren="Inactive"
                     />
                     <span className="text-gray-600">
-                      {formData.is_active ? "Active" : "Inactive"}
+                      {form.getFieldValue('is_active') ? "Active" : "Inactive"}
                     </span>
                   </div>
                 </Form.Item>
@@ -976,8 +1005,6 @@ export default function OperationTheatreManagement() {
               <TextArea
                 rows={3}
                 placeholder="Additional notes about this operation theatre..."
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                 size="large"
               />
             </Form.Item>
@@ -1026,7 +1053,7 @@ export default function OperationTheatreManagement() {
             <Descriptions.Item label="Department">
               <div className="flex items-center gap-2">
                 <EnvironmentOutlined />
-                <Tag color="blue">{selectedTheatre.department?.name}</Tag>
+                <Tag color="blue">{selectedTheatre.department?.name || "No department"}</Tag>
               </div>
             </Descriptions.Item>
             <Descriptions.Item label="Status">

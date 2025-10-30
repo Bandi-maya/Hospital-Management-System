@@ -17,7 +17,7 @@ import {
   Col,
   Statistic
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import {
   SearchOutlined,
   PlusOutlined,
@@ -59,6 +59,26 @@ interface InventoryItem {
   price: number;
   batch_no: string;
   medicine: Medicine;
+}
+
+interface ApiResponse {
+  id?: string;
+  error?: string;
+  data?: any;
+  total_records?: number;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface Stats {
+  totalItems: number;
+  lowStock: number;
+  totalValue: number;
+  expiringSoon: number;
 }
 
 // Skeleton Loader Components
@@ -164,33 +184,39 @@ const ActionButton = ({
 
 export default function MedicalInventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [data, setData] = useState<any>({});
-  const [search, setSearch] = useState("");
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [data, setData] = useState<ApiResponse>({});
+  const [search, setSearch] = useState<string>("");
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [form] = Form.useForm();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  const loadData = async (page = 1, limit = 10, searchQuery = search) => {
+  const loadData = async (page: number = 1, limit: number = 10, searchQuery: string = search): Promise<void> => {
     setLoading(true);
     getApi(`/medicine-stock?page=${page}&limit=${limit}&q=${searchQuery}`)
-      .then((data) => {
+      .then((data: ApiResponse) => {
         if (!data?.error) {
           setData(data);
-          setInventory(data.data);
+          setInventory(data.data || []);
+          setPagination(prev => ({
+            ...prev,
+            current: page,
+            pageSize: limit,
+            total: data.total_records || 0,
+          }));
         } else {
           toast.error(data.error);
         }
-      }).catch((err) => {
+      }).catch((err: Error) => {
         console.error(err);
         toast.error("Failed to fetch inventory");
       })
@@ -213,9 +239,9 @@ export default function MedicalInventory() {
       }, 30000);
       return () => clearInterval(interval);
     }
-  }, [autoRefresh]);
+  }, [autoRefresh, pagination.current, pagination.pageSize]);
 
-  const handleAddOrUpdate = async (values: any) => {
+  const handleAddOrUpdate = async (values: any): Promise<void> => {
     if (!values.name || !values.manufacturer || !values.quantity || !values.expiry_date || !values.price) {
       toast.error("All fields are required");
       return;
@@ -240,87 +266,75 @@ export default function MedicalInventory() {
 
     setActionLoading(editingItem ? 'update' : 'create');
 
-    if (editingItem) {
-      // Update item
-      const newItem = {
-        name: values.name,
-        manufacturer: values.manufacturer,
-        description: values.description,
-      };
+    try {
+      if (editingItem) {
+        // Update item
+        const newItem = {
+          name: values.name,
+          manufacturer: values.manufacturer,
+          description: values.description,
+        };
 
-      await PutApi('/medicines', { ...newItem, id: editingItem.medicine?.id })
-        .then(async (data) => {
-          if (!data?.error) {
-            await PutApi('/medicine-stock', {
-              id: editingItem.id,
-              medicine_id: data.id,
-              quantity: values.quantity,
-              price: values.price,
-              expiry_date: values.expiry_date,
-              batch_no: values.batch_no
-            }).then((res) => {
-              if (!res?.error) {
-                loadData();
-                toast.success("Inventory updated successfully!");
-                setIsModalOpen(false);
-                form.resetFields();
-                setEditingItem(null);
-              } else {
-                toast.error("Error when updating the Inventory:" + res.error);
-              }
-            }).catch((err) => {
-              console.error(err);
-              toast.error("Failed to update inventory stock");
-            });
+        const medicineData: ApiResponse = await PutApi('/medicines', { ...newItem, id: editingItem.medicine?.id });
+        if (!medicineData?.error) {
+          const stockData: ApiResponse = await PutApi('/medicine-stock', {
+            id: editingItem.id,
+            medicine_id: medicineData.id,
+            quantity: values.quantity,
+            price: values.price,
+            expiry_date: values.expiry_date,
+            batch_no: values.batch_no
+          });
+          if (!stockData?.error) {
+            loadData();
+            toast.success("Inventory updated successfully!");
+            setIsModalOpen(false);
+            form.resetFields();
+            setEditingItem(null);
           } else {
-            toast.error("Error when updating the Inventory:" + data.error);
+            toast.error("Error when updating the Inventory:" + stockData.error);
           }
-        }).catch((err) => {
-          console.error(err);
-          toast.error("Failed to update inventory");
-        });
-    } else {
-      // Add new item
-      const newItem = {
-        name: values.name,
-        manufacturer: values.manufacturer,
-        description: values.description,
-      };
+        } else {
+          toast.error("Error when updating the Inventory:" + medicineData.error);
+        }
+      } else {
+        // Add new item
+        const newItem = {
+          name: values.name,
+          manufacturer: values.manufacturer,
+          description: values.description,
+        };
 
-      await PostApi('/medicines', newItem)
-        .then(async (data) => {
-          if (!data?.error) {
-            await PostApi('/medicine-stock', {
-              medicine_id: data.id,
-              quantity: values.quantity,
-              price: values.price,
-              expiry_date: values.expiry_date,
-              batch_no: values.batch_no
-            }).then((res) => {
-              if (!res?.error) {
-                loadData();
-                toast.success("Inventory added successfully!");
-                setIsModalOpen(false);
-                form.resetFields();
-              } else {
-                toast.error("Error when creating the Inventory:" + res.error);
-              }
-            }).catch((err) => {
-              console.error(err);
-              toast.error("Failed to add inventory stock");
-            });
+        const medicineData: ApiResponse = await PostApi('/medicines', newItem);
+        if (!medicineData?.error) {
+          const stockData: ApiResponse = await PostApi('/medicine-stock', {
+            medicine_id: medicineData.id,
+            quantity: values.quantity,
+            price: values.price,
+            expiry_date: values.expiry_date,
+            batch_no: values.batch_no
+          });
+          if (!stockData?.error) {
+            loadData();
+            toast.success("Inventory added successfully!");
+            setIsModalOpen(false);
+            form.resetFields();
           } else {
-            toast.error("Error when creating the Inventory:" + data.error);
+            toast.error("Error when creating the Inventory:" + stockData.error);
           }
-        }).catch((err) => {
-          console.error(err);
-          toast.error("Failed to add inventory");
-        });
+        } else {
+          toast.error("Error when creating the Inventory:" + medicineData.error);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to process inventory operation");
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   };
 
-  const handleEdit = (item: InventoryItem) => {
+  const handleEdit = (item: InventoryItem): void => {
     setEditingItem(item);
     form.setFieldsValue({
       ...item,
@@ -335,12 +349,12 @@ export default function MedicalInventory() {
     setIsModalOpen(true);
   };
 
-  const handleView = (item: InventoryItem) => {
+  const handleView = (item: InventoryItem): void => {
     setSelectedItem(item);
     setIsViewModalOpen(true);
   };
 
-  const handleDelete = (record: InventoryItem) => {
+  const handleDelete = (record: InventoryItem): void => {
     setActionLoading(record.id);
     Modal.confirm({
       title: "Delete Inventory Item?",
@@ -351,24 +365,24 @@ export default function MedicalInventory() {
       icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
       onOk() {
         DeleteApi("/medicine-stock", { id: record.id })
-          .then((data) => {
+          .then((data: ApiResponse) => {
             if (!data?.error) {
               DeleteApi("/medicines", { id: record.medicine.id })
-                .then((data) => {
+                .then((data: ApiResponse) => {
                   if (!data?.error) {
                     toast.success("Item deleted successfully!");
                     loadData();
                   } else {
-                    toast.error(data.error);
+                    toast.error(data.error || "Failed to delete medicine");
                   }
-                }).catch((err) => {
+                }).catch((err: Error) => {
                   console.error(err);
                   toast.error("Failed to delete item");
                 });
             } else {
-              toast.error(data.error);
+              toast.error(data.error || "Failed to delete medicine stock");
             }
-          }).catch((err) => {
+          }).catch((err: Error) => {
             console.error(err);
             toast.error("Failed to delete item");
           })
@@ -382,18 +396,15 @@ export default function MedicalInventory() {
     });
   };
 
-  const resetFilters = () => {
+  const resetFilters = (): void => {
     setSearch("");
+    loadData(1, pagination.pageSize, "");
   };
 
-  const filteredInventory = inventory
-  // .filter(item =>
-  // item.medicine?.name?.toLowerCase().includes(search.toLowerCase()) ||
-  // item.medicine?.manufacturer?.toLowerCase().includes(search.toLowerCase())
-  // );
+  const filteredInventory = inventory;
 
   // Calculate statistics
-  const stats = {
+  const stats: Stats = {
     totalItems: inventory.length,
     lowStock: inventory.filter(item => item.quantity < 10).length,
     totalValue: inventory.reduce((sum, item) => sum + (item.quantity * item.price), 0),
@@ -510,7 +521,7 @@ export default function MedicalInventory() {
         const today = new Date();
         const daysDiff = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
-        let status = "success";
+        let status: "success" | "error" | "warning" = "success";
         let statusText = "Valid";
 
         if (daysDiff <= 0) {
@@ -567,9 +578,19 @@ export default function MedicalInventory() {
     },
   ];
 
-  const handleTableChange = (newPagination: any) => {
-    setPagination(newPagination);
-    loadData(newPagination.current, newPagination.pageSize);
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
+    if (newPagination.current && newPagination.pageSize) {
+      setPagination({
+        current: newPagination.current,
+        pageSize: newPagination.pageSize,
+        total: newPagination.total || 0,
+      });
+      loadData(newPagination.current, newPagination.pageSize);
+    }
+  };
+
+  const handleSearch = (): void => {
+    loadData(1, pagination.pageSize, search);
   };
 
   return (
@@ -642,56 +663,6 @@ export default function MedicalInventory() {
         </Card>
       )}
 
-      {/* Statistics Cards */}
-      {/* {loading ? (
-        <StatsSkeleton />
-      ) : (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-blue-50 to-blue-100">
-              <Statistic
-                title="Total Items"
-                value={stats.totalItems}
-                prefix={<MedicineBoxOutlined className="text-blue-600" />}
-                valueStyle={{ color: '#1d4ed8' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-orange-50 to-orange-100">
-              <Statistic
-                title="Low Stock"
-                value={stats.lowStock}
-                prefix={<ExclamationCircleOutlined className="text-orange-600" />}
-                valueStyle={{ color: '#ea580c' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-green-50 to-green-100">
-              <Statistic
-                title="Total Value"
-                value={stats.totalValue}
-                prefix="₹"
-                precision={2}
-                <DollarOutlined className="text-green-600" />}
-                valueStyle={{ color: '#16a34a' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-red-50 to-red-100">
-              <Statistic
-                title="Expiring Soon"
-                value={stats.expiringSoon}
-                prefix={<CalendarOutlined className="text-red-600" />}
-                valueStyle={{ color: '#dc2626' }}
-              />
-            </Card>
-          </Col>
-        </Row>
-      )} */}
-
       {/* Search and Filter Section */}
       <Card className="bg-white shadow-sm border-0">
         <div className="p-6">
@@ -712,7 +683,7 @@ export default function MedicalInventory() {
                 allowClear
                 size="large"
                 style={{ width: 350 }}
-                onSearch={() => { loadData(pagination.current, pagination.pageSize, search) }}
+                onSearch={handleSearch}
                 className="rounded-lg"
               />
             </div>

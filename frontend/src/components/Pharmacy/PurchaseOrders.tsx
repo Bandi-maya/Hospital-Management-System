@@ -18,7 +18,9 @@ import {
   Row,
   Col,
   Statistic,
-  Badge
+  Badge,
+  DatePicker,
+  Switch
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -45,6 +47,7 @@ import {
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
 import { motion } from "framer-motion";
+import dayjs from "dayjs";
 
 const { Option } = Select;
 
@@ -62,7 +65,8 @@ interface PurchaseOrder {
     order_date: string;
   }[];
   user?: any;
-  medicine_details?: any[];
+  medicines?: any[];
+  order_type?: string;
 }
 
 interface Medicine {
@@ -181,11 +185,10 @@ export default function PurchaseOrders() {
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
   const [search, setSearch] = useState("");
   const [medicines, setMedicines] = useState<Medicine[]>([]);
-  const [patients, setPatients] = useState([]);
+  const [patients, setPatients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const loginData = JSON.parse(localStorage.getItem("loginData") || '{"user_id":8}');
-  const [loadingActionId, setLoadingActionId] = useState<any | null>(null);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -198,89 +201,80 @@ export default function PurchaseOrders() {
     fetchMedicines();
   }, []);
 
-  const handleAddOrUpdateBilling = (values: any) => {
-    if (!values.patient_id || !values.medicines || values.medicines.length === 0) {
-      toast.error("Please fill all required fields");
-      return;
-    }
-
-    setLoadingActionId(selectedOrder?.id);
-
-    const billingData = {
-      prescription_id: selectedOrder?.id,
-      patient_id: values.patient_id,
-      medicines: values.medicines,
-      tests: values.tests || [],
-      surgeries: values.surgeries || [],
-      notes: values.notes || "",
-    };
-
-    PostApi('/billing', billingData)
-      .then((data) => {
-        if (!data.error) {
-          fetchOrders();
-          toast.success("Billing added successfully!");
-          // setIsBillingModalOpen(false);
-          setSelectedOrder(null);
-        } else {
-          toast.error(data.error);
-        }
-      }).catch((err) => {
-        console.error("Error: ", err);
-        toast.error("Error occurred while adding billing.");
-      }).finally(() => setLoadingActionId(null));
-  };
-
   // Auto refresh notifier
-  // useEffect(() => {
-  //   if (autoRefresh) {
-  //     const interval = setInterval(() => {
-  //       message.info("🔄 Auto-refresh: Purchase orders data reloaded");
-  //       fetchOrders();
-  //     }, 30000);
-  //     return () => clearInterval(interval);
-  //   }
-  // }, [autoRefresh]);
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        message.info({
+          content: "🔄 Auto-refresh: Purchase orders data reloaded",
+          duration: 2,
+          key: 'auto-refresh'
+        });
+        fetchOrders();
+      }, 30000); // 30 seconds
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [autoRefresh]);
 
   const fetchOrders = async (page = 1, limit = 10, searchQuery = search) => {
     setLoading(true);
-    getApi(`/orders?order_type=medicine&page=${page}&limit=${limit}&q=${searchQuery}`)
-      .then((res) => {
-        if (!res.error) {
-          setOrders(res.data);
-        } else {
-          toast.error("Failed to load orders.");
-        }
-      })
-      .catch(() => toast.error("Server error while fetching orders"))
-      .finally(() => setLoading(false));
+    try {
+      const res = await getApi(`/orders?order_type=medicine&page=${page}&limit=${limit}&q=${searchQuery}`);
+      if (!res.error) {
+        setOrders(res.data || []);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: limit,
+          total: res.total || res.data?.length || 0
+        }));
+      } else {
+        toast.error(res.error || "Failed to load orders.");
+      }
+    } catch (error) {
+      toast.error("Server error while fetching orders");
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const fetchPatients = () => {
-    getApi("/users?user_type=DOCTOR")
-      .then((res) => {
-        if (!res.error) {
-          setPatients(res.data);
-        } else {
-          toast.error("Failed to load patients.");
-        }
-      })
-      .catch(() => toast.error("Server error while fetching patients"));
+  const fetchPatients = async () => {
+    try {
+      const res = await getApi("/users?user_type=PATIENT"); // Changed to PATIENT
+      if (!res.error) {
+        setPatients(res.data || []);
+      } else {
+        toast.error(res.error || "Failed to load patients.");
+      }
+    } catch (error) {
+      toast.error("Server error while fetching patients");
+      console.error("Error fetching patients:", error);
+    }
   };
 
-  const fetchMedicines = () => {
-    getApi("/medicines")
-      .then((res) => {
-        if (!res.error) {
-          setMedicines(res.data);
-        } else {
-          toast.error("Failed to load medicines.");
-        }
-      })
-      .catch(() => toast.error("Server error while fetching medicines"));
+  const fetchMedicines = async () => {
+    try {
+      const res = await getApi("/medicines");
+      if (!res.error) {
+        setMedicines(res.data || []);
+      } else {
+        toast.error(res.error || "Failed to load medicines.");
+      }
+    } catch (error) {
+      toast.error("Server error while fetching medicines");
+      console.error("Error fetching medicines:", error);
+    }
   };
 
-  const handleAddOrUpdate = (values: any) => {
+  const handleAddOrUpdate = async (values: any) => {
     if (!values.user_id || !values.received_date || !values.taken_by || !values.taken_by_phone_no || !values.items || values.items.length === 0) {
       toast.error("Fill all required fields and add at least one item.");
       return;
@@ -288,41 +282,35 @@ export default function PurchaseOrders() {
 
     setActionLoading(editingOrder ? 'update' : 'create');
 
-    const orderData = {
-      ...values,
-      medicines: values.items,
-      created_by: loginData.user_id
-    };
+    try {
+      const orderData = {
+        ...values,
+        medicines: values.items,
+        created_by: loginData.user_id,
+        order_type: "medicine"
+      };
 
-    if (editingOrder) {
-      PutApi("/orders", { ...editingOrder, ...orderData })
-        .then((res) => {
-          if (!res.error) {
-            toast.success("Order updated successfully");
-            setIsModalOpen(false);
-            fetchOrders();
-            form.resetFields();
-            setEditingOrder(null);
-          } else {
-            toast.error(res.error || "Failed to update order");
-          }
-        })
-        .catch(() => toast.error("Server error while updating order"))
-        .finally(() => setActionLoading(null));
-    } else {
-      PostApi("/orders", orderData)
-        .then((res) => {
-          if (!res.error) {
-            toast.success("Order added successfully");
-            setIsModalOpen(false);
-            fetchOrders();
-            form.resetFields();
-          } else {
-            toast.error(res.error || "Failed to add order");
-          }
-        })
-        .catch(() => toast.error("Server error while adding order"))
-        .finally(() => setActionLoading(null));
+      let res;
+      if (editingOrder) {
+        res = await PutApi("/orders", { ...editingOrder, ...orderData });
+      } else {
+        res = await PostApi("/orders", orderData);
+      }
+
+      if (!res.error) {
+        toast.success(`Order ${editingOrder ? 'updated' : 'added'} successfully`);
+        setIsModalOpen(false);
+        fetchOrders();
+        form.resetFields();
+        setEditingOrder(null);
+      } else {
+        toast.error(res.error || `Failed to ${editingOrder ? 'update' : 'add'} order`);
+      }
+    } catch (error) {
+      toast.error(`Server error while ${editingOrder ? 'updating' : 'adding'} order`);
+      console.error(`Error ${editingOrder ? 'updating' : 'adding'} order:`, error);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -335,18 +323,21 @@ export default function PurchaseOrders() {
       cancelText: "Cancel",
       okType: "danger",
       icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
-      onOk() {
-        DeleteApi(`/orders?id=${order.id}`)
-          .then((res) => {
-            if (!res.error) {
-              toast.success("Order deleted successfully");
-              fetchOrders();
-            } else {
-              toast.error(res.error || "Failed to delete order");
-            }
-          })
-          .catch(() => toast.error("Server error while deleting order"))
-          .finally(() => setActionLoading(null));
+      async onOk() {
+        try {
+          const res = await DeleteApi(`/orders?id=${order.id}`);
+          if (!res.error) {
+            toast.success("Order deleted successfully");
+            fetchOrders();
+          } else {
+            toast.error(res.error || "Failed to delete order");
+          }
+        } catch (error) {
+          toast.error("Server error while deleting order");
+          console.error("Error deleting order:", error);
+        } finally {
+          setActionLoading(null);
+        }
       },
       onCancel() {
         setActionLoading(null);
@@ -354,7 +345,7 @@ export default function PurchaseOrders() {
     });
   };
 
-  const handleEdit = (order: PurchaseOrder | any) => {
+  const handleEdit = (order: PurchaseOrder) => {
     setEditingOrder(order);
     form.setFieldsValue({
       ...order,
@@ -362,7 +353,7 @@ export default function PurchaseOrders() {
       received_date: order.received_date,
       taken_by: order.taken_by,
       taken_by_phone_no: order.taken_by_phone_no,
-      items: order.medicines || [],
+      items: order.medicines || order.items || [],
     });
     setIsModalOpen(true);
   };
@@ -374,21 +365,25 @@ export default function PurchaseOrders() {
 
   const resetFilters = () => {
     setSearch("");
+    fetchOrders(1, pagination.pageSize, "");
   };
 
-  const filteredOrders = orders
-  // .filter(order =>
-  //   order.user_id.toString().includes(search) ||
-  //   order.received_date.includes(search) ||
-  //   order.taken_by?.toLowerCase().includes(search.toLowerCase()) ||
-  //   order.user?.username?.toLowerCase().includes(search.toLowerCase())
-  // );
+  const handleSearch = () => {
+    fetchOrders(1, pagination.pageSize, search);
+  };
+
+  const filteredOrders = orders.filter(order =>
+    order.user_id.toString().includes(search) ||
+    order.received_date?.includes(search) ||
+    order.taken_by?.toLowerCase().includes(search.toLowerCase()) ||
+    order.user?.username?.toLowerCase().includes(search.toLowerCase())
+  );
 
   // Calculate statistics
   const stats = {
     totalOrders: orders.length,
-    todayOrders: orders.filter(order => order.received_date === new Date().toISOString().split('T')[0]).length,
-    totalItems: orders.reduce((sum, order) => sum + (order.items?.length || 0), 0),
+    todayOrders: orders.filter(order => order.received_date === dayjs().format('YYYY-MM-DD')).length,
+    totalItems: orders.reduce((sum, order) => sum + ((order.medicines || order.items)?.length || 0), 0),
     pendingOrders: orders.filter(order => !order.received_date).length
   };
 
@@ -409,10 +404,10 @@ export default function PurchaseOrders() {
           <div>
             <div className="font-semibold text-gray-900">Order #{record.id}</div>
             <div className="text-sm text-gray-500">
-              Patient: {record.user?.username || record.user_id}
+              Patient: {record.user?.username || `User ${record.user_id}`}
             </div>
             <div className="text-xs text-gray-400 mt-1">
-              Created: {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}
+              Created: {record.created_at ? dayjs(record.created_at).format('DD/MM/YYYY') : 'N/A'}
             </div>
           </div>
         </Space>
@@ -426,7 +421,7 @@ export default function PurchaseOrders() {
         </Space>
       ),
       key: "taken_by",
-      render: (_, record: PurchaseOrder | any) => (
+      render: (_, record: PurchaseOrder) => (
         <Space direction="vertical" size={0}>
           <div className="font-semibold text-gray-900">{record.taken_by}</div>
           <div className="text-sm text-gray-500">
@@ -467,19 +462,24 @@ export default function PurchaseOrders() {
         </Space>
       ),
       key: "items",
-      render: (_, record: PurchaseOrder | any) => (
-        <Space direction="vertical" size={0}>
-          <Tag color="blue" className="font-bold text-lg">
-            {record.medicines?.length || 0}
-          </Tag>
-          <div className="text-xs text-gray-500">
-            Medicine Items
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            Total Qty: {record.medicines?.reduce((sum, item) => sum + item.quantity, 0) || 0}
-          </div>
-        </Space>
-      ),
+      render: (_, record: PurchaseOrder) => {
+        const items = record.medicines || record.items || [];
+        const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        
+        return (
+          <Space direction="vertical" size={0}>
+            <Tag color="blue" className="font-bold text-lg">
+              {items.length}
+            </Tag>
+            <div className="text-xs text-gray-500">
+              Medicine Items
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              Total Qty: {totalQuantity}
+            </div>
+          </Space>
+        );
+      },
     },
     {
       title: (
@@ -518,7 +518,7 @@ export default function PurchaseOrders() {
   ];
 
   const handleTableChange = (newPagination: any) => {
-    fetchOrders(newPagination.current, newPagination.pageSize);
+    fetchOrders(newPagination.current, newPagination.pageSize, search);
   };
 
   return (
@@ -539,20 +539,17 @@ export default function PurchaseOrders() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3 mt-4 lg:mt-0">
-              <Tooltip title="Auto Refresh">
+              <Tooltip title={autoRefresh ? "Auto refresh enabled" : "Auto refresh disabled"}>
                 <div className="flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-lg border">
                   <SyncOutlined className="w-4 h-4 text-gray-600" />
                   <span className="text-sm text-gray-700 font-medium">Auto Refresh</span>
-                  <div
-                    className={`w-10 h-5 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                    onClick={() => setAutoRefresh(!autoRefresh)}
-                  >
-                    <div
-                      className={`w-3 h-3 rounded-full bg-white transform transition-transform mt-1 ${autoRefresh ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                    />
-                  </div>
+                  <Switch
+                    size="small"
+                    checked={autoRefresh}
+                    onChange={setAutoRefresh}
+                    checkedChildren="ON"
+                    unCheckedChildren="OFF"
+                  />
                 </div>
               </Tooltip>
 
@@ -561,6 +558,7 @@ export default function PurchaseOrders() {
                   icon={<ReloadOutlined />}
                   onClick={resetFilters}
                   className="border-gray-300"
+                  disabled={loading}
                 >
                   Reset
                 </Button>
@@ -581,6 +579,7 @@ export default function PurchaseOrders() {
                     }}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-md"
                     size="large"
+                    disabled={loading}
                   >
                     <RocketOutlined /> New Purchase Order
                   </Button>
@@ -655,12 +654,14 @@ export default function PurchaseOrders() {
                 placeholder="Search orders by patient, date, or collector..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                onSearch={() => { fetchOrders(pagination.current, pagination.pageSize, search) }}
+                onSearch={handleSearch}
+                onPressEnter={handleSearch}
                 prefix={<SearchOutlined className="text-gray-400" />}
                 allowClear
                 size="large"
                 style={{ width: 350 }}
                 className="rounded-lg"
+                loading={loading}
               />
             </div>
           </div>
@@ -678,7 +679,9 @@ export default function PurchaseOrders() {
             rowKey="id"
             onChange={handleTableChange}
             pagination={{
-              pageSize: 10,
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
@@ -688,6 +691,7 @@ export default function PurchaseOrders() {
             scroll={{ x: "max-content" }}
             rowClassName="hover:bg-blue-50 transition-colors duration-200"
             className="rounded-lg"
+            loading={loading}
           />
         </Card>
       )}
@@ -717,6 +721,7 @@ export default function PurchaseOrders() {
         styles={{
           body: { padding: '24px' }
         }}
+        destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleAddOrUpdate}>
           <Row gutter={16}>
@@ -731,6 +736,9 @@ export default function PurchaseOrders() {
                   size="large"
                   showSearch
                   optionFilterProp="children"
+                  filterOption={(input, option: any) =>
+                    (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                  }
                 >
                   {patients.map((patient: any) => (
                     <Option key={patient.id} value={patient.id}>
@@ -773,7 +781,10 @@ export default function PurchaseOrders() {
               <Form.Item
                 name="taken_by_phone_no"
                 label="Collector Phone"
-                rules={[{ required: true, message: "Please enter collector phone" }]}
+                rules={[
+                  { required: true, message: "Please enter collector phone" },
+                  { pattern: /^[0-9+\-\s()]+$/, message: "Please enter a valid phone number" }
+                ]}
               >
                 <Input
                   placeholder="Enter collector phone number"
@@ -814,6 +825,9 @@ export default function PurchaseOrders() {
                           placeholder="Select medicine"
                           size="large"
                           showSearch
+                          filterOption={(input, option: any) =>
+                            (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                          }
                         >
                           {medicines.map(medicine => (
                             <Option key={medicine.id} value={medicine.id}>
@@ -826,7 +840,10 @@ export default function PurchaseOrders() {
                         {...restField}
                         name={[name, 'quantity']}
                         label="Quantity"
-                        rules={[{ required: true, message: 'Please enter quantity' }]}
+                        rules={[
+                          { required: true, message: 'Please enter quantity' },
+                          { type: 'number', min: 1, message: 'Quantity must be at least 1' }
+                        ]}
                       >
                         <Input
                           type="number"
@@ -861,6 +878,12 @@ export default function PurchaseOrders() {
                     </div>
                   </Card>
                 ))}
+                {fields.length === 0 && (
+                  <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
+                    <MedicineBoxOutlined className="text-3xl mb-2 text-gray-300" />
+                    <div>No items added yet. Click "Add Medicine Item" to start.</div>
+                  </div>
+                )}
               </>
             )}
           </Form.List>
@@ -892,6 +915,7 @@ export default function PurchaseOrders() {
           </Button>
         ]}
         width={700}
+        destroyOnClose
       >
         {selectedOrder && (
           <div className="space-y-6">
@@ -910,7 +934,7 @@ export default function PurchaseOrders() {
                 <Card size="small" className="border-l-4 border-l-blue-500">
                   <Statistic
                     title="Patient"
-                    value={selectedOrder.user?.username || selectedOrder.user_id}
+                    value={selectedOrder.user?.username || `User ${selectedOrder.user_id}`}
                     valueStyle={{ color: '#1d4ed8', fontSize: '16px' }}
                   />
                 </Card>
@@ -919,7 +943,7 @@ export default function PurchaseOrders() {
                 <Card size="small" className="border-l-4 border-l-green-500">
                   <Statistic
                     title="Items Count"
-                    value={selectedOrder.items?.length || 0}
+                    value={(selectedOrder.medicines || selectedOrder.items)?.length || 0}
                     valueStyle={{ color: '#16a34a' }}
                   />
                 </Card>
@@ -945,10 +969,10 @@ export default function PurchaseOrders() {
 
             <Divider>Order Items</Divider>
 
-            {selectedOrder.items && selectedOrder.items.length > 0 ? (
+            {((selectedOrder.medicines || selectedOrder.items)?.length || 0) > 0 ? (
               <Table
                 size="small"
-                dataSource={selectedOrder.items}
+                dataSource={selectedOrder.medicines || selectedOrder.items || []}
                 pagination={false}
                 rowKey={(record, index) => `${record.medicine_id}-${index}`}
                 columns={[
@@ -979,7 +1003,7 @@ export default function PurchaseOrders() {
                     dataIndex: 'order_date',
                     key: 'order_date',
                     render: (date) => (
-                      <div className="text-gray-600">{date}</div>
+                      <div className="text-gray-600">{date || 'N/A'}</div>
                     )
                   },
                 ]}

@@ -217,6 +217,7 @@ import {
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
 import { Ward } from "./WardStatus";
 import dayjs from "dayjs";
+import type { ColumnsType } from "antd/es/table";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -226,6 +227,27 @@ const { Panel } = Collapse;
 const { useToken } = theme;
 const { Step } = Steps;
 
+// TypeScript Interfaces
+interface Bed {
+  id: number;
+  bed_no: number;
+  status: string;
+}
+
+interface Insurance {
+  policyNumber: string;
+  provider: string;
+  coverageAmount: string;
+  expiryDate: string;
+}
+
+interface Patient {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
 interface WardAllocation {
   id: number;
   patient_name: string;
@@ -234,26 +256,53 @@ interface WardAllocation {
   bed_no: number;
   admission_date: string;
   status: "ACTIVE" | "DISCHARGED";
-  insurance?: {
-    policyNumber: string;
-    provider: string;
-    coverageAmount: string;
-    expiryDate: string;
-  };
-  patient?: {
-    id: number;
-    name: string;
-    email?: string;
-    phone?: string;
-  };
+  price?: number;
+  insurance?: Insurance;
+  patient?: Patient;
+  bed_id?: number;
 }
+
+interface ModalInfo {
+  type: "add" | "edit" | "insurance" | null;
+  record: WardAllocation | null;
+}
+
+interface Stats {
+  totalAllocations: number;
+  activeAllocations: number;
+  dischargedAllocations: number;
+  occupancyRate: number;
+  totalWards: number;
+  averageStay: string;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-type ModalInfo = {
-  type: "add" | "edit" | "insurance" | null;
-  record: WardAllocation | null;
-};
+// Skeleton components
+const StatisticSkeleton = () => (
+  <Card>
+    <Skeleton active paragraph={{ rows: 1 }} />
+  </Card>
+);
+
+const TableSkeleton = () => (
+  <Card>
+    <Skeleton active paragraph={{ rows: 6 }} />
+  </Card>
+);
+
+const CardSkeleton = () => (
+  <Card>
+    <Skeleton active avatar paragraph={{ rows: 3 }} />
+  </Card>
+);
 
 export default function WardAllocations() {
   const [data, setData] = useState<WardAllocation[]>([]);
@@ -266,16 +315,16 @@ export default function WardAllocations() {
   const { token } = useToken();
 
   const [searchText, setSearchText] = useState("");
-  const [filterWard, setFilterWard] = useState<any>('all');
-  const [status, setStatus] = useState<any>('ALL');
+  const [filterWard, setFilterWard] = useState<string>('all');
+  const [status, setStatus] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [patients, setPatients] = useState([]);
-  const [selectedBeds, setSelectedBeds] = useState([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedBeds, setSelectedBeds] = useState<Bed[]>([]);
   const [activeTab, setActiveTab] = useState("allocations");
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
@@ -285,27 +334,7 @@ export default function WardAllocations() {
     loadAllocations(newPagination.current, newPagination.pageSize);
   };
 
-
-  // Skeleton components
-  const StatisticSkeleton = () => (
-    <Card>
-      <Skeleton active paragraph={{ rows: 1 }} />
-    </Card>
-  );
-
-  const TableSkeleton = () => (
-    <Card>
-      <Skeleton active paragraph={{ rows: 6 }} />
-    </Card>
-  );
-
-  const CardSkeleton = () => (
-    <Card>
-      <Skeleton active avatar paragraph={{ rows: 3 }} />
-    </Card>
-  );
-
-  const handleWardChange = (wardId) => {
+  const handleWardChange = (wardId: number) => {
     const selectedWard = wards.find((w) => w.id === wardId);
     setSelectedBeds((selectedWard?.beds || []).filter((bed) => bed.status === 'AVAILABLE'));
   };
@@ -320,7 +349,9 @@ export default function WardAllocations() {
     try {
       const wardRes = await getApi("/wards");
       if (!wardRes.error) {
-        setWards(wardRes.data);
+        setWards(wardRes.data || []);
+      } else {
+        message.error(wardRes.error);
       }
     } catch (e) {
       console.error("Error loading wards:", e);
@@ -332,7 +363,9 @@ export default function WardAllocations() {
     try {
       const patientRes = await getApi("/users?user_type=PATIENT");
       if (!patientRes.error) {
-        setPatients(patientRes.data);
+        setPatients(patientRes.data || []);
+      } else {
+        message.error(patientRes.error);
       }
     } catch (e) {
       console.error("Error loading patients:", e);
@@ -340,14 +373,27 @@ export default function WardAllocations() {
     }
   };
 
-  const loadAllocations = async (page = 1, limit = 10, searchQuery = searchText, filterStatus = status, ward_id = filterWard) => {
+  const loadAllocations = async (
+    page = 1, 
+    limit = 10, 
+    searchQuery = searchText, 
+    filterStatus = status, 
+    ward_id = filterWard
+  ) => {
     setLoading(true);
     setTableLoading(true);
     setStatsLoading(true);
     try {
-      const res = await getApi(`/ward-beds?page=${page}&limit=${limit}&q=${searchQuery}&status=${filterStatus === 'ALL' ? '' : filterStatus}&ward_id=${ward_id === 'all' ? '' : ward_id}`);
+      const res = await getApi(
+        `/ward-beds?page=${page}&limit=${limit}&q=${searchQuery}&status=${filterStatus === 'ALL' ? '' : filterStatus}&ward_id=${ward_id === 'all' ? '' : ward_id}`
+      );
       if (!res.error) {
-        setData(res.data.filter((ward) => ward.status !== "AVAILABLE"));
+        setData(res.data?.filter((ward: WardAllocation) => ward.status !== "AVAILABLE") || []);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          total: res.total_records || 0
+        }));
       } else {
         message.error(res.error);
       }
@@ -417,11 +463,9 @@ export default function WardAllocations() {
     try {
       const values = await form.validateFields();
 
-      // if (modalInfo.type === "add") {
-      //   await handleAdd(values);
-      // } else 
-      if (modalInfo.type === "edit" || modalInfo.type === "add") {
-        console.log(dayjs.utc(values.admission_date).local())
+      if (modalInfo.type === "add") {
+        await handleAdd(values);
+      } else if (modalInfo.type === "edit") {
         const payload = {
           id: values.bed_id,
           ward_id: values.ward_id,
@@ -476,7 +520,7 @@ export default function WardAllocations() {
   };
 
   // Statistics calculations
-  const stats = {
+  const stats: Stats = {
     totalAllocations: data.length,
     activeAllocations: data.filter(item => item.status === "ACTIVE").length,
     dischargedAllocations: data.filter(item => item.status === "DISCHARGED").length,
@@ -516,7 +560,7 @@ export default function WardAllocations() {
     />
   );
 
-  const columns = [
+  const columns: ColumnsType<WardAllocation> = [
     {
       title: (
         <Space>
@@ -570,10 +614,10 @@ export default function WardAllocations() {
       render: (date: string) => (
         <Space direction="vertical" size={0}>
           <div style={{ fontWeight: "500" }}>
-            {new Date(date).toLocaleDateString()}
+            {dayjs(date).format('MMM D, YYYY')}
           </div>
           <div style={{ fontSize: "12px", color: "#666" }}>
-            {new Date(date).toLocaleTimeString()}
+            {dayjs(date).format('h:mm A')}
           </div>
         </Space>
       ),
@@ -596,23 +640,6 @@ export default function WardAllocations() {
         </Tag>
       ),
     },
-    // {
-    //   title: (
-    //     <Space>
-    //       <SafetyCertificateOutlined />
-    //       Insurance
-    //     </Space>
-    //   ),
-    //   key: "insurance",
-    //   render: (_: any, rec: WardAllocation) =>
-    //     rec.insurance?.provider ? (
-    //       <Tag color="blue" icon={<SafetyCertificateOutlined />}>
-    //         {rec.insurance.provider}
-    //       </Tag>
-    //     ) : (
-    //       <Tag color="default">No Insurance</Tag>
-    //     ),
-    // },
     {
       title: (
         <Space>
@@ -638,13 +665,6 @@ export default function WardAllocations() {
               onClick={() => showEditModal(rec)}
             />
           </Tooltip>
-          {/* <Tooltip title="Insurance Details">
-            <Button
-              icon={<SafetyCertificateOutlined />}
-              shape="circle"
-              onClick={() => showInsuranceModal(rec)}
-            />
-          </Tooltip> */}
           <Tooltip title="Delete Allocation">
             <Popconfirm
               title="Delete this allocation?"
@@ -666,13 +686,13 @@ export default function WardAllocations() {
     },
   ];
 
-  const filtered = data
-  // .filter((item) => {
-  //   const matchesSearch = item.patient?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-  //     item.ward?.name?.toLowerCase().includes(searchText.toLowerCase());
-  //   const matchesWard = filterWard ? item.ward_id === filterWard : true;
-  //   return matchesSearch && matchesWard;
-  // });
+  const filteredData = data.filter((item) => {
+    const matchesSearch = item.patient?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.ward?.name?.toLowerCase().includes(searchText.toLowerCase());
+    const matchesWard = filterWard === 'all' || item.ward_id.toString() === filterWard;
+    const matchesStatus = status === 'ALL' || item.status === status;
+    return matchesSearch && matchesWard && matchesStatus;
+  });
 
   const getModalTitle = () => {
     switch (modalInfo.type) {
@@ -689,7 +709,6 @@ export default function WardAllocations() {
 
   if (loading) {
     return (
-
       <div style={{ padding: 24, background: "#f5f5f5", minHeight: "100vh" }}>
         {/* Header Skeleton */}
         <CardSkeleton />
@@ -706,12 +725,10 @@ export default function WardAllocations() {
         {/* Table Skeleton */}
         <TableSkeleton />
       </div>
-
     );
   }
 
   return (
-
     <div style={{ padding: 24, minHeight: "100vh" }}>
       {/* Enhanced Header */}
       <Card>
@@ -843,7 +860,7 @@ export default function WardAllocations() {
               All
             </Option>
             {wards.map((w) => (
-              <Option key={w.id} value={w.id}>
+              <Option key={w.id} value={w.id.toString()}>
                 <Space>
                   <ItalicOutlined />
                   {w.name}
@@ -859,8 +876,7 @@ export default function WardAllocations() {
             onChange={(val) => {
               loadAllocations(pagination.current, pagination.pageSize, searchText, val, filterWard)
               setStatus(val)
-            }
-            }
+            }}
             size="large"
           >
             <Option value="ALL">All</Option>
@@ -893,7 +909,7 @@ export default function WardAllocations() {
           <Space>
             <BellOutlined />
             Bed Allocations
-            <Badge count={filtered.length} showZero color="#1890ff" />
+            <Badge count={filteredData.length} showZero color="#1890ff" />
           </Space>
         }
         extra={
@@ -904,16 +920,18 @@ export default function WardAllocations() {
       >
         {tableLoading ? (
           <TableSkeleton />
-        ) : filtered.length > 0 ? (
+        ) : filteredData.length > 0 ? (
           <Table
             columns={columns}
-            dataSource={filtered}
+            dataSource={filteredData}
             rowKey="id"
             loading={tableLoading}
             onChange={handleTableChange}
             scroll={{ x: 1200 }}
             pagination={{
-              pageSize: 10,
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
@@ -1199,31 +1217,6 @@ export default function WardAllocations() {
           </Card>
         </Space>
       </Drawer>
-
-      {/* Floating Action Button */}
-      {/* <FloatButton.Group
-          shape="circle"
-          style={{ right: 24 }}
-          icon={<ThunderboltOutlined />}
-        >
-          <FloatButton
-            icon={<PlusOutlined />}
-            tooltip="Allocate Bed"
-            onClick={showAddModal}
-          />
-          <FloatButton
-            icon={<SyncOutlined />}
-            tooltip="Refresh"
-            onClick={loadAllocations}
-          />
-          <FloatButton
-            icon={<SettingOutlined />}
-            tooltip="Settings"
-            onClick={() => setDrawerVisible(true)}
-          />
-          <FloatButton.BackTop visibilityHeight={0} />
-        </FloatButton.Group> */}
     </div>
-
   );
 }

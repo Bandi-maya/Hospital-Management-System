@@ -18,7 +18,7 @@ import {
   Col,
   Statistic
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import {
   SearchOutlined,
   PlusOutlined,
@@ -46,26 +46,55 @@ import { motion } from "framer-motion";
 
 const { Option } = Select;
 
+interface Patient {
+  id: string;
+  username: string;
+}
+
+interface Requester {
+  username: string;
+}
+
 interface Test {
-  id: number;
-  patientName: string;
-  patientId: string;
-  token: number;
-  testType: string;
-  date: string;
-  status: "Available" | "Not Available" | "Completed";
+  name: string;
   description?: string;
 }
 
+interface LabRequest {
+  id: string;
+  patient: Patient;
+  requester: Requester;
+  test: Test;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+}
+
 interface Report {
-  patientName: string;
-  patientId: string;
-  token: number;
-  testTypes: string[];
-  dates: string[];
-  statuses: string[];
-  ids: number[];
-  descriptions: string[];
+  id: string;
+  lab_request: LabRequest;
+  report_data: {
+    data: string | Record<string, any>;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApiResponse {
+  error?: string;
+  data?: any;
+  total_records?: number;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface Stats {
+  totalReports: number;
+  completedReports: number;
+  inProgressReports: number;
+  pendingReports: number;
 }
 
 // Skeleton Loader Components
@@ -175,65 +204,58 @@ const ActionButton = ({
 
 export default function LabReports() {
   const [reports, setReports] = useState<Report[]>([]);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "Available" | "Not Available" | "Completed">("all");
+  const [search, setSearch] = useState<string>("");
+  const [filter, setFilter] = useState<"all" | "PENDING" | "IN_PROGRESS" | "COMPLETED">("all");
   const [viewingReport, setViewingReport] = useState<Report | null>(null);
-  const [editingReport, setEditingReport] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const reportRef = useRef<HTMLDivElement>(null);
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  async function loadTests(page = 1, limit = 10, searchQuery = search) {
+  const loadTests = async (page: number = 1, limit: number = 10, searchQuery: string = search): Promise<void> => {
     setLoading(true);
-    await getApi(`/lab-reports?page=${page}&limit=${limit}&q=${searchQuery}`)
-      .then((data) => {
-        if (!data?.error) {
-          setReports(data.data);
-        }
-        else {
-          toast.error(data.error);
-          console.error("Error fetching lab tests:", data.error);
-        }
-      }).catch((error) => {
-        toast.error("Error fetching lab tests");
-        console.error("Error deleting lab tests:", error);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    try {
+      const data: ApiResponse = await getApi(`/lab-reports?page=${page}&limit=${limit}&q=${searchQuery}`);
+      if (!data?.error) {
+        setReports(data.data || []);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: limit,
+          total: data.total_records || 0,
+        }));
+      } else {
+        toast.error(data.error);
+        console.error("Error fetching lab tests:", data.error);
+      }
+    } catch (error) {
+      toast.error("Error fetching lab tests");
+      console.error("Error fetching lab tests:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    loadTests()
-  }, [])
+    loadTests();
+  }, []);
 
-  // Auto refresh notifier
-  // useEffect(() => {
-  //   if (autoRefresh) {
-  //     const interval = setInterval(() => {
-  //       message.info("🔄 Auto-refresh: Lab reports data reloaded");
-  //       loadTests();
-  //     }, 30000);
-  //     return () => clearInterval(interval);
-  //   }
-  // }, [autoRefresh]);
-
-  const handleDeleteReport = (patientId: string) => {
+  const handleDeleteReport = (patientId: string): void => {
     Modal.confirm({
       title: "Are you sure you want to delete this report?",
-      onOk: () => setReports((prev) => prev.filter((r) => r.patientId !== patientId)),
+      onOk: () => setReports((prev) => prev.filter((r) => r.lab_request.patient.id !== patientId)),
     });
   };
 
-  const handleEditReport = (report) => {
+  const handleEditReport = (report: Report): void => {
     setEditingReport(report);
     setIsModalOpen(true);
     form.setFieldsValue({
@@ -243,7 +265,9 @@ export default function LabReports() {
     });
   };
 
-  const handleSaveReport = () => {
+  const handleSaveReport = (): void => {
+    if (!editingReport) return;
+
     setActionLoading('save');
     form.validateFields().then((values) => {
       const updatedReport = {
@@ -251,16 +275,15 @@ export default function LabReports() {
         report_data: values.report_data,
       };
 
-      PutApi('/lab-reports', updatedReport).then((data) => {
+      PutApi('/lab-reports', updatedReport).then((data: ApiResponse) => {
         if (!data?.error) {
           toast.success("Report saved successfully");
-          loadTests()
-        }
-        else {
+          loadTests();
+        } else {
           toast.error(data.error);
           console.error("Error saving report:", data.error);
         }
-      }).catch((error) => {
+      }).catch((error: Error) => {
         toast.error("Error saving report");
         console.error("Error saving report:", error);
       })
@@ -274,10 +297,12 @@ export default function LabReports() {
     });
   };
 
-  const filteredReports = reports
-    // .filter((rep) => filter === "all" || rep.statuses.includes(filter));
+  const filteredReports = reports.filter((report: Report) => {
+    if (filter === "all") return true;
+    return report.lab_request.status === filter;
+  });
 
-  const handlePrint = () => {
+  const handlePrint = (): void => {
     if (reportRef.current) {
       const printContents = reportRef.current.innerHTML;
       const originalContents = document.body.innerHTML;
@@ -288,7 +313,7 @@ export default function LabReports() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case "COMPLETED": return "green";
       case "IN_PROGRESS": return "blue";
@@ -300,7 +325,7 @@ export default function LabReports() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string): React.ReactNode => {
     switch (status) {
       case "COMPLETED":
       case "Completed":
@@ -315,25 +340,32 @@ export default function LabReports() {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string): string => {
     return status.replace('_', ' ');
   };
 
-  const resetFilters = () => {
+  const resetFilters = (): void => {
     setSearch("");
     setFilter("all");
+    loadTests(1, pagination.pageSize, "");
   };
 
   // Calculate statistics
-  const stats = {
+  const stats: Stats = {
     totalReports: reports.length,
-    completedReports: reports.filter((r: any) => r.lab_request?.status === "COMPLETED").length,
-    inProgressReports: reports.filter((r: any) => r.lab_request?.status === "IN_PROGRESS").length,
-    pendingReports: reports.filter((r: any) => r.lab_request?.status === "PENDING").length
+    completedReports: reports.filter((r: Report) => r.lab_request?.status === "COMPLETED").length,
+    inProgressReports: reports.filter((r: Report) => r.lab_request?.status === "IN_PROGRESS").length,
+    pendingReports: reports.filter((r: Report) => r.lab_request?.status === "PENDING").length
   };
 
-  const handleTableChange = (newPagination: any) => {
-    loadTests(newPagination.current, newPagination.pageSize);
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
+    if (newPagination.current && newPagination.pageSize) {
+      loadTests(newPagination.current, newPagination.pageSize);
+    }
+  };
+
+  const handleSearch = (): void => {
+    loadTests(1, pagination.pageSize, search);
   };
 
   const columns: ColumnsType<Report> = [
@@ -345,7 +377,7 @@ export default function LabReports() {
         </Space>
       ),
       key: "patient",
-      render: (_, record: any) => (
+      render: (_, record: Report) => (
         <Space>
           <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center border border-blue-200">
             <UserOutlined className="w-6 h-6 text-blue-600" />
@@ -370,7 +402,7 @@ export default function LabReports() {
         </Space>
       ),
       key: "test",
-      render: (_, record: any) => (
+      render: (_, record: Report) => (
         <Space direction="vertical" size={0}>
           <div className="font-semibold text-gray-900">{record.lab_request?.test?.name}</div>
           <div className="text-sm text-gray-500">
@@ -396,9 +428,9 @@ export default function LabReports() {
       ),
       dataIndex: "report_data",
       key: "report_data",
-      render: (tests) => {
-        if (typeof (tests?.data) === 'string') return tests.data;
-        return Object.entries(tests?.data || {}).map(([key, value]: any, idx) => (
+      render: (report_data: Report['report_data']) => {
+        if (typeof (report_data?.data) === 'string') return report_data.data;
+        return Object.entries(report_data?.data || {}).map(([key, value]: [string, any], idx) => (
           <div key={idx}>
             <span style={{ fontWeight: "bold" }}>{key}:</span> {value}
           </div>
@@ -413,7 +445,7 @@ export default function LabReports() {
         </Space>
       ),
       key: "dates",
-      render: (_, record: any) => (
+      render: (_, record: Report) => (
         <Space direction="vertical" size={0}>
           <div className="font-semibold text-gray-900">
             {new Date(record.created_at).toLocaleDateString()}
@@ -459,7 +491,7 @@ export default function LabReports() {
         </Space>
       ),
       key: "actions",
-      render: (_, record: any) => (
+      render: (_, record: Report) => (
         <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
@@ -480,7 +512,7 @@ export default function LabReports() {
             label="Delete Report"
             type="default"
             danger={true}
-            onClick={() => handleDeleteReport(record.patientId)}
+            onClick={() => handleDeleteReport(record.lab_request.patient.id)}
           />
         </Space>
       ),
@@ -620,7 +652,7 @@ export default function LabReports() {
               <Input.Search
                 placeholder="Search by patient name or test type..."
                 value={search}
-                onSearch={() => { loadTests(pagination.current, pagination.pageSize, search) }}
+                onSearch={handleSearch}
                 onChange={(e) => setSearch(e.target.value)}
                 prefix={<SearchOutlined className="text-gray-400" />}
                 allowClear
@@ -630,7 +662,7 @@ export default function LabReports() {
               />
               <Select
                 value={filter}
-                onChange={(value) => setFilter(value)}
+                onChange={(value: "all" | "PENDING" | "IN_PROGRESS" | "COMPLETED") => setFilter(value)}
                 style={{ width: 200 }}
                 placeholder="Filter by status"
                 size="large"
@@ -656,7 +688,9 @@ export default function LabReports() {
             rowKey="id"
             onChange={handleTableChange}
             pagination={{
-              pageSize: 10,
+              pageSize: pagination.pageSize,
+              current: pagination.current,
+              total: pagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
@@ -750,42 +784,30 @@ export default function LabReports() {
             <div style={{ marginBottom: 16 }}>
               <Space size={50}>
                 <div>
-                  <span style={{ fontWeight: "bold" }}>Patient Name:</span> {viewingReport.patientName}
+                  <span style={{ fontWeight: "bold" }}>Patient Name:</span> {viewingReport.lab_request.patient.username}
                 </div>
                 <div>
-                  <span style={{ fontWeight: "bold" }}>Token:</span> {viewingReport.token}
+                  <span style={{ fontWeight: "bold" }}>Patient ID:</span> {viewingReport.lab_request.patient.id}
                 </div>
               </Space>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <h3>Test Results</h3>
-              <Table
-                size="small"
-                dataSource={viewingReport.testTypes.map((t, idx) => ({
-                  key: viewingReport.ids[idx],
-                  test: t,
-                  date: viewingReport.dates[idx],
-                  status: viewingReport.statuses[idx],
-                  description: viewingReport.descriptions[idx] || "No description",
-                }))}
-                pagination={false}
-                columns={[
-                  { title: "Test", dataIndex: "test", key: "test" },
-                  { title: "Date", dataIndex: "date", key: "date" },
-                  {
-                    title: "Status",
-                    dataIndex: "status",
-                    key: "status",
-                    render: (status: string) => (
-                      <Tag color={getStatusColor(status)}>
-                        {status}
-                      </Tag>
-                    ),
-                  },
-                  { title: "Description", dataIndex: "description", key: "description" },
-                ]}
-              />
+              <h3>Test Information</h3>
+              <div>
+                <span style={{ fontWeight: "bold" }}>Test Name:</span> {viewingReport.lab_request.test.name}
+              </div>
+              {viewingReport.lab_request.test.description && (
+                <div>
+                  <span style={{ fontWeight: "bold" }}>Description:</span> {viewingReport.lab_request.test.description}
+                </div>
+              )}
+              <div>
+                <span style={{ fontWeight: "bold" }}>Status:</span> 
+                <Tag color={getStatusColor(viewingReport.lab_request.status)} style={{ marginLeft: 8 }}>
+                  {getStatusText(viewingReport.lab_request.status)}
+                </Tag>
+              </div>
             </div>
 
             <div style={{ marginTop: 24, textAlign: "right" }}>

@@ -49,45 +49,26 @@ import {
 } from "@ant-design/icons";
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
+import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 
 const { Option } = Select;
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
 
-interface Surgery {
+interface User {
+    name: string;
+}
+
+interface Patient {
     id: number;
-    patient_id: number;
-    surgery_type_id: number;
-    operation_theatre_id: number;
-    scheduled_start_time: string;
-    scheduled_end_time: string;
-    actual_start_time: string;
-    actual_end_time: string;
-    status: string;
-    notes: string;
-    created_at: string;
-    updated_at: string;
-    patient?: {
-        name: string;
-        user?: {
-            name: string;
-        };
-    };
-    surgery_type?: {
-        name: string;
-    };
-    operation_theatre?: {
-        name: string;
-        location: string;
-    };
-    surgery_doctors?: Array<{
-        doctor: {
-            id: any;
-            name: string;
-        };
-        role: string;
-    }>;
+    name: string;
+    user?: User;
+}
+
+interface Doctor {
+    id: number;
+    name: string;
 }
 
 interface SurgeryType {
@@ -104,20 +85,63 @@ interface OperationTheatre {
     status: string;
 }
 
-interface Patient {
-    id: number;
-    name: string;
-    user?: {
-        name: string;
-    };
+interface SurgeryDoctor {
+    doctor: Doctor;
+    role: string;
 }
 
-interface Doctor {
+interface Surgery {
     id: number;
-    name: string;
+    patient_id: number;
+    surgery_type_id: number;
+    operation_theatre_id: number;
+    scheduled_start_time: string;
+    scheduled_end_time: string;
+    actual_start_time: string;
+    actual_end_time: string;
+    status: string;
+    notes: string;
+    created_at: string;
+    updated_at: string;
+    patient?: Patient;
+    surgery_type?: SurgeryType;
+    operation_theatre?: OperationTheatre;
+    surgery_doctors?: SurgeryDoctor[];
 }
 
-const SURGERY_STATUS = {
+interface OrderSurgery {
+    id: number;
+    user_id: number;
+    surgeries: Surgery[];
+    surgery_doctors?: SurgeryDoctor[];
+    user?: User;
+}
+
+interface FormData {
+    patient_id: string;
+    surgery_type_id: string;
+    price: string | null;
+    operation_theatre_id: string;
+    scheduled_start_time: Dayjs | null;
+    scheduled_end_time: Dayjs | null;
+    status: string;
+    notes: string;
+    surgery_doctors: Array<{ doctor_id: string; role: string }>;
+}
+
+interface ApiResponse {
+    error?: string;
+    data?: any;
+    total_records?: number;
+}
+
+interface Pagination {
+    current: number;
+    pageSize: number;
+    total: number;
+}
+
+const SURGERY_STATUS: Record<string, string> = {
     SCHEDULED: "Scheduled",
     IN_PROGRESS: "In Progress",
     COMPLETED: "Completed",
@@ -133,29 +157,29 @@ const SURGEON_ROLES = [
 ];
 
 export default function SurgeryList() {
-    const [surgeries, setSurgeries] = useState<Surgery[]>([]);
+    const [surgeries, setSurgeries] = useState<OrderSurgery[]>([]);
     const [surgeryTypes, setSurgeryTypes] = useState<SurgeryType[]>([]);
     const [operationTheatres, setOperationTheatres] = useState<OperationTheatre[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [selectedSurgery, setSelectedSurgery] = useState<Surgery | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
+    const [selectedSurgery, setSelectedSurgery] = useState<OrderSurgery | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [search, setSearch] = useState<string>("");
+    const [statusFilter, setStatusFilter] = useState<string>("all");
     const [form] = Form.useForm();
-    const [pagination, setPagination] = useState({
+    const [pagination, setPagination] = useState<Pagination>({
         current: 1,
         pageSize: 10,
         total: 0,
     });
 
     // Form state
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<FormData>({
         patient_id: "",
         surgery_type_id: "",
-        price: "",
+        price: null,
         operation_theatre_id: "",
         scheduled_start_time: null,
         scheduled_end_time: null,
@@ -166,16 +190,22 @@ export default function SurgeryList() {
 
     // Load all data
     useEffect(() => {
-        fetchOrders()
+        fetchOrders();
         loadData();
     }, []);
 
-    const fetchOrders = async (page = 1, limit = 10, searchQuery = search, status = statusFilter) => {
+    const fetchOrders = async (page: number = 1, limit: number = 10, searchQuery: string = search, status: string = statusFilter): Promise<void> => {
         setLoading(true);
         getApi(`/orders?order_type=surgery&page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}`)
-            .then((res) => {
+            .then((res: ApiResponse) => {
                 if (!res.error) {
-                    setSurgeries(res.data);
+                    setSurgeries(res.data || []);
+                    setPagination(prev => ({
+                        ...prev,
+                        current: page,
+                        pageSize: limit,
+                        total: res.total_records || 0,
+                    }));
                 } else {
                     toast.error("Failed to load orders.");
                 }
@@ -184,47 +214,47 @@ export default function SurgeryList() {
             .finally(() => setLoading(false));
     };
 
-    const loadData = () => {
+    const loadData = (): void => {
         setLoading(true);
         Promise.all([
             getApi('/surgery-type'),
             getApi('/operation-theatre'),
             getApi('/users?user_type=PATIENT'),
             getApi('/users?user_type=DOCTOR')
-        ]).then(([typesData, theatresData, patientsData, doctorsData]) => {
-            if (!typesData?.error) setSurgeryTypes(typesData.data);
-            if (!theatresData?.error) setOperationTheatres(theatresData.data);
-            if (!patientsData?.error) setPatients(patientsData.data);
-            if (!doctorsData?.error) setDoctors(doctorsData.data);
-        }).catch(error => {
+        ]).then(([typesData, theatresData, patientsData, doctorsData]: ApiResponse[]) => {
+            if (!typesData?.error) setSurgeryTypes(typesData.data || []);
+            if (!theatresData?.error) setOperationTheatres(theatresData.data || []);
+            if (!patientsData?.error) setPatients(patientsData.data || []);
+            if (!doctorsData?.error) setDoctors(doctorsData.data || []);
+        }).catch((error: Error) => {
             toast.error("Failed to load data");
             console.error("Error loading data:", error);
         }).finally(() => setLoading(false));
     };
 
-    const handleOpenModal = (surgery: Surgery | any | null = null) => {
+    const handleOpenModal = (surgery: OrderSurgery | null = null): void => {
         if (surgery) {
-            form.setFieldValue("patient_id", surgery.user_id)
-            form.setFieldValue('surgery_type_id', surgery.surgeries[0].surgery_type_id)
-            form.setFieldValue('price', surgery.surgeries[0].surgery_type_id)
-            form.setFieldValue('operation_theatre_id', surgery.surgeries[0].operation_theatre_id || "")
-            form.setFieldValue('scheduled_start_time', dayjs(surgery.surgeries[0].scheduled_start_time))
-            form.setFieldValue('scheduled_end_time', surgery.surgeries[0].scheduled_end_time ? dayjs(surgery.surgeries[0].scheduled_end_time) : null)
-            form.setFieldValue('status', surgery.surgeries[0].status)
-            form.setFieldValue('notes', surgery.surgeries[0].notes || "")
+            form.setFieldValue("patient_id", surgery.user_id);
+            form.setFieldValue('surgery_type_id', surgery.surgeries[0]?.surgery_type_id);
+            form.setFieldValue('price', surgery.surgeries[0]?.surgery_type_id);
+            form.setFieldValue('operation_theatre_id', surgery.surgeries[0]?.operation_theatre_id || "");
+            form.setFieldValue('scheduled_start_time', surgery.surgeries[0]?.scheduled_start_time ? dayjs(surgery.surgeries[0].scheduled_start_time) : null);
+            form.setFieldValue('scheduled_end_time', surgery.surgeries[0]?.scheduled_end_time ? dayjs(surgery.surgeries[0].scheduled_end_time) : null);
+            form.setFieldValue('status', surgery.surgeries[0]?.status);
+            form.setFieldValue('notes', surgery.surgeries[0]?.notes || "");
             setSelectedSurgery(surgery);
 
             setFormData({
-                patient_id: surgery.user_id,
-                surgery_type_id: surgery.surgeries[0].surgery_type_id,
-                price: surgery.surgeries[0].surgery_type_id,
-                operation_theatre_id: surgery.surgeries[0].operation_theatre_id || "",
-                scheduled_start_time: dayjs(surgery.surgeries[0].scheduled_start_time),
-                scheduled_end_time: surgery.surgeries[0].scheduled_end_time ? dayjs(surgery.surgeries[0].scheduled_end_time) : null,
-                status: surgery.surgeries[0].status,
-                notes: surgery.surgeries[0].notes || "",
+                patient_id: surgery.user_id.toString(),
+                surgery_type_id: surgery.surgeries[0]?.surgery_type_id?.toString() || "",
+                price: surgery.surgeries[0]?.surgery_type_id?.toString() || null,
+                operation_theatre_id: surgery.surgeries[0]?.operation_theatre_id?.toString() || "",
+                scheduled_start_time: surgery.surgeries[0]?.scheduled_start_time ? dayjs(surgery.surgeries[0].scheduled_start_time) : null,
+                scheduled_end_time: surgery.surgeries[0]?.scheduled_end_time ? dayjs(surgery.surgeries[0].scheduled_end_time) : null,
+                status: surgery.surgeries[0]?.status || "SCHEDULED",
+                notes: surgery.surgeries[0]?.notes || "",
                 surgery_doctors: surgery.surgery_doctors?.map(sd => ({
-                    doctor_id: sd.doctor.id,
+                    doctor_id: sd.doctor.id.toString(),
                     role: sd.role
                 })) || []
             });
@@ -245,14 +275,12 @@ export default function SurgeryList() {
         setIsModalOpen(true);
     };
 
-    console.log(formData)
-
-    const handleViewSurgery = (surgery: Surgery) => {
+    const handleViewSurgery = (surgery: OrderSurgery): void => {
         setSelectedSurgery(surgery);
         setIsViewModalOpen(true);
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = (): void => {
         form.validateFields().then(values => {
             const submitData = {
                 ...formData,
@@ -267,29 +295,27 @@ export default function SurgeryList() {
                         ...submitData
                     }
                 ]
-            }
+            };
 
             if (selectedSurgery) {
-                // PutApi(`/surgery`, {...submitData, id: selectedSurgery.id})
                 PutApi(`/orders`, { ...payload, id: selectedSurgery.id })
-                    .then(data => {
+                    .then((data: ApiResponse) => {
                         if (!data?.error) {
                             toast.success("Surgery updated successfully!");
                             loadData();
-                            setSelectedSurgery(null)
+                            setSelectedSurgery(null);
                             setIsModalOpen(false);
                         } else {
                             toast.error(data.error);
                         }
                     })
-                    .catch(error => {
+                    .catch((error: Error) => {
                         toast.error("Error updating surgery");
                         console.error("Error updating surgery:", error);
                     });
             } else {
-                // PostApi('/surgery', submitData)
                 PostApi('/orders', payload)
-                    .then(data => {
+                    .then((data: ApiResponse) => {
                         if (!data?.error) {
                             toast.success("Surgery created successfully!");
                             loadData();
@@ -298,7 +324,7 @@ export default function SurgeryList() {
                             toast.error(data.error);
                         }
                     })
-                    .catch(error => {
+                    .catch((error: Error) => {
                         toast.error("Error creating surgery");
                         console.error("Error creating surgery:", error);
                     });
@@ -306,7 +332,7 @@ export default function SurgeryList() {
         });
     };
 
-    const handleDelete = (id: number) => {
+    const handleDelete = (id: number): void => {
         Modal.confirm({
             title: 'Are you sure you want to delete this surgery?',
             content: 'This action cannot be undone.',
@@ -315,7 +341,7 @@ export default function SurgeryList() {
             cancelText: 'Cancel',
             onOk() {
                 DeleteApi(`/surgeries/${id}`)
-                    .then(data => {
+                    .then((data: ApiResponse) => {
                         if (!data?.error) {
                             toast.success("Surgery deleted successfully!");
                             loadData();
@@ -323,7 +349,7 @@ export default function SurgeryList() {
                             toast.error(data.error);
                         }
                     })
-                    .catch(error => {
+                    .catch((error: Error) => {
                         toast.error("Error deleting surgery");
                         console.error("Error deleting surgery:", error);
                     });
@@ -331,9 +357,9 @@ export default function SurgeryList() {
         });
     };
 
-    const handleStatusChange = (surgeryId: number, newStatus: string) => {
+    const handleStatusChange = (surgeryId: number, newStatus: string): void => {
         PutApi(`/surgeries/${surgeryId}`, { status: newStatus })
-            .then(data => {
+            .then((data: ApiResponse) => {
                 if (!data?.error) {
                     toast.success(`Surgery status updated to ${newStatus}`);
                     loadData();
@@ -341,20 +367,20 @@ export default function SurgeryList() {
                     toast.error(data.error);
                 }
             })
-            .catch(error => {
+            .catch((error: Error) => {
                 toast.error("Error updating surgery status");
                 console.error("Error updating surgery status:", error);
             });
     };
 
-    const addSurgeon = () => {
+    const addSurgeon = (): void => {
         setFormData(prev => ({
             ...prev,
             surgery_doctors: [...prev.surgery_doctors, { doctor_id: "", role: "" }]
         }));
     };
 
-    const updateSurgeon = (index: number, field: string, value: string) => {
+    const updateSurgeon = (index: number, field: string, value: string): void => {
         setFormData(prev => ({
             ...prev,
             surgery_doctors: prev.surgery_doctors.map((sd, i) =>
@@ -363,7 +389,7 @@ export default function SurgeryList() {
         }));
     };
 
-    const removeSurgeon = (index: number) => {
+    const removeSurgeon = (index: number): void => {
         setFormData(prev => ({
             ...prev,
             surgery_doctors: prev.surgery_doctors.filter((_, i) => i !== index)
@@ -371,16 +397,10 @@ export default function SurgeryList() {
     };
 
     const filteredSurgeries = surgeries.filter(surgery => {
-        // const matchesSearch = surgery.patient?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        //     surgery.surgery_type?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        //     surgery.operation_theatre?.name?.toLowerCase().includes(search.toLowerCase());
-
-        // const matchesStatus = statusFilter === "all" || surgery.status === statusFilter;
-
         return surgery;
     });
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status: string): string => {
         switch (status) {
             case "SCHEDULED": return "blue";
             case "IN_PROGRESS": return "orange";
@@ -390,7 +410,7 @@ export default function SurgeryList() {
         }
     };
 
-    const getStatusIcon = (status: string) => {
+    const getStatusIcon = (status: string): React.ReactNode => {
         switch (status) {
             case "SCHEDULED": return <ScheduleOutlined />;
             case "IN_PROGRESS": return <PlayCircleOutlined />;
@@ -400,12 +420,12 @@ export default function SurgeryList() {
         }
     };
 
-    const columns: any = [
+    const columns: ColumnsType<OrderSurgery> = [
         {
             title: "Patient",
             dataIndex: ["user", "name"],
             key: "patient",
-            render: (text: string, record: Surgery) => (
+            render: (text: string) => (
                 <div className="flex items-center gap-3">
                     <Avatar icon={<UserOutlined />} size="small" />
                     <span className="font-medium">{text}</span>
@@ -427,28 +447,28 @@ export default function SurgeryList() {
             title: "Operation Theatre",
             dataIndex: ['surgeries', 0, "operation_theatre", "name"],
             key: "operation_theatre",
-            render: (text: string, record: Surgery) => (
+            render: (text: string, record: OrderSurgery) => (
                 <div className="flex items-center gap-2">
                     <EnvironmentOutlined className="text-gray-400" />
                     <div>
                         <div>{text}</div>
-                        <div className="text-xs text-gray-500">{record.operation_theatre?.location}</div>
+                        <div className="text-xs text-gray-500">{record.surgeries[0]?.operation_theatre?.location}</div>
                     </div>
                 </div>
             ),
         },
         {
             title: "Scheduled Time",
-            key: ['surgeries', 0, "scheduled_time"],
-            render: (record: Surgery) => (
+            key: "scheduled_time",
+            render: (record: OrderSurgery) => (
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
                         <CalendarOutlined className="text-gray-400" />
-                        <span>{dayjs(record.scheduled_start_time).format("MMM D, YYYY")}</span>
+                        <span>{record.surgeries[0]?.scheduled_start_time ? dayjs(record.surgeries[0].scheduled_start_time).format("MMM D, YYYY") : "N/A"}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <ClockCircleOutlined className="text-gray-400" />
-                        <span>{dayjs(record.scheduled_start_time).format("h:mm A")}</span>
+                        <span>{record.surgeries[0]?.scheduled_start_time ? dayjs(record.surgeries[0].scheduled_start_time).format("h:mm A") : "N/A"}</span>
                     </div>
                 </div>
             ),
@@ -459,7 +479,7 @@ export default function SurgeryList() {
             key: "status",
             render: (status: string) => (
                 <AntBadge
-                    count={SURGERY_STATUS[status as keyof typeof SURGERY_STATUS] || status}
+                    count={SURGERY_STATUS[status] || status}
                     style={{
                         backgroundColor: getStatusColor(status),
                         color: 'white'
@@ -471,7 +491,7 @@ export default function SurgeryList() {
         {
             title: "Actions",
             key: "actions",
-            render: (record: Surgery) => (
+            render: (record: OrderSurgery) => (
                 <Space size="small">
                     <Tooltip title="View Details">
                         <Button
@@ -530,10 +550,14 @@ export default function SurgeryList() {
         </div>
     );
 
-    console.log(formData.patient_id)
+    const handleTableChange = (newPagination: TablePaginationConfig): void => {
+        if (newPagination.current && newPagination.pageSize) {
+            fetchOrders(newPagination.current, newPagination.pageSize);
+        }
+    };
 
-    const handleTableChange = (newPagination: any) => {
-        fetchOrders(newPagination.current, newPagination.pageSize);
+    const handleSearch = (): void => {
+        fetchOrders(1, pagination.pageSize, search);
     };
 
     return (
@@ -565,7 +589,7 @@ export default function SurgeryList() {
                             <Input.Search
                                 placeholder="Search surgeries by patient, type, or theatre..."
                                 prefix={<SearchOutlined />}
-                                onSearch={() => { fetchOrders(pagination.current, pagination.pageSize, search) }}
+                                onSearch={handleSearch}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 size="large"
@@ -574,9 +598,9 @@ export default function SurgeryList() {
                         <Col xs={24} sm={12} md={6}>
                             <Select
                                 value={statusFilter}
-                                onChange={(value) => {
-                                    setStatusFilter(value)
-                                    fetchOrders(pagination.current, pagination.pageSize, search, value)
+                                onChange={(value: string) => {
+                                    setStatusFilter(value);
+                                    fetchOrders(pagination.current, pagination.pageSize, search, value);
                                 }}
                                 placeholder="All Status"
                                 size="large"
@@ -627,7 +651,7 @@ export default function SurgeryList() {
                     <Card>
                         <Statistic
                             title="Scheduled"
-                            value={surgeries.filter(s => s.status === 'SCHEDULED').length}
+                            value={surgeries.filter(s => s.surgeries[0]?.status === 'SCHEDULED').length}
                             prefix={<ScheduleOutlined />}
                             valueStyle={{ color: '#1890ff' }}
                         />
@@ -637,7 +661,7 @@ export default function SurgeryList() {
                     <Card>
                         <Statistic
                             title="In Progress"
-                            value={surgeries.filter(s => s.status === 'IN_PROGRESS').length}
+                            value={surgeries.filter(s => s.surgeries[0]?.status === 'IN_PROGRESS').length}
                             prefix={<PlayCircleOutlined />}
                             valueStyle={{ color: '#faad14' }}
                         />
@@ -647,7 +671,7 @@ export default function SurgeryList() {
                     <Card>
                         <Statistic
                             title="Completed"
-                            value={surgeries.filter(s => s.status === 'COMPLETED').length}
+                            value={surgeries.filter(s => s.surgeries[0]?.status === 'COMPLETED').length}
                             prefix={<CheckCircleOutlined />}
                             valueStyle={{ color: '#52c41a' }}
                         />
@@ -679,7 +703,9 @@ export default function SurgeryList() {
                             rowKey="id"
                             onChange={handleTableChange}
                             pagination={{
-                                pageSize: 10,
+                                pageSize: pagination.pageSize,
+                                current: pagination.current,
+                                total: pagination.total,
                                 showSizeChanger: true,
                                 showQuickJumper: true,
                                 showTotal: (total, range) =>
@@ -700,7 +726,7 @@ export default function SurgeryList() {
                         </span>
                     </div>
                 }
-                destroyOnHidden
+                destroyOnClose
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 onOk={handleSubmit}
@@ -721,11 +747,11 @@ export default function SurgeryList() {
                                 <Select
                                     placeholder="Select patient"
                                     value={formData.patient_id}
-                                    onChange={(value) => setFormData(prev => ({ ...prev, patient_id: value }))}
+                                    onChange={(value: string) => setFormData(prev => ({ ...prev, patient_id: value }))}
                                     size="large"
                                 >
                                     {patients.map(patient => (
-                                        <Option key={patient.id} value={patient.id}>
+                                        <Option key={patient.id} value={patient.id.toString()}>
                                             {patient.name}
                                         </Option>
                                     ))}
@@ -741,11 +767,11 @@ export default function SurgeryList() {
                                 <Select
                                     placeholder="Select surgery type"
                                     value={formData.surgery_type_id}
-                                    onChange={(value) => setFormData(prev => ({ ...prev, surgery_type_id: value }))}
+                                    onChange={(value: string) => setFormData(prev => ({ ...prev, surgery_type_id: value }))}
                                     size="large"
                                 >
                                     {surgeryTypes.map(type => (
-                                        <Option key={type.id} value={type.id}>
+                                        <Option key={type.id} value={type.id.toString()}>
                                             {type.name}
                                         </Option>
                                     ))}
@@ -759,8 +785,8 @@ export default function SurgeryList() {
                                 rules={[{ required: true, message: "Please enter price" }]}
                             >
                                 <InputNumber
-                                    value={formData.price}
-                                    onChange={(value) => setFormData(prev => ({ ...prev, price: value }))}
+                                    value={formData.price ? Number(formData.price) : undefined}
+                                    onChange={(value: number | null) => setFormData(prev => ({ ...prev, price: value?.toString() || null }))}
                                     className="w-full"
                                     size="large"
                                 />
@@ -777,11 +803,11 @@ export default function SurgeryList() {
                                 <Select
                                     placeholder="Select operation theatre"
                                     value={formData.operation_theatre_id}
-                                    onChange={(value) => setFormData(prev => ({ ...prev, operation_theatre_id: value }))}
+                                    onChange={(value: string) => setFormData(prev => ({ ...prev, operation_theatre_id: value }))}
                                     size="large"
                                 >
                                     {operationTheatres.map(theatre => (
-                                        <Option key={theatre.id} value={theatre.id}>
+                                        <Option key={theatre.id} value={theatre.id.toString()}>
                                             {theatre.name} - {theatre.location}
                                         </Option>
                                     ))}
@@ -795,7 +821,7 @@ export default function SurgeryList() {
                             >
                                 <Select
                                     value={formData.status}
-                                    onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                                    onChange={(value: string) => setFormData(prev => ({ ...prev, status: value }))}
                                     size="large"
                                 >
                                     <Option value="SCHEDULED">Scheduled</Option>
@@ -817,7 +843,7 @@ export default function SurgeryList() {
                                 <DatePicker
                                     showTime
                                     value={formData.scheduled_start_time}
-                                    onChange={(value) => setFormData(prev => ({ ...prev, scheduled_start_time: value }))}
+                                    onChange={(value: Dayjs | null) => setFormData(prev => ({ ...prev, scheduled_start_time: value }))}
                                     className="w-full"
                                     size="large"
                                 />
@@ -831,7 +857,7 @@ export default function SurgeryList() {
                                 <DatePicker
                                     showTime
                                     value={formData.scheduled_end_time}
-                                    onChange={(value) => setFormData(prev => ({ ...prev, scheduled_end_time: value }))}
+                                    onChange={(value: Dayjs | null) => setFormData(prev => ({ ...prev, scheduled_end_time: value }))}
                                     className="w-full"
                                     size="large"
                                 />
@@ -846,12 +872,12 @@ export default function SurgeryList() {
                                     <Select
                                         placeholder="Select doctor"
                                         value={surgeon.doctor_id}
-                                        onChange={(value) => updateSurgeon(index, "doctor_id", value)}
+                                        onChange={(value: string) => updateSurgeon(index, "doctor_id", value)}
                                         className="flex-1"
                                         size="large"
                                     >
                                         {doctors.map(doctor => (
-                                            <Option key={doctor.id} value={doctor.id}>
+                                            <Option key={doctor.id} value={doctor.id.toString()}>
                                                 {doctor.name}
                                             </Option>
                                         ))}
@@ -859,7 +885,7 @@ export default function SurgeryList() {
                                     <Select
                                         placeholder="Role"
                                         value={surgeon.role}
-                                        onChange={(value) => updateSurgeon(index, "role", value)}
+                                        onChange={(value: string) => updateSurgeon(index, "role", value)}
                                         className="w-32"
                                         size="large"
                                     >
@@ -915,43 +941,46 @@ export default function SurgeryList() {
                 ]}
                 width={700}
             >
-                {selectedSurgery && (
+                {selectedSurgery && selectedSurgery.surgeries[0] && (
                     <Descriptions bordered column={2} size="default">
                         <Descriptions.Item label="Patient" span={2}>
                             <div className="flex items-center gap-2">
                                 <UserOutlined />
-                                {selectedSurgery.patient?.name}
+                                {selectedSurgery.user?.name}
                             </div>
                         </Descriptions.Item>
                         <Descriptions.Item label="Surgery Type">
                             <div className="flex items-center gap-2">
                                 <MedicineBoxOutlined />
-                                {selectedSurgery.surgery_type?.name}
+                                {selectedSurgery.surgeries[0].surgery_type?.name}
                             </div>
                         </Descriptions.Item>
                         <Descriptions.Item label="Status">
                             <Tag
-                                color={getStatusColor(selectedSurgery.status)}
-                                icon={getStatusIcon(selectedSurgery.status)}
+                                color={getStatusColor(selectedSurgery.surgeries[0].status)}
+                                icon={getStatusIcon(selectedSurgery.surgeries[0].status)}
                             >
-                                {SURGERY_STATUS[selectedSurgery.status as keyof typeof SURGERY_STATUS]}
+                                {SURGERY_STATUS[selectedSurgery.surgeries[0].status]}
                             </Tag>
                         </Descriptions.Item>
                         <Descriptions.Item label="Operation Theatre">
                             <div className="flex items-center gap-2">
                                 <EnvironmentOutlined />
-                                {selectedSurgery.operation_theatre?.name}
+                                {selectedSurgery.surgeries[0].operation_theatre?.name}
                             </div>
                         </Descriptions.Item>
                         <Descriptions.Item label="Location">
-                            {selectedSurgery.operation_theatre?.location}
+                            {selectedSurgery.surgeries[0].operation_theatre?.location}
                         </Descriptions.Item>
                         <Descriptions.Item label="Scheduled Start">
-                            {dayjs(selectedSurgery.scheduled_start_time).format("MMM D, YYYY h:mm A")}
+                            {selectedSurgery.surgeries[0].scheduled_start_time ?
+                                dayjs(selectedSurgery.surgeries[0].scheduled_start_time).format("MMM D, YYYY h:mm A") :
+                                "Not set"
+                            }
                         </Descriptions.Item>
                         <Descriptions.Item label="Scheduled End">
-                            {selectedSurgery.scheduled_end_time ?
-                                dayjs(selectedSurgery.scheduled_end_time).format("MMM D, YYYY h:mm A") :
+                            {selectedSurgery.surgeries[0].scheduled_end_time ?
+                                dayjs(selectedSurgery.surgeries[0].scheduled_end_time).format("MMM D, YYYY h:mm A") :
                                 "Not set"
                             }
                         </Descriptions.Item>
@@ -961,7 +990,7 @@ export default function SurgeryList() {
                                 <List
                                     size="small"
                                     dataSource={selectedSurgery.surgery_doctors}
-                                    renderItem={(sd, index) => (
+                                    renderItem={(sd: SurgeryDoctor, index: number) => (
                                         <List.Item>
                                             <List.Item.Meta
                                                 avatar={<Avatar icon={<UserOutlined />} size="small" />}
@@ -976,10 +1005,10 @@ export default function SurgeryList() {
                             </Descriptions.Item>
                         )}
 
-                        {selectedSurgery.notes && (
+                        {selectedSurgery.surgeries[0].notes && (
                             <Descriptions.Item label="Notes" span={2}>
                                 <div className="p-3 bg-gray-50 rounded-lg">
-                                    {selectedSurgery.notes}
+                                    {selectedSurgery.surgeries[0].notes}
                                 </div>
                             </Descriptions.Item>
                         )}

@@ -60,11 +60,13 @@ import { motion } from "framer-motion";
 import { getApi, PostApi, PutApi } from "@/ApiService";
 import dayjs from "dayjs";
 import { toast } from "sonner";
+import type { ColumnsType } from "antd/es/table";
 
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
+// TypeScript Interfaces
 interface MedicineItem {
   medicine_id: string;
   quantity: number;
@@ -91,16 +93,166 @@ interface Billing {
   total_amount?: number;
   patient?: any;
   doctor?: any;
+  order?: {
+    user: {
+      name: string;
+    };
+  };
 }
+
+interface PaymentForm {
+  amount: number;
+  method: string;
+  transaction_ref_id: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  user_type: string;
+}
+
+interface Medicine {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+interface LabTest {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface Surgery {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface Stats {
+  total: number;
+  paid: number;
+  pending: number;
+  cancelled: number;
+  totalRevenue: number;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface ActionButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  type?: "primary" | "default" | "dashed" | "link" | "text";
+  danger?: boolean;
+  onClick?: () => void;
+  loading?: boolean;
+  confirm?: boolean;
+  confirmAction?: () => void;
+  disabled?: boolean;
+}
+
+// Enhanced Action Button Component
+const ActionButton: React.FC<ActionButtonProps> = ({
+  icon,
+  label,
+  type = "default",
+  danger = false,
+  onClick,
+  loading = false,
+  confirm = false,
+  confirmAction,
+  disabled = false
+}) => {
+  const button = (
+    <motion.div
+      whileHover={{ scale: disabled ? 1 : 1.05 }}
+      whileTap={{ scale: disabled ? 1 : 0.95 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+    >
+      <Tooltip title={label} placement="top">
+        <Button
+          type={type}
+          danger={danger}
+          icon={icon}
+          loading={loading}
+          onClick={onClick}
+          disabled={disabled}
+          className={`
+            flex items-center justify-center 
+            transition-all duration-300 ease-in-out
+            ${!danger && type === "default" ?
+              'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
+            }
+            ${danger ?
+              'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
+            }
+            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+            w-10 h-10 rounded-full
+          `}
+          style={{
+            minWidth: '40px',
+            border: '1px solid #d9d9d9'
+          }}
+        />
+      </Tooltip>
+    </motion.div>
+  );
+
+  return confirm ? (
+    <Popconfirm
+      title={label}
+      description="Are you sure you want to perform this action?"
+      onConfirm={confirmAction}
+      okText="Yes"
+      cancelText="No"
+      okType="danger"
+      placement="top"
+      disabled={disabled}
+    >
+      {button}
+    </Popconfirm>
+  ) : (
+    button
+  );
+};
+
+// Skeleton Components
+const SkeletonTable = () => (
+  <div className="space-y-4">
+    {[1, 2, 3, 4, 5].map((item) => (
+      <Card key={item} className="p-4 border-0 shadow-sm">
+        <Skeleton active paragraph={{ rows: 1 }} />
+      </Card>
+    ))}
+  </div>
+);
+
+const SkeletonStats = () => (
+  <Row gutter={[16, 16]}>
+    {[1, 2, 3, 4].map((item) => (
+      <Col xs={24} sm={12} lg={6} key={item}>
+        <Card className="border-0 shadow-sm">
+          <Skeleton active paragraph={{ rows: 1 }} />
+        </Card>
+      </Col>
+    ))}
+  </Row>
+);
 
 export default function BillingPage() {
   const [billings, setBillings] = useState<Billing[]>([]);
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [surgeries, setSurgeries] = useState<any[]>([]);
-  const [tests, setTests] = useState<any[]>([]);
-  const [patients, setPatients] = useState<any[]>([]);
-  const [doctors, setDoctors] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<Medicine[]>([]);
+  const [surgeries, setSurgeries] = useState<Surgery[]>([]);
+  const [tests, setTests] = useState<LabTest[]>([]);
+  const [patients, setPatients] = useState<User[]>([]);
+  const [doctors, setDoctors] = useState<User[]>([]);
 
   const [form, setForm] = useState<Partial<Billing>>({
     patient_id: "",
@@ -121,13 +273,13 @@ export default function BillingPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [activeTab, setActiveTab] = useState("billings");
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [paymentForm, setPaymentForm] = useState({
+  const [paymentForm, setPaymentForm] = useState<PaymentForm>({
     amount: 0,
     method: "",
     transaction_ref_id: "",
   });
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
@@ -144,64 +296,66 @@ export default function BillingPage() {
     loadBilling();
   }, []);
 
-  // useEffect(() => {
-  //   if (autoRefresh) {
-  //     const t = setInterval(() => {
-  //       loadBilling();
-  //       message.info("🔄 Billing data refreshed");
-  //     }, 30000);
-  //     return () => clearInterval(t);
-  //   }
-  // }, [autoRefresh]);
-
-  const loadInitialData = () => {
+  const loadInitialData = async () => {
     setLoading(true);
-    Promise.all([
-      getApi("/medicines"),
-      getApi("/surgery"),
-      getApi("/orders"),
-      getApi("/lab-tests"),
-      getApi("/users?user_type=PATIENT"),
-      getApi("/users?user_type=DOCTOR"),
-    ])
-      .then(([meds, surgeriesRes, ordersRes, testsRes, pats, docs]) => {
-        if (!meds.error) setInventory(meds.data);
-        else toast.error(meds.error);
+    try {
+      const [meds, surgeriesRes, testsRes, pats, docs] = await Promise.all([
+        getApi("/medicines"),
+        getApi("/surgery"),
+        getApi("/lab-tests"),
+        getApi("/users?user_type=PATIENT"),
+        getApi("/users?user_type=DOCTOR"),
+      ]);
 
-        if (!ordersRes.error) setOrders(ordersRes.data);
-        else toast.error(ordersRes.error);
+      if (!meds.error) setInventory(meds.data || []);
+      else toast.error(meds.error);
 
-        if (!surgeriesRes.error) setSurgeries(surgeriesRes.data);
-        else toast.error(surgeriesRes.error);
+      if (!surgeriesRes.error) setSurgeries(surgeriesRes.data || []);
+      else toast.error(surgeriesRes.error);
 
-        if (!testsRes.error) setTests(testsRes.data);
-        else toast.error(testsRes.error);
+      if (!testsRes.error) setTests(testsRes.data || []);
+      else toast.error(testsRes.error);
 
-        if (!pats.error) setPatients(pats.data);
-        else toast.error(pats.error);
+      if (!pats.error) setPatients(pats.data || []);
+      else toast.error(pats.error);
 
-        if (!docs.error) setDoctors(docs.data);
-        else toast.error(docs.error);
-      })
-      .catch((err) => {
-        console.error("Initial load error:", err);
-        toast.error("Failed to load initial data");
-      })
-      .finally(() => setLoading(false));
+      if (!docs.error) setDoctors(docs.data || []);
+      else toast.error(docs.error);
+    } catch (err) {
+      console.error("Initial load error:", err);
+      toast.error("Failed to load initial data");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loadBilling = (page = 1, limit = 10, searchQuery = searchText, status = statusFilter) => {
+  const loadBilling = async (
+    page = 1, 
+    limit = 10, 
+    searchQuery = searchText, 
+    status = statusFilter
+  ) => {
     setLoading(true);
-    getApi(`/billing?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}`)
-      .then((data) => {
-        if (!data.error) setBillings(data.data);
-        else toast.error(data.error);
-      })
-      .catch((err) => {
-        console.error("Billing load error:", err);
-        toast.error("Failed to load billings");
-      })
-      .finally(() => setLoading(false));
+    try {
+      const data = await getApi(
+        `/billing?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}`
+      );
+      if (!data.error) {
+        setBillings(data.data || []);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          total: data.total_records || 0
+        }));
+      } else {
+        toast.error(data.error);
+      }
+    } catch (err) {
+      console.error("Billing load error:", err);
+      toast.error("Failed to load billings");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -215,88 +369,14 @@ export default function BillingPage() {
     setSelectedBilling(null);
   };
 
-  // Enhanced Action Button Component
-  const ActionButton = ({
-    icon,
-    label,
-    type = "default",
-    danger = false,
-    onClick,
-    loading = false,
-    confirm = false,
-    confirmAction,
-    disabled = false
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    type?: "primary" | "default" | "dashed" | "link" | "text";
-    danger?: boolean;
-    onClick?: () => void;
-    loading?: boolean;
-    confirm?: boolean;
-    confirmAction?: () => void;
-    disabled?: boolean;
-  }) => {
-    const button = (
-      <motion.div
-        whileHover={{ scale: disabled ? 1 : 1.05 }}
-        whileTap={{ scale: disabled ? 1 : 0.95 }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-      >
-        <Tooltip title={label} placement="top">
-          <Button
-            type={type}
-            danger={danger}
-            icon={icon}
-            loading={loading}
-            onClick={onClick}
-            disabled={disabled}
-            className={`
-              flex items-center justify-center 
-              transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
-                'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
-              }
-              ${danger ?
-                'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
-              }
-              ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-              w-10 h-10 rounded-full
-            `}
-            style={{
-              minWidth: '40px',
-              border: '1px solid #d9d9d9'
-            }}
-          />
-        </Tooltip>
-      </motion.div>
-    );
-
-    return confirm ? (
-      <Popconfirm
-        title={label}
-        description="Are you sure you want to perform this action?"
-        onConfirm={confirmAction}
-        okText="Yes"
-        cancelText="No"
-        okType="danger"
-        placement="top"
-        disabled={disabled}
-      >
-        {button}
-      </Popconfirm>
-    ) : (
-      button
-    );
-  };
-
-  const handleAddOrUpdate = () => {
-    form.doctor_id = loginData?.id || "";
+  const handleAddOrUpdate = async () => {
+    const doctorId = loginData?.id || "";
 
     if (!form.patient_id || !form.medicines || form.medicines.length === 0) {
       toast.error("Please fill patient and medicines.");
       return;
     }
+
     for (let med of form.medicines) {
       if (!med.medicine_id || med.quantity <= 0) {
         toast.error("Medicine fields invalid.");
@@ -306,46 +386,42 @@ export default function BillingPage() {
 
     setLoadingActionId(selectedBilling?.id || 'new');
 
-    if (selectedBilling && selectedBilling.id) {
-      const payload = { ...selectedBilling, ...form };
-      PutApi("/billing", payload)
-        .then((data) => {
-          if (!data.error) {
-            loadBilling();
-            toast.success("Billing updated");
-          } else toast.error(data.error);
-        })
-        .catch((err) => {
-          console.error("Update error:", err);
-          toast.error("Failed to update billing");
-        })
-        .finally(() => setLoadingActionId(null));
-    } else {
-      const payload: Billing = {
-        patient_id: form.patient_id!,
-        doctor_id: form.doctor_id!,
-        medicines: form.medicines!,
-        surgeries: form.surgeries!,
-        tests: form.tests!,
-        notes: form.notes || "",
-        status: "PENDING",
-      };
-      PostApi("/billing", payload)
-        .then((data) => {
-          if (!data.error) {
-            loadBilling();
-            toast.success("Billing created");
-          } else toast.error(data.error);
-        })
-        .catch((err) => {
-          console.error("Create error:", err);
-          toast.error("Failed to create billing");
-        })
-        .finally(() => setLoadingActionId(null));
+    try {
+      if (selectedBilling && selectedBilling.id) {
+        const payload = { ...selectedBilling, ...form, doctor_id: doctorId };
+        const data = await PutApi("/billing", payload);
+        if (!data.error) {
+          loadBilling();
+          toast.success("Billing updated");
+        } else {
+          toast.error(data.error);
+        }
+      } else {
+        const payload: Billing = {
+          patient_id: form.patient_id!,
+          doctor_id: doctorId,
+          medicines: form.medicines!,
+          surgeries: form.surgeries || [],
+          tests: form.tests || [],
+          notes: form.notes || "",
+          status: "PENDING",
+        };
+        const data = await PostApi("/billing", payload);
+        if (!data.error) {
+          loadBilling();
+          toast.success("Billing created");
+        } else {
+          toast.error(data.error);
+        }
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error("Failed to save billing");
+    } finally {
+      setLoadingActionId(null);
+      resetForm();
+      setIsModalOpen(false);
     }
-
-    resetForm();
-    setIsModalOpen(false);
   };
 
   const openPaymentModal = (billing: Billing) => {
@@ -358,7 +434,7 @@ export default function BillingPage() {
     setIsPaymentModalOpen(true);
   };
 
-  const handlePaymentSubmit = () => {
+  const handlePaymentSubmit = async () => {
     const { amount, method, transaction_ref_id } = paymentForm;
 
     if (!amount || !method) {
@@ -373,27 +449,27 @@ export default function BillingPage() {
 
     setLoadingActionId(selectedBilling?.id || 'payment');
 
-    const payload = {
-      amount,
-      method,
-      transaction_ref_id: transaction_ref_id || null,
-    };
+    try {
+      const payload = {
+        amount,
+        method,
+        transaction_ref_id: transaction_ref_id || null,
+      };
 
-    PostApi(`/billing/${selectedBilling?.id}/payments`, payload)
-      .then((res) => {
-        if (!res.error) {
-          toast.success("Payment successful");
-          loadBilling();
-          setIsPaymentModalOpen(false);
-        } else {
-          toast.error(res.error);
-        }
-      })
-      .catch((err) => {
-        console.error("Payment error:", err);
-        toast.error("Payment failed");
-      })
-      .finally(() => setLoadingActionId(null));
+      const res = await PostApi(`/billing/${selectedBilling?.id}/payments`, payload);
+      if (!res.error) {
+        toast.success("Payment successful");
+        loadBilling();
+        setIsPaymentModalOpen(false);
+      } else {
+        toast.error(res.error);
+      }
+    } catch (err) {
+      console.error("Payment error:", err);
+      toast.error("Payment failed");
+    } finally {
+      setLoadingActionId(null);
+    }
   };
 
   const handleEdit = (b: Billing) => {
@@ -407,21 +483,23 @@ export default function BillingPage() {
     setIsViewModalOpen(true);
   };
 
-  const handleStatusChange = (b: Billing, newStatus: string) => {
+  const handleStatusChange = async (b: Billing, newStatus: string) => {
     setLoadingActionId(b.id!);
-    const payload = { ...b, status: newStatus };
-    PutApi("/billing", payload)
-      .then((data) => {
-        if (!data.error) {
-          loadBilling();
-          toast.success(`Marked ${newStatus}`);
-        } else toast.error(data.error);
-      })
-      .catch((err) => {
-        console.error("Status change error:", err);
-        toast.error("Failed to change status");
-      })
-      .finally(() => setLoadingActionId(null));
+    try {
+      const payload = { ...b, status: newStatus };
+      const data = await PutApi("/billing", payload);
+      if (!data.error) {
+        loadBilling();
+        toast.success(`Marked ${newStatus}`);
+      } else {
+        toast.error(data.error);
+      }
+    } catch (err) {
+      console.error("Status change error:", err);
+      toast.error("Failed to change status");
+    } finally {
+      setLoadingActionId(null);
+    }
   };
 
   const handleMedicineChange = (
@@ -432,16 +510,6 @@ export default function BillingPage() {
     const newMeds = [...(form.medicines || [])];
     newMeds[idx] = { ...newMeds[idx], [field]: value };
     setForm({ ...form, medicines: newMeds });
-  };
-
-  const handleSurgeryChange = (
-    idx: number,
-    field: "surgery_id",
-    value: any
-  ) => {
-    const newMeds = [...(form.surgeries || [])];
-    newMeds[idx] = { ...newMeds[idx], [field]: value };
-    setForm({ ...form, surgeries: newMeds });
   };
 
   const handleTestChange = (
@@ -500,17 +568,18 @@ export default function BillingPage() {
     }
   };
 
-  const filtered = billings.filter((b) => {
+  const filteredBillings = billings.filter((b) => {
     const matchesSearch =
       !searchText ||
       String(b.patient_id).includes(searchText) ||
-      String(b.doctor_id).includes(searchText);
+      String(b.doctor_id).includes(searchText) ||
+      b.patient?.name?.toLowerCase().includes(searchText.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || b.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const stats = {
+  const stats: Stats = {
     total: billings.length,
     paid: billings.filter(b => b.status === 'PAID').length,
     pending: billings.filter(b => b.status === 'PENDING').length,
@@ -518,33 +587,11 @@ export default function BillingPage() {
     totalRevenue: billings.filter(b => b.status === 'PAID').reduce((sum, b) => sum + (b.total_amount || 0), 0)
   };
 
-  const SkeletonTable = () => (
-    <div className="space-y-4">
-      {[1, 2, 3, 4, 5].map((item) => (
-        <Card key={item} className="p-4 border-0 shadow-sm">
-          <Skeleton active paragraph={{ rows: 1 }} />
-        </Card>
-      ))}
-    </div>
-  );
-
-  const SkeletonStats = () => (
-    <Row gutter={[16, 16]}>
-      {[1, 2, 3, 4].map((item) => (
-        <Col xs={24} sm={12} lg={6} key={item}>
-          <Card className="border-0 shadow-sm">
-            <Skeleton active paragraph={{ rows: 1 }} />
-          </Card>
-        </Col>
-      ))}
-    </Row>
-  );
-
-  const columns = [
+  const columns: ColumnsType<Billing> = [
     {
       title: <Space><UserOutlined /> Billing Info</Space>,
       key: "info",
-      render: (_: any, rec: Billing | any) => (
+      render: (_: any, rec: Billing) => (
         <Space align="center">
           <Avatar
             icon={<FileTextOutlined />}
@@ -556,7 +603,7 @@ export default function BillingPage() {
           />
           <div>
             <div className="font-medium">
-              {rec?.order?.user?.name}
+              {rec.patient?.name || rec.order?.user?.name || `Patient ${rec.patient_id}`}
             </div>
             <div style={{ fontSize: 12, color: "#666" }}>
               <FileTextOutlined /> {dayjs(rec.created_at).format("MMM D, YYYY")}
@@ -572,7 +619,7 @@ export default function BillingPage() {
         <Space direction="vertical">
           <div className="flex items-center gap-2">
             <MedicineBoxOutlined className="text-gray-400" />
-            {rec.medicines?.length} medicines
+            {rec.medicines?.length || 0} medicines
           </div>
           <div className="flex items-center gap-2">
             <ExperimentOutlined className="text-gray-400" />
@@ -791,7 +838,7 @@ export default function BillingPage() {
               <Space>
                 <TableOutlined />
                 All Billings
-                <Badge count={filtered.length} />
+                <Badge count={filteredBillings.length} />
               </Space>
             ),
             children: (
@@ -808,14 +855,15 @@ export default function BillingPage() {
                         onChange={(e) => setSearchText(e.target.value)}
                         size="large"
                         className="hover:border-blue-400 focus:border-blue-500"
+                        allowClear
                       />
                     </Col>
                     <Col xs={24} sm={12} md={4}>
                       <Select
                         value={statusFilter}
                         onChange={(value) => {
-                          setStatusFilter(value)
-                          loadBilling(pagination.current, pagination.pageSize, searchText, value)
+                          setStatusFilter(value);
+                          loadBilling(pagination.current, pagination.pageSize, searchText, value);
                         }}
                         size="large"
                         className="w-full"
@@ -841,7 +889,7 @@ export default function BillingPage() {
                     <Col xs={24} sm={12} md={8}>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <FileTextOutlined />
-                        <span>{filtered.length} billings found</span>
+                        <span>{filteredBillings.length} billings found</span>
                       </div>
                     </Col>
                   </Row>
@@ -868,6 +916,7 @@ export default function BillingPage() {
                             onClick={() => {
                               setSearchText("");
                               setStatusFilter("all");
+                              loadBilling(1, pagination.pageSize, "", "all");
                             }}
                             className="mt-4"
                           >
@@ -883,7 +932,9 @@ export default function BillingPage() {
                       dataSource={billings}
                       rowKey="id"
                       pagination={{
-                        pageSize: 10,
+                        current: pagination.current,
+                        pageSize: pagination.pageSize,
+                        total: pagination.total,
                         showSizeChanger: true,
                         showQuickJumper: true,
                         showTotal: (total, range) =>
@@ -915,10 +966,10 @@ export default function BillingPage() {
                         dot={getStatusIcon(b.status)}
                       >
                         <div className="font-medium">
-                          {patients.find(p => p.id === b.patient_id)?.name || b.patient_id}
+                          {b.patient?.name || b.order?.user?.name || `Patient ${b.patient_id}`}
                         </div>
                         <div className="text-gray-600">
-                          {dayjs(b?.created_at).fromNow()} — {b?.medicines?.length} meds, {b?.tests?.length || 0} tests
+                          {dayjs(b?.created_at).fromNow()} — {b?.medicines?.length || 0} meds, {b?.tests?.length || 0} tests
                         </div>
                         {b.total_amount && (
                           <div className="text-green-600 font-medium">
@@ -1177,13 +1228,13 @@ export default function BillingPage() {
               <Descriptions.Item label="Patient">
                 <div className="flex items-center gap-2">
                   <UserOutlined />
-                  {patients.find(p => p.id === selectedBilling.patient_id)?.name || selectedBilling.patient_id}
+                  {selectedBilling.patient?.name || selectedBilling.order?.user?.name || `Patient ${selectedBilling.patient_id}`}
                 </div>
               </Descriptions.Item>
               <Descriptions.Item label="Doctor">
                 <div className="flex items-center gap-2">
                   <UserOutlined />
-                  {doctors.find(d => d.id === selectedBilling.doctor_id)?.name || selectedBilling.doctor_id}
+                  {selectedBilling.doctor?.name || doctors.find(d => d.id === selectedBilling.doctor_id)?.name || selectedBilling.doctor_id}
                 </div>
               </Descriptions.Item>
               <Descriptions.Item label="Status">
@@ -1194,23 +1245,28 @@ export default function BillingPage() {
                 />
               </Descriptions.Item>
               <Descriptions.Item label="Medicines">
-                hg
-                {/* {selectedBilling.medicines.map((med, i) => (
-                  <div key={i} className="flex items-center gap-2 py-1">
-                    <MedicineBoxOutlined className="text-gray-400" />
-                    {inventory.find(m => m.id === med.medicine_id)?.name || med.medicine_id}
-                    <Tag color="blue">Qty: {med.quantity}</Tag>
-                  </div>
-                ))} */}
+                {selectedBilling.medicines?.map((med, i) => {
+                  const medicine = inventory.find(m => m.id === med.medicine_id);
+                  return (
+                    <div key={i} className="flex items-center gap-2 py-1">
+                      <MedicineBoxOutlined className="text-gray-400" />
+                      {medicine?.name || med.medicine_id}
+                      <Tag color="blue">Qty: {med.quantity}</Tag>
+                    </div>
+                  );
+                })}
               </Descriptions.Item>
               {selectedBilling.tests && selectedBilling.tests.length > 0 && (
                 <Descriptions.Item label="Tests">
-                  {selectedBilling.tests.map((tt, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1">
-                      <ExperimentOutlined className="text-gray-400" />
-                      {tests.find(t => t.id === tt.test_id)?.name || tt.test_id}
-                    </div>
-                  ))}
+                  {selectedBilling.tests.map((tt, i) => {
+                    const test = tests.find(t => t.id === tt.test_id);
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-1">
+                        <ExperimentOutlined className="text-gray-400" />
+                        {test?.name || tt.test_id}
+                      </div>
+                    );
+                  })}
                 </Descriptions.Item>
               )}
               {selectedBilling.notes && (

@@ -68,12 +68,13 @@ import {
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
 import dayjs, { Dayjs } from "dayjs";
+import relativeTime from 'dayjs/plugin/relativeTime';
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { getApi } from "@/ApiService";
 import { toast } from "sonner";
-import { getDate } from "date-fns";
 
+dayjs.extend(relativeTime);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
@@ -94,16 +95,17 @@ type Payment = {
     email: string;
     amount: number;
     date: string;
-    method: "CASH" | "Card" | "UPI" | "Net Banking";
+    method: "CASH" | "CARD" | "UPI" | "ONLINE";
     status: "PAID" | "PENDING" | "FAILED";
+    billing?: any;
 };
 
 const defaultPayments: Payment[] = [
-    { id: uuidv4(), customerName: "John Doe", email: "john@example.com", amount: 500, date: "2025-09-01", method: "Card", status: "PAID" },
+    { id: uuidv4(), customerName: "John Doe", email: "john@example.com", amount: 500, date: "2025-09-01", method: "CARD", status: "PAID" },
     { id: uuidv4(), customerName: "Jane Smith", email: "jane@example.com", amount: 1200, date: "2025-09-05", method: "UPI", status: "PENDING" },
     { id: uuidv4(), customerName: "Bob Johnson", email: "bob@example.com", amount: 750, date: "2025-09-10", method: "CASH", status: "FAILED" },
-    { id: uuidv4(), customerName: "Alice Brown", email: "alice@example.com", amount: 300, date: "2025-09-15", method: "Net Banking", status: "PAID" },
-    { id: uuidv4(), customerName: "Charlie Wilson", email: "charlie@example.com", amount: 950, date: "2025-09-20", method: "Card", status: "PENDING" },
+    { id: uuidv4(), customerName: "Alice Brown", email: "alice@example.com", amount: 300, date: "2025-09-15", method: "ONLINE", status: "PAID" },
+    { id: uuidv4(), customerName: "Charlie Wilson", email: "charlie@example.com", amount: 950, date: "2025-09-20", method: "CARD", status: "PENDING" },
 ];
 
 export default function Payments() {
@@ -127,68 +129,96 @@ export default function Payments() {
     });
 
     const handleTableChange = (newPagination: any) => {
-        (newPagination.current, newPagination.pageSize);
+        getPayments(newPagination.current, newPagination.pageSize);
     };
+
     // Simulate data loading
     useEffect(() => {
-        setPayments(defaultPayments);
-        setLoading(false);
-        setStatsLoading(false);
-        setTableLoading(false);
+        const timer = setTimeout(() => {
+            setPayments(defaultPayments);
+            setLoading(false);
+            setStatsLoading(false);
+            setTableLoading(false);
+        }, 1000);
+        return () => clearTimeout(timer);
     }, []);
 
-    function getPayments(page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter, method = methodFilter) {
+    const getPayments = (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter, method = methodFilter) => {
+        setTableLoading(true);
         getApi(`/payment?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}&method=${method === 'all' ? '' : method}`)
             .then((data) => {
                 if (!data.error) {
-                    setPayments(data.data)
-                }
-                else {
-                    toast.error(data.error)
+                    setPayments(data.data || []);
+                    setPagination(prev => ({
+                        ...prev,
+                        current: page,
+                        pageSize: limit,
+                        total: data.total || data.data?.length || 0
+                    }));
+                } else {
+                    toast.error(data.error);
                 }
             })
-            .catch((err) => toast.error("Error occurred while getting payments"))
-    }
+            .catch((err) => {
+                toast.error("Error occurred while getting payments");
+                console.error("Error fetching payments:", err);
+            })
+            .finally(() => setTableLoading(false));
+    };
 
     useEffect(() => {
-        getPayments()
+        getPayments();
     }, []);
 
     // Auto refresh notifier
     useEffect(() => {
+        let interval: NodeJS.Timeout;
+        
         if (autoRefresh) {
-            const interval = setInterval(() => {
-                message.info("🔄 Auto-refresh: Payment data reloaded");
+            interval = setInterval(() => {
+                message.info({
+                    content: "🔄 Auto-refresh: Payment data reloaded",
+                    duration: 2,
+                    key: 'auto-refresh'
+                });
+                getPayments();
             }, 30000);
-            return () => clearInterval(interval);
         }
+        
+        return () => {
+            if (interval) {
+                clearInterval(interval);
+            }
+        };
     }, [autoRefresh]);
 
-    // const filteredPayments = payments.filter(payment => {
-    //     const lowerSearchTerm = searchTerm.toLowerCase();
-    //     const matchesSearch = payment.customerName.toLowerCase().includes(lowerSearchTerm) || payment.email.toLowerCase().includes(lowerSearchTerm);
-    //     const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
-    //     const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
-    //     const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
-    //     return matchesSearch && matchesStatus && matchesMethod && matchesDate;
-    // });
+    const filteredPayments = payments.filter(payment => {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        const matchesSearch = 
+            payment.customerName?.toLowerCase().includes(lowerSearchTerm) || 
+            payment.email?.toLowerCase().includes(lowerSearchTerm);
+        const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+        const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
+        const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
+        return matchesSearch && matchesStatus && matchesMethod && matchesDate;
+    });
 
     // Statistics
     const stats = React.useMemo(() => {
-        const total = payments.length;
-        const PAID = payments.filter(p => p.status === "PAID").length;
-        const PENDING = payments.filter(p => p.status === "PENDING").length;
-        const FAILED = payments.filter(p => p.status === "FAILED").length;
+        const total = filteredPayments.length;
+        const PAID = filteredPayments.filter(p => p.status === "PAID").length;
+        const PENDING = filteredPayments.filter(p => p.status === "PENDING").length;
+        const FAILED = filteredPayments.filter(p => p.status === "FAILED").length;
 
-        const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-        const PAIDAmount = payments.filter(p => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
-        const PENDINGAmount = payments.filter(p => p.status === "PENDING").reduce((sum, p) => sum + p.amount, 0);
-        const FAILEDAmount = payments.filter(p => p.status === "FAILED").reduce((sum, p) => sum + p.amount, 0);
+        const totalAmount = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        const PAIDAmount = filteredPayments.filter(p => p.status === "PAID").reduce((sum, p) => sum + (p.amount || 0), 0);
+        const PENDINGAmount = filteredPayments.filter(p => p.status === "PENDING").reduce((sum, p) => sum + (p.amount || 0), 0);
+        const FAILEDAmount = filteredPayments.filter(p => p.status === "FAILED").reduce((sum, p) => sum + (p.amount || 0), 0);
 
-        const CASHPayments = payments.filter(p => p.method === "CASH").length;
-        const cardPayments = payments.filter(p => p.method === "Card").length;
-        const upiPayments = payments.filter(p => p.method === "UPI").length;
-        const netBankingPayments = payments.filter(p => p.method === "Net Banking").length;
+        const CASHPayments = filteredPayments.filter(p => p.method === "CASH").length;
+        const cardPayments = filteredPayments.filter(p => p.method === "CARD").length;
+        const upiPayments = filteredPayments.filter(p => p.method === "UPI").length;
+        const onlinePayments = filteredPayments.filter(p => p.method === "ONLINE").length;
 
         const successRate = total > 0 ? (PAID / total) * 100 : 0;
         const averagePayment = total > 0 ? totalAmount / total : 0;
@@ -205,11 +235,11 @@ export default function Payments() {
             CASHPayments,
             cardPayments,
             upiPayments,
-            netBankingPayments,
+            onlinePayments,
             successRate,
             averagePayment
         };
-    }, [payments]);
+    }, [filteredPayments]);
 
     const openModal = useCallback((mode: 'add' | 'edit' | 'view', payment?: Payment) => {
         setFormPayment(mode === 'add' ? {} : { ...payment });
@@ -251,106 +281,118 @@ export default function Payments() {
     };
 
     const handleExportPaymentPDF = (payment: Payment) => {
-        const doc = new jsPDF();
-        const { customerName, email, amount, date, method, status, id } = payment;
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const brandColor = '#4A90E2';
+        try {
+            const doc = new jsPDF();
+            const { customerName, email, amount, date, method, status, id } = payment;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const brandColor = '#4A90E2';
 
-        if (status === 'PAID') {
-            doc.saveGraphicsState();
-            doc.setFontSize(80);
-            doc.setTextColor('#D0F0C0');
+            if (status === 'PAID') {
+                doc.saveGraphicsState();
+                doc.setFontSize(80);
+                doc.setTextColor('#D0F0C0');
+                doc.setFont('helvetica', 'bold');
+                doc.text('PAID', pageWidth / 2, pageHeight / 2, { align: 'center', angle: -45, baseline: 'middle' });
+                doc.restoreGraphicsState();
+            }
+
+            doc.setFillColor(236, 240, 241);
+            doc.rect(0, 0, pageWidth, 25, 'F');
+            doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
-            doc.text('PAID', pageWidth / 2, pageHeight / 2, { align: 'center', angle: -45, baseline: 'middle' });
-            doc.restoreGraphicsState();
+            doc.setTextColor(brandColor);
+            doc.text('Payment Receipt', pageWidth / 2, 17, { align: 'center' });
+
+            autoTable(doc, {
+                startY: 35,
+                theme: 'plain',
+                body: [[
+                    { content: 'Billed From:\nMedicareHMS Inc.\n123 Health St, Wellness City\ncontact@medicarehms.com', styles: { fontStyle: 'bold' } },
+                    { content: `Receipt ID: ${id}\nDate: ${dayjs(date).format('MMM DD, YYYY')}\nStatus: ${status}`, styles: { halign: 'right', fontStyle: 'bold' } }
+                ]],
+            });
+
+            doc.setFontSize(11).setTextColor(100).text('BILLED TO', 14, (doc as any).lastAutoTable.finalY + 10);
+            doc.setFontSize(12).setTextColor(0).setFont('helvetica', 'bold').text(customerName, 14, (doc as any).lastAutoTable.finalY + 16);
+            doc.setFont('helvetica', 'normal').text(email, 14, (doc as any).lastAutoTable.finalY + 21);
+
+            autoTable(doc, {
+                startY: (doc as any).lastAutoTable.finalY + 30,
+                head: [['Description', 'Payment Method', 'Amount']],
+                body: [['Service Payment', method, `$${amount.toFixed(2)}`]],
+                theme: 'grid',
+                headStyles: { fillColor: brandColor, textColor: 255 },
+                columnStyles: { 2: { halign: 'right' } }
+            });
+
+            const finalY = (doc as any).lastAutoTable.finalY;
+            doc.setFontSize(14).setFont('helvetica', 'bold').text('Total:', pageWidth - 60, finalY + 15);
+            doc.text(`$${amount.toFixed(2)}`, pageWidth - 15, finalY + 15, { align: 'right' });
+            doc.setFontSize(10).setTextColor(150).text("Thank you for your business!", pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+            doc.save(`Receipt_${customerName.replace(/\s+/g, '_')}.pdf`);
+            message.success("Receipt exported successfully!");
+        } catch (error) {
+            console.error("Error exporting PDF:", error);
+            message.error("Failed to export PDF");
         }
-
-        doc.setFillColor(236, 240, 241);
-        doc.rect(0, 0, pageWidth, 25, 'F');
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(brandColor);
-        doc.text('Payment Receipt', pageWidth / 2, 17, { align: 'center' });
-
-        autoTable(doc, {
-            startY: 35,
-            theme: 'plain',
-            body: [[
-                { content: 'Billed From:\nMedicareHMS Inc.\n123 Health St, Wellness City\ncontact@medicarehms.com', styles: { fontStyle: 'bold' } },
-                { content: `Receipt ID: ${id}\nDate: ${dayjs(date).format('MMM DD, YYYY')}\nStatus: ${status}`, styles: { halign: 'right', fontStyle: 'bold' } }
-            ]],
-        });
-
-        doc.setFontSize(11).setTextColor(100).text('BILLED TO', 14, (doc as any).lastAutoTable.finalY + 10);
-        doc.setFontSize(12).setTextColor(0).setFont('helvetica', 'bold').text(customerName, 14, (doc as any).lastAutoTable.finalY + 16);
-        doc.setFont('helvetica', 'normal').text(email, 14, (doc as any).lastAutoTable.finalY + 21);
-
-        autoTable(doc, {
-            startY: (doc as any).lastAutoTable.finalY + 30,
-            head: [['Description', 'Payment Method', 'Amount']],
-            body: [['Service Payment', method, `$${amount.toFixed(2)}`]],
-            theme: 'grid',
-            headStyles: { fillColor: brandColor, textColor: 255 },
-            columnStyles: { 2: { halign: 'right' } }
-        });
-
-        const finalY = (doc as any).lastAutoTable.finalY;
-        doc.setFontSize(14).setFont('helvetica', 'bold').text('Total:', pageWidth - 60, finalY + 15);
-        doc.text(`$${amount.toFixed(2)}`, pageWidth - 15, finalY + 15, { align: 'right' });
-        doc.setFontSize(10).setTextColor(150).text("Thank you for your business!", pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-        doc.save(`Receipt_${customerName.replace(/\s+/g, '_')}.pdf`);
-        message.success("Receipt exported successfully!");
     };
 
     const handleBulkExport = () => {
-        if (!payments.length) return message.warning("No payments to export");
-        const doc = new jsPDF();
-        const brandColor = '#16A085';
+        if (!filteredPayments.length) return message.warning("No payments to export");
+        
+        try {
+            const doc = new jsPDF();
+            const brandColor = '#16A085';
 
-        const totalReportAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-        const PAIDCount = payments.filter(p => p.status === 'PAID').length;
-        const tableData = payments.map((p, i) => [i + 1, p.customerName, dayjs(p.date).format('YYYY-MM-DD'), p.method, p.status, `$${p.amount.toFixed(2)}`]);
+            const totalReportAmount = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const PAIDCount = filteredPayments.filter(p => p.status === 'PAID').length;
+            const tableData = filteredPayments.map((p, i) => [i + 1, p.customerName, dayjs(p.date).format('YYYY-MM-DD'), p.method, p.status, `$${(p.amount || 0).toFixed(2)}`]);
 
-        autoTable(doc, {
-            head: [['#', 'Customer', 'Date', 'Method', 'Status', 'Amount']],
-            body: tableData,
-            theme: 'striped',
-            headStyles: { fillColor: brandColor },
-            columnStyles: { 5: { halign: 'right' } },
-            didDrawPage: (data) => {
-                doc.setFontSize(20).setFont('helvetica', 'bold').setTextColor(brandColor).text('Payments Report', data.settings.margin.left, 20);
-                const pageCount = (doc as any).internal.getNumberOfPages();
-                doc.setFontSize(10).setTextColor(150);
-                doc.text(`Page ${data.pageNumber} of ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
-                doc.text(`Generated on: ${dayjs().format('MMM DD, YYYY')}`, doc.internal.pageSize.width - data.settings.margin.right, doc.internal.pageSize.height - 10, { align: 'right' });
-            },
-            didParseCell: (data) => {
-                if (data.section === 'head' && data.row.index === 0) {
-                    autoTable(doc, {
-                        startY: 30,
-                        theme: 'grid',
-                        body: [
-                            [{ content: 'Report Summary', colSpan: 2, styles: { fontStyle: 'bold', fillColor: '#ECF0F1', textColor: brandColor } }],
-                            ['Total Transactions', `${payments.length} (PAID: ${PAIDCount})`],
-                            ['Total Amount', `$${totalReportAmount.toFixed(2)}`]
-                        ],
-                        margin: { left: data.settings.margin.left, right: data.settings.margin.right },
-                        tableWidth: 'wrap'
-                    });
+            // Add header
+            doc.setFontSize(20).setFont('helvetica', 'bold').setTextColor(brandColor).text('Payments Report', 14, 20);
+
+            // Add summary
+            autoTable(doc, {
+                startY: 30,
+                theme: 'grid',
+                body: [
+                    [{ content: 'Report Summary', colSpan: 2, styles: { fontStyle: 'bold', fillColor: '#ECF0F1', textColor: brandColor } }],
+                    ['Total Transactions', `${filteredPayments.length} (PAID: ${PAIDCount})`],
+                    ['Total Amount', `$${totalReportAmount.toFixed(2)}`]
+                ],
+                margin: { left: 14, right: 14 },
+                tableWidth: 'wrap'
+            });
+
+            // Add main table
+            autoTable(doc, {
+                startY: (doc as any).lastAutoTable.finalY + 10,
+                head: [['#', 'Customer', 'Date', 'Method', 'Status', 'Amount']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: brandColor },
+                columnStyles: { 5: { halign: 'right' } },
+                margin: { left: 14, right: 14 },
+                didDrawPage: (data) => {
+                    const pageCount = (doc as any).internal.getNumberOfPages();
+                    doc.setFontSize(10).setTextColor(150);
+                    doc.text(`Page ${data.pageNumber} of ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                    doc.text(`Generated on: ${dayjs().format('MMM DD, YYYY')}`, doc.internal.pageSize.width - data.settings.margin.right, doc.internal.pageSize.height - 10, { align: 'right' });
                 }
-            },
-            margin: { top: 30, bottom: 20 },
-            startY: 65
-        });
+            });
 
-        doc.save(`Payments_Report_${dayjs().format('YYYY-MM-DD')}.pdf`);
-        message.success(`Exported ${payments.length} payments`);
+            doc.save(`Payments_Report_${dayjs().format('YYYY-MM-DD')}.pdf`);
+            message.success(`Exported ${filteredPayments.length} payments`);
+        } catch (error) {
+            console.error("Error exporting bulk PDF:", error);
+            message.error("Failed to export payments");
+        }
     };
 
     const getStatusColor = (status: string) => ({ "PAID": "green", "PENDING": "orange", "FAILED": "red" }[status] || "blue");
-    const getMethodColor = (method: string) => ({ "CASH": "blue", "Card": "purple", "UPI": "geekblue", "Net Banking": "cyan" }[method] || "default");
+    const getMethodColor = (method: string) => ({ "CASH": "blue", "CARD": "purple", "UPI": "geekblue", "ONLINE": "cyan" }[method] || "default");
 
     const getStatusIcon = (status: string) => {
         const icons = {
@@ -358,7 +400,7 @@ export default function Payments() {
             PENDING: <ClockCircleOutlined />,
             FAILED: <CloseCircleOutlined />,
         };
-        return icons[status as keyof typeof icons];
+        return icons[status as keyof typeof icons] || <InfoCircleOutlined />;
     };
 
     const resetFilters = useCallback(() => {
@@ -366,7 +408,8 @@ export default function Payments() {
         setStatusFilter("all");
         setMethodFilter("all");
         setDateRange(null);
-    }, []);
+        getPayments(1, pagination.pageSize, "", "all", "all");
+    }, [pagination.pageSize]);
 
     const moreActionsMenu = (
         <Menu
@@ -380,6 +423,7 @@ export default function Payments() {
                     key: 'export',
                     icon: <ExportOutlined />,
                     label: 'Export All Data',
+                    onClick: handleBulkExport
                 },
                 {
                     key: 'settings',
@@ -407,13 +451,13 @@ export default function Payments() {
                 </Space>
             ),
             key: "customer",
-            render: (_, record: any) => (
+            render: (_, record: Payment) => (
                 <Space>
                     <Avatar size="large" icon={<UserOutlined />} className="bg-blue-100 text-blue-600" />
                     <div>
-                        <div style={{ fontWeight: "bold" }}>{record?.billing?.order?.user?.name}</div>
+                        <div style={{ fontWeight: "bold" }}>{record.customerName}</div>
                         <div style={{ fontSize: "12px", color: "#666" }}>
-                            <MailOutlined /> {record?.billing?.order?.user?.email}
+                            <MailOutlined /> {record.email}
                         </div>
                     </div>
                 </Space>
@@ -430,11 +474,11 @@ export default function Payments() {
             key: "amount",
             render: (val) => (
                 <Space direction="vertical" size={0}>
-                    <span className="font-bold text-green-600">${val.toFixed(2)}</span>
+                    <span className="font-bold text-green-600">${(val || 0).toFixed(2)}</span>
                     <div style={{ fontSize: "12px", color: "#999" }}>Total Amount</div>
                 </Space>
             ),
-            sorter: (a, b) => a.amount - b.amount
+            sorter: (a, b) => (a.amount || 0) - (b.amount || 0)
         },
         {
             title: (
@@ -477,7 +521,7 @@ export default function Payments() {
                     Status
                 </Space>
             ),
-            dataIndex: ["billing", "status"],
+            dataIndex: "status",
             key: "status",
             render: (status) => (
                 <Space direction="vertical">
@@ -572,7 +616,7 @@ export default function Payments() {
                         </Descriptions.Item>
                         <Descriptions.Item label={<Space><DollarOutlined />Amount</Space>}>
                             <span className="font-bold text-green-600 text-lg">
-                                ${formPayment.amount?.toFixed(2)}
+                                ${(formPayment.amount || 0).toFixed(2)}
                             </span>
                         </Descriptions.Item>
                         <Descriptions.Item label={<Space><CalendarOutlined />Payment Date</Space>}>
@@ -618,14 +662,14 @@ export default function Payments() {
             <div className="space-y-4 pt-4">
                 <Input
                     placeholder="Customer Name"
-                    value={formPayment.customerName}
+                    value={formPayment.customerName || ''}
                     onChange={e => setFormPayment({ ...formPayment, customerName: e.target.value })}
                     disabled={!isEditMode}
                     prefix={<UserOutlined />}
                 />
                 <Input
                     placeholder="Email"
-                    value={formPayment.email}
+                    value={formPayment.email || ''}
                     onChange={e => setFormPayment({ ...formPayment, email: e.target.value })}
                     disabled={!isEditMode}
                     prefix={<MailOutlined />}
@@ -636,13 +680,16 @@ export default function Payments() {
                     onChange={val => setFormPayment({ ...formPayment, amount: Number(val) })}
                     disabled={!isEditMode}
                     style={{ width: "100%" }}
-                    prefix={<DollarOutlined />}
+                    prefix="$"
+                    min={0}
+                    step={0.01}
                 />
                 <DatePicker
                     value={formPayment.date ? dayjs(formPayment.date) : null}
-                    onChange={(_, dateString) => setFormPayment({ ...formPayment, date: dateString as string })}
+                    onChange={(date) => setFormPayment({ ...formPayment, date: date ? date.format('YYYY-MM-DD') : '' })}
                     disabled={!isEditMode}
                     style={{ width: "100%" }}
+                    format="YYYY-MM-DD"
                 />
                 <Select
                     value={formPayment.method}
@@ -652,9 +699,9 @@ export default function Payments() {
                     placeholder="Select Payment Method"
                 >
                     <Option value="CASH">CASH</Option>
-                    <Option value="Card">Card</Option>
+                    <Option value="CARD">Card</Option>
                     <Option value="UPI">UPI</Option>
-                    <Option value="Net Banking">Net Banking</Option>
+                    <Option value="ONLINE">Online</Option>
                 </Select>
                 <Select
                     value={formPayment.status}
@@ -772,7 +819,7 @@ export default function Payments() {
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
-                        <Tooltip title="Auto Refresh">
+                        <Tooltip title={autoRefresh ? "Auto refresh enabled" : "Auto refresh disabled"}>
                             <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
                                 <SyncOutlined className="w-4 h-4 text-gray-600" />
                                 <span className="text-sm text-gray-600">Auto Refresh</span>
@@ -804,6 +851,7 @@ export default function Payments() {
                                 icon={<PlusOutlined />}
                                 onClick={() => openModal('add')}
                                 className="bg-green-600 hover:bg-green-700"
+                                disabled={loading}
                             >
                                 <RocketOutlined /> Add Payment
                             </Button>
@@ -955,8 +1003,8 @@ export default function Payments() {
                             <Skeleton active paragraph={{ rows: 1 }} />
                         ) : (
                             <Statistic
-                                title="Net Banking"
-                                value={stats.netBankingPayments}
+                                title="Online Payments"
+                                value={stats.onlinePayments}
                                 prefix={<BankOutlined />}
                                 valueStyle={{ color: '#13c2c2' }}
                             />
@@ -972,23 +1020,25 @@ export default function Payments() {
                         <div className="flex items-center space-x-2">
                             <TeamOutlined className="w-5 h-5" />
                             <span className="text-lg font-semibold">All Payments</span>
-                            <Badge count={payments.length} showZero color="blue" />
+                            <Badge count={filteredPayments.length} showZero color="blue" />
                         </div>
                         <div className="flex flex-wrap gap-3 w-full lg:w-auto">
                             <Input.Search
                                 placeholder="Search customer or email..."
                                 value={searchTerm}
-                                onSearch={() => getPayments(pagination.current, pagination.pageSize, searchTerm)}
+                                onSearch={() => getPayments(1, pagination.pageSize, searchTerm)}
                                 onChange={e => setSearchTerm(e.target.value)}
+                                onPressEnter={() => getPayments(1, pagination.pageSize, searchTerm)}
                                 prefix={<SearchOutlined />}
                                 allowClear
                                 style={{ width: 250 }}
+                                loading={tableLoading}
                             />
                             <Select
                                 value={statusFilter}
                                 onChange={(value) => {
-                                    setStatusFilter(value)
-                                    getPayments(pagination.current, pagination.pageSize, searchTerm, value)
+                                    setStatusFilter(value);
+                                    getPayments(1, pagination.pageSize, searchTerm, value, methodFilter);
                                 }}
                                 style={{ width: 150 }}
                                 placeholder="Filter by status"
@@ -1002,8 +1052,8 @@ export default function Payments() {
                             <Select
                                 value={methodFilter}
                                 onChange={(value) => {
-                                    setMethodFilter(value)
-                                    getPayments(pagination.current, pagination.pageSize, searchTerm, statusFilter, value)
+                                    setMethodFilter(value);
+                                    getPayments(1, pagination.pageSize, searchTerm, statusFilter, value);
                                 }}
                                 style={{ width: 150 }}
                                 placeholder="Filter by method"
@@ -1013,7 +1063,7 @@ export default function Payments() {
                                 <Option value="CASH">CASH</Option>
                                 <Option value="CARD">Card</Option>
                                 <Option value="UPI">UPI</Option>
-                                <Option value="ONLINE">ONLINE</Option>
+                                <Option value="ONLINE">Online</Option>
                             </Select>
                             <RangePicker
                                 value={dateRange}
@@ -1023,6 +1073,7 @@ export default function Payments() {
                                 icon={<FilePdfOutlined />}
                                 onClick={handleBulkExport}
                                 className="bg-purple-600 hover:bg-purple-700 text-white"
+                                disabled={filteredPayments.length === 0}
                             >
                                 Export PDF
                             </Button>
@@ -1035,14 +1086,16 @@ export default function Payments() {
             <Card className="shadow-md rounded-lg">
                 {tableLoading ? (
                     <TableSkeleton />
-                ) : payments.length > 0 ? (
+                ) : filteredPayments.length > 0 ? (
                     <Table
-                        dataSource={payments}
+                        dataSource={filteredPayments}
                         columns={columns}
                         rowKey="id"
                         onChange={handleTableChange}
                         pagination={{
-                            pageSize: 10,
+                            current: pagination.current,
+                            pageSize: pagination.pageSize,
+                            total: pagination.total,
                             showSizeChanger: true,
                             showQuickJumper: true,
                             showTotal: (total, range) =>
@@ -1050,6 +1103,7 @@ export default function Payments() {
                         }}
                         scroll={{ x: 900 }}
                         rowClassName="hover:bg-gray-50"
+                        loading={tableLoading}
                     />
                 ) : (
                     <Empty
@@ -1070,6 +1124,7 @@ export default function Payments() {
                 onCancel={() => setIsModalOpen(false)}
                 footer={getModalFooter()}
                 width={isViewMode ? 700 : 600}
+                destroyOnClose
             >
                 {renderModalContent()}
             </Modal>

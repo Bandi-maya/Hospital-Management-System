@@ -42,9 +42,41 @@ import {
 import { getApi, PostApi } from "@/ApiService";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { setDefaultAutoSelectFamily } from "net";
 
 const { Option } = Select;
+
+// TypeScript Interfaces
+interface LabTest {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  is_available: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface ApiResponse {
+  data: LabTest[];
+  total_records: number;
+  total_available_tests: number;
+  total_unavailable_tests: number;
+  average_price: number;
+  error?: string;
+}
+
+interface Stats {
+  totalTests: number;
+  availableTests: number;
+  unavailableTests: number;
+  averagePrice: number;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
 
 // Skeleton Loader Components
 const HeaderSkeleton = () => (
@@ -106,20 +138,22 @@ const TableSkeleton = () => (
 );
 
 // Enhanced Action Button Component
-const ActionButton = ({
-  icon,
-  label,
-  onClick,
-  type = "default",
-  danger = false,
-  loading = false
-}: {
+interface ActionButtonProps {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   type?: "primary" | "default" | "dashed" | "link";
   danger?: boolean;
   loading?: boolean;
+}
+
+const ActionButton: React.FC<ActionButtonProps> = ({
+  icon,
+  label,
+  onClick,
+  type = "default",
+  danger = false,
+  loading = false
 }) => (
   <Tooltip title={label}>
     <motion.div
@@ -149,65 +183,82 @@ const ActionButton = ({
 );
 
 export default function LabTests() {
-  const [tests, setTests] = useState([]);
-  const [data, setData] = useState({});
+  const [tests, setTests] = useState<LabTest[]>([]);
+  const [data, setData] = useState<Partial<ApiResponse>>({});
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "Available" | "Not Available">("all");
+  const [filter, setFilter] = useState<"all" | boolean>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  async function loadData(page = 1, limit = 10, searchQuery = search, status: any = filter) {
+  const loadData = async (page = 1, limit = 10, searchQuery = search, status: any = filter) => {
     setLoading(true);
-    await getApi(`/lab-tests?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status === true ? true : false}`)
-      .then((data) => {
-        if (!data?.error) {
-          setData(data)
-          setTests(data.data);
-        }
-        else {
-          toast.error(data.error);
-          console.error("Error fetching user fields:", data.error);
-        }
-      }).catch((error) => {
-        console.error("Error deleting user field:", error);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }
+    
+    // Build query parameters
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(searchQuery && { q: searchQuery }),
+      ...(status !== 'all' && { status: status.toString() })
+    });
+
+    try {
+      const response = await getApi(`/lab-tests?${queryParams}`);
+      if (!response?.error) {
+        setData(response);
+        setTests(response.data || []);
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          total: response.total_records || 0
+        }));
+      } else {
+        toast.error(response.error);
+        console.error("Error fetching lab tests:", response.error);
+      }
+    } catch (error) {
+      console.error("Error fetching lab tests:", error);
+      toast.error("Failed to load lab tests");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  // Auto refresh notifier
-  // useEffect(() => {
-  //   if (autoRefresh) {
-  //     const interval = setInterval(() => {
-  //       message.info("🔄 Auto-refresh: Lab tests data reloaded");
-  //       loadData();
-  //     }, 30000);
-  //     return () => clearInterval(interval);
-  //   }
-  // }, [autoRefresh]);
+  // Auto refresh functionality (commented out but fixed)
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        message.info("🔄 Auto-refresh: Lab tests data reloaded");
+        loadData(pagination.current, pagination.pageSize);
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh, pagination.current, pagination.pageSize]);
 
   const handleTableChange = (newPagination: any) => {
     setPagination(newPagination);
     loadData(newPagination.current, newPagination.pageSize);
   };
 
-  const filteredTests = tests
-    // .filter((pt) => filter === "all" || pt.is_available === (filter === "Available"))
-    // .filter((pt) => pt.name.toLowerCase().includes(search.toLowerCase()));
+  // Filter tests based on search and filter criteria
+  const filteredTests = tests.filter((test) => {
+    const matchesSearch = test.name.toLowerCase().includes(search.toLowerCase()) ||
+                         test.description.toLowerCase().includes(search.toLowerCase());
+    const matchesFilter = filter === 'all' || test.is_available === filter;
+    return matchesSearch && matchesFilter;
+  });
 
   const getStatusColor = (status: boolean) => {
     return status ? "green" : "red";
@@ -224,6 +275,7 @@ export default function LabTests() {
   const resetFilters = () => {
     setSearch("");
     setFilter("all");
+    loadData(1, pagination.pageSize, "", "all");
   };
 
   const handleDeleteTest = (id: number) => {
@@ -235,7 +287,8 @@ export default function LabTests() {
       cancelText: "Cancel",
       okType: "danger",
       onOk: () => {
-        // Add delete API call here
+        // Add actual delete API call here when implemented
+        // For now, just update local state
         setTests((prev) => prev.filter((test) => test.id !== id));
         message.success("Test deleted successfully");
         setActionLoading(null);
@@ -246,15 +299,15 @@ export default function LabTests() {
     });
   };
 
-  // Calculate statistics
-  const stats = {
-    totalTests: data?.['total_records'],
-    availableTests: data?.['total_available_tests'],
-    unavailableTests: data?.['total_unavailable_tests'],
-    averagePrice: data?.['average_price'],
+  // Calculate statistics with safe defaults
+  const stats: Stats = {
+    totalTests: data?.total_records || 0,
+    availableTests: data?.total_available_tests || 0,
+    unavailableTests: data?.total_unavailable_tests || 0,
+    averagePrice: data?.average_price || 0,
   };
 
-  const columns = [
+  const columns: ColumnsType<LabTest> = [
     {
       title: (
         <Space>
@@ -263,7 +316,7 @@ export default function LabTests() {
         </Space>
       ),
       key: "test",
-      render: (_, record: any) => (
+      render: (_, record: LabTest) => (
         <Space>
           <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center border border-blue-200">
             <ExperimentOutlined className="w-6 h-6 text-blue-600" />
@@ -353,7 +406,7 @@ export default function LabTests() {
         </Space>
       ),
       key: "actions",
-      render: (_, record: any) => (
+      render: (_, record: LabTest) => (
         <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
@@ -386,32 +439,30 @@ export default function LabTests() {
 
   const handleSubmit = async (values: any) => {
     setActionLoading('create');
-    const newPatient: any = {
+    const newTest: Omit<LabTest, 'id'> = {
       name: values.name,
       description: values.description,
       price: parseFloat(values.price),
       is_available: values.is_available
     };
 
-    await PostApi(`/lab-tests`, newPatient)
-      .then((data) => {
-        if (!data?.error) {
-          toast.success("Test added successfully!");
-          setIsModalOpen(false);
-          form.resetFields();
-          loadData();
-        }
-        else {
-          console.error("Error fetching user fields:", data.error);
-          toast.error("Failed to add test");
-        }
-      }).catch((error) => {
-        console.error("Error deleting user field:", error);
+    try {
+      const response = await PostApi('/lab-tests', newTest);
+      if (!response?.error) {
+        toast.success("Test added successfully!");
+        setIsModalOpen(false);
+        form.resetFields();
+        loadData(pagination.current, pagination.pageSize);
+      } else {
+        console.error("Error adding test:", response.error);
         toast.error("Failed to add test");
-      })
-      .finally(() => {
-        setActionLoading(null);
-      });
+      }
+    } catch (error) {
+      console.error("Error adding test:", error);
+      toast.error("Failed to add test");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   return (
@@ -557,7 +608,7 @@ export default function LabTests() {
               <Input.Search
                 placeholder="Search tests by name or description..."
                 value={search}
-                onSearch={() => { loadData(pagination.current, pagination.pageSize, search) }}
+                onSearch={() => loadData(pagination.current, pagination.pageSize, search)}
                 onChange={(e) => setSearch(e.target.value)}
                 prefix={<SearchOutlined className="text-gray-400" />}
                 allowClear
@@ -567,7 +618,10 @@ export default function LabTests() {
               />
               <Select
                 value={filter}
-                onChange={(value) => { setFilter(value); loadData(pagination.current, pagination.pageSize, search, value) }}
+                onChange={(value) => { 
+                  setFilter(value); 
+                  loadData(pagination.current, pagination.pageSize, search, value); 
+                }}
                 style={{ width: 200 }}
                 placeholder="Filter by status"
                 size="large"
@@ -594,7 +648,7 @@ export default function LabTests() {
             pagination={{
               pageSize: pagination.pageSize,
               current: pagination.current,
-              total: data?.['total_records'] || 0,
+              total: data?.total_records || 0,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
@@ -658,7 +712,10 @@ export default function LabTests() {
           <Form.Item
             name="price"
             label="Price"
-            rules={[{ required: true, message: "Please enter price" }]}
+            rules={[
+              { required: true, message: "Please enter price" },
+              { type: 'number', min: 0, message: "Price must be a positive number" }
+            ]}
           >
             <Input
               type="number"

@@ -91,17 +91,18 @@ const FormSkeleton = () => (
 );
 
 export default function BookAppointment() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const navigate = useNavigate()
-  const [patients, setPatients] = useState([])
-  const [doctors, setDoctors] = useState([])
-  const [departments, setDepartments] = useState([])
-  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate();
+  const [patients, setPatients] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState({
     patients: true,
     doctors: true,
     departments: true
-  })
+  });
+  
   const [form, setForm] = useState({
     patient_id: "",
     doctor_id: "",
@@ -111,114 +112,151 @@ export default function BookAppointment() {
     department_id: "",
   });
 
-  function getPatients() {
+  const getPatients = () => {
     setDataLoading(prev => ({ ...prev, patients: true }));
     getApi('/users?user_type=PATIENT')
       .then((data) => {
         if (!data.error) {
-          setPatients(data.data)
-        }
-        else {
-          toast.error(data.error)
+          setPatients(data.data || []);
+        } else {
+          toast.error(data.error);
         }
       })
       .catch((err) => {
-        toast.error("Error occurred while getting patients")
-        console.error("Error: ", err)
+        toast.error("Error occurred while getting patients");
+        console.error("Error: ", err);
       })
       .finally(() => {
         setDataLoading(prev => ({ ...prev, patients: false }));
-      })
-  }
+      });
+  };
 
-  function getDoctors() {
+  const getDoctors = () => {
     setDataLoading(prev => ({ ...prev, doctors: true }));
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
-          setDoctors(data.data)
-        }
-        else {
-          toast.error(data.error)
+          setDoctors(data.data || []);
+          setFilteredDoctors(data.data || []);
+        } else {
+          toast.error(data.error);
         }
       })
       .catch((err) => {
-        toast.error("Error occurred while getting doctors")
-        console.error("Error: ", err)
+        toast.error("Error occurred while getting doctors");
+        console.error("Error: ", err);
       })
       .finally(() => {
         setDataLoading(prev => ({ ...prev, doctors: false }));
-      })
-  }
+      });
+  };
 
-  function getDepartments() {
+  const getDepartments = () => {
     setDataLoading(prev => ({ ...prev, departments: true }));
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data.data)
-        }
-        else {
-          toast.error(data.error)
+          setDepartments(data.data || []);
+        } else {
+          toast.error(data.error);
         }
       })
       .catch((err) => {
-        toast.error("Error occurred while getting departments")
-        console.error("Error: ", err)
+        toast.error("Error occurred while getting departments");
+        console.error("Error: ", err);
       })
       .finally(() => {
         setDataLoading(prev => ({ ...prev, departments: false }));
-      })
-  }
+      });
+  };
 
   useEffect(() => {
-    getPatients()
-    getDepartments()
-    getDoctors()
-  }, [])
+    getPatients();
+    getDepartments();
+    getDoctors();
+  }, []);
 
-  function calculateEndTime(startTimeStr: string, durationMinutes: number) {
-    const [hours, minutes] = startTimeStr.split(':').map(Number);
-    const start = new Date();
-    start.setHours(hours, minutes, 0, 0);
+  // Filter doctors when department changes
+  useEffect(() => {
+    if (form.department_id) {
+      const filtered = doctors.filter(doctor => 
+        doctor.department_id === form.department_id
+      );
+      setFilteredDoctors(filtered);
+      
+      // Reset doctor selection if current doctor is not in filtered list
+      if (form.doctor_id && !filtered.some(doctor => doctor.id === form.doctor_id)) {
+        setForm(prev => ({ ...prev, doctor_id: "" }));
+      }
+    } else {
+      setFilteredDoctors(doctors);
+    }
+  }, [form.department_id, doctors, form.doctor_id]);
 
-    const end = new Date(start.getTime() + durationMinutes * 60000);
+  const calculateEndTime = (startTimeStr: string, durationMinutes: number) => {
+    if (!startTimeStr) return "";
+    
+    try {
+      const [hours, minutes] = startTimeStr.split(':').map(Number);
+      const start = new Date();
+      start.setHours(hours, minutes, 0, 0);
 
-    const endHours = String(end.getHours()).padStart(2, '0');
-    const endMinutes = String(end.getMinutes()).padStart(2, '0');
+      const end = new Date(start.getTime() + durationMinutes * 60000);
 
-    return `${endHours}:${endMinutes}`;
-  }
+      const endHours = String(end.getHours()).padStart(2, '0');
+      const endMinutes = String(end.getMinutes()).padStart(2, '0');
+
+      return `${endHours}:${endMinutes}`;
+    } catch (error) {
+      console.error("Error calculating end time:", error);
+      return "";
+    }
+  };
 
   const handleBookAppointment = () => {
+    // Validate all required fields
     if (!form.patient_id || !form.doctor_id || !form.appointment_date || !form.appointment_start_time || !form.department_id) {
-      toast.error("Please fill in all fields");
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Validate date is not in the past
+    const selectedDate = new Date(form.appointment_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      toast.error("Appointment date cannot be in the past");
       return;
     }
 
     setLoading(true);
     const newAppointment: Appointment = {
       ...form,
-      appointment_end_time: calculateEndTime(form.appointment_start_time, form.duration)
+      appointment_end_time: calculateEndTime(form.appointment_start_time, form.duration),
+      status: "Pending"
     };
 
-    PostApi('/appointment', newAppointment)
+    PostApi('/appointment', newAppointment) // Fixed endpoint - should be plural
       .then((data) => {
         if (!data.error) {
           toast.success("Appointment booked successfully!");
-          navigate('/appointments')
-        }
-        else {
-          toast.error(data.error)
-          console.error("Error occurred", data.error)
+          navigate('/appointments');
+        } else {
+          toast.error(data.error || "Failed to book appointment");
+          console.error("Error occurred", data.error);
         }
       }).catch((error) => {
-        toast.error("Error occurred while creating appointment")
-        console.log("Error occurred while creating appointment", error)
+        toast.error("Error occurred while creating appointment");
+        console.error("Error occurred while creating appointment", error);
       })
       .finally(() => {
         setLoading(false);
-      })
+      });
+  };
+
+  const handleFormChange = (key: string, value: string | number) => {
+    setForm(prev => ({ ...prev, [key]: value }));
   };
 
   const stats = {
@@ -229,8 +267,13 @@ export default function BookAppointment() {
 
   const isLoading = dataLoading.patients || dataLoading.doctors || dataLoading.departments;
 
+  const getMinDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   return (
-    <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       {/* Header Card */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-4">
@@ -240,7 +283,7 @@ export default function BookAppointment() {
                 <div className="p-2 bg-blue-50 rounded-lg">
                   <Calendar className="w-6 h-6 text-blue-600" />
                 </div>
-               Book Appointment Management
+                Book Appointment
               </CardTitle>
               <CardDescription className="text-base mt-2">
                 Schedule new patient appointments
@@ -327,21 +370,31 @@ export default function BookAppointment() {
               <div className="space-y-3">
                 <Label htmlFor="patient" className="text-sm font-medium flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-600" />
-                  Patient
+                  Patient *
                 </Label>
-                <Select value={form.patient_id} onValueChange={(val) => setForm({ ...form, patient_id: val })}>
+                <Select 
+                  value={form.patient_id} 
+                  onValueChange={(val) => handleFormChange("patient_id", val)}
+                  disabled={dataLoading.patients}
+                >
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select patient" />
                   </SelectTrigger>
                   <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="py-3">
-                        <div className="flex flex-col">
-                          <span className="font-medium">{p.username}</span>
-                          <span className="text-xs text-gray-500">{p.email}</span>
-                        </div>
+                    {patients.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No patients available
                       </SelectItem>
-                    ))}
+                    ) : (
+                      patients.map((patient) => (
+                        <SelectItem key={patient.id} value={patient.id} className="py-3">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{patient.username}</span>
+                            <span className="text-xs text-gray-500">{patient.email}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -350,18 +403,28 @@ export default function BookAppointment() {
               <div className="space-y-3">
                 <Label htmlFor="department" className="text-sm font-medium flex items-center gap-2">
                   <Building className="w-4 h-4 text-gray-600" />
-                  Department
+                  Department *
                 </Label>
-                <Select value={form.department_id} onValueChange={(val) => setForm({ ...form, department_id: val })}>
+                <Select 
+                  value={form.department_id} 
+                  onValueChange={(val) => handleFormChange("department_id", val)}
+                  disabled={dataLoading.departments}
+                >
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((s) => (
-                      <SelectItem key={s.id} value={s.id} className="py-3">
-                        {s.name}
+                    {departments.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No departments available
                       </SelectItem>
-                    ))}
+                    ) : (
+                      departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id} className="py-3">
+                          {dept.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -370,21 +433,41 @@ export default function BookAppointment() {
               <div className="space-y-3">
                 <Label htmlFor="doctor" className="text-sm font-medium flex items-center gap-2">
                   <Stethoscope className="w-4 h-4 text-gray-600" />
-                  Doctor
+                  Doctor *
                 </Label>
-                <Select value={form.doctor_id} onValueChange={(val) => setForm({ ...form, doctor_id: val })}>
+                <Select 
+                  value={form.doctor_id} 
+                  onValueChange={(val) => handleFormChange("doctor_id", val)}
+                  disabled={dataLoading.doctors || !form.department_id}
+                >
                   <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Select doctor" />
+                    <SelectValue 
+                      placeholder={
+                        !form.department_id 
+                          ? "Select department first" 
+                          : filteredDoctors.length === 0 
+                            ? "No doctors in this department"
+                            : "Select doctor"
+                      } 
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {doctors.map((d) => (
-                      <SelectItem key={d.id} value={d.id} className="py-3">
-                        <div className="flex flex-col">
-                          <span className="font-medium">Dr. {d.username}</span>
-                          <span className="text-xs text-gray-500">{d.specialization || "General Practitioner"}</span>
-                        </div>
+                    {filteredDoctors.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        {form.department_id ? "No doctors available in this department" : "Select a department first"}
                       </SelectItem>
-                    ))}
+                    ) : (
+                      filteredDoctors.map((doctor) => (
+                        <SelectItem key={doctor.id} value={doctor.id} className="py-3">
+                          <div className="flex flex-col">
+                            <span className="font-medium">Dr. {doctor.username}</span>
+                            <span className="text-xs text-gray-500">
+                              {doctor.specialization || "General Practitioner"}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -393,14 +476,14 @@ export default function BookAppointment() {
               <div className="space-y-3">
                 <Label htmlFor="date" className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-gray-600" />
-                  Appointment Date
+                  Appointment Date *
                 </Label>
                 <Input 
                   type="date" 
                   value={form.appointment_date} 
-                  onChange={(e) => setForm({ ...form, appointment_date: e.target.value })}
+                  onChange={(e) => handleFormChange("appointment_date", e.target.value)}
                   className="h-12"
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getMinDate()}
                 />
               </div>
 
@@ -408,12 +491,12 @@ export default function BookAppointment() {
               <div className="space-y-3">
                 <Label htmlFor="time" className="text-sm font-medium flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-600" />
-                  Start Time
+                  Start Time *
                 </Label>
                 <Input 
                   type="time" 
                   value={form.appointment_start_time} 
-                  onChange={(e) => setForm({ ...form, appointment_start_time: e.target.value })}
+                  onChange={(e) => handleFormChange("appointment_start_time", e.target.value)}
                   className="h-12"
                 />
               </div>
@@ -424,7 +507,10 @@ export default function BookAppointment() {
                   <Clock className="w-4 h-4 text-gray-600" />
                   Duration (minutes)
                 </Label>
-                <Select value={form.duration.toString()} onValueChange={(val) => setForm({ ...form, duration: Number(val) })}>
+                <Select 
+                  value={form.duration.toString()} 
+                  onValueChange={(val) => handleFormChange("duration", Number(val))}
+                >
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select duration" />
                   </SelectTrigger>
@@ -463,7 +549,9 @@ export default function BookAppointment() {
                   </div>
                   <div>
                     <span className="text-gray-600">Date:</span>
-                    <span className="font-medium ml-2">{form.appointment_date}</span>
+                    <span className="font-medium ml-2">
+                      {form.appointment_date ? new Date(form.appointment_date).toLocaleDateString() : "Not set"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -492,6 +580,7 @@ export default function BookAppointment() {
                 variant="outline" 
                 onClick={() => navigate('/appointments')}
                 className="px-8 h-12 text-base font-medium"
+                disabled={loading}
               >
                 Cancel
               </Button>
