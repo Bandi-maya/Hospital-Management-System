@@ -1,71 +1,71 @@
-import React, { Suspense, lazy } from "react";
-import { Toaster as Sonner } from "./Components/UI/sonner";
-import { TooltipProvider } from "./Components/UI/tooltip";
+import { Suspense, lazy } from "react";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
-import AuthGuard from "./Components/Auth/AuthGuard";
-import Layout from "@/Components/Layout/Layout";
+import AuthGuard from "./components/Auth/AuthGuard";
+import Layout from "@/components/Layout/Layout";
 import NotFound from "./pages/NotFound";
-import AddPatient from "./Components/Patients/AddPatient";
-import MedicalRecords from "./Components/Patients/MedicalRecords";
-import Schedules from "./Components/Doctor/Schedules";
-import Specializations from "./Components/Doctor/Specializations";
-import CalenderView from "./Components/Appointments/CalenderView";
-import MedicalInventory from "./Components/Pharmacy/MedicalInventory";
-import Prescriptions from "./Components/Prescription/Prescriptions";
-import PurchaseOrders from "./Components/Pharmacy/PurchaseOrders";
-import LabTests from "./Components/Laboratory/LabTests";
-import LabReports from "./Components/Laboratory/LabReports";
-import TestResults from "./Components/Laboratory/TestResults";
-import Payments from "./Components/BillingAndInvoice/Payments";
-import InsuranceClaims from "./Components/BillingAndInvoice/InsuranceClaims";
-import WardAllocations from "./Components/Ward/WardAllocation";
-import EmergencyCases from "./Components/Emergency/EmergencyCases";
-import Triage from "./Components/Emergency/Triage";
-import Users from "./Components/Admin/Users";
-import Roles from "./Components/Admin/Roles";
-import AdminSettings from "./Components/Admin/Settings";
-import AuditLogs from "./Components/Admin/AuditLogs";
+import AddPatient from "./components/Patients/AddPatient";
+import MedicalRecords from "./components/Patients/MedicalRecords";
+// import Schedules from "./components/Doctor/Schedules";
+// import Specializations from "./components/Doctor/Specializations";
+import CalenderView from "./components/Appointments/CalenderView";
+import MedicalInventory from "./components/Pharmacy/MedicalInventory";
+import Prescriptions from "./components/Prescription/Prescriptions";
+import PurchaseOrders from "./components/Pharmacy/PurchaseOrders";
+import LabTests from "./components/Laboratory/LabTests";
+import LabReports from "./components/Laboratory/LabReports";
+import TestResults from "./components/Laboratory/TestResults";
+import Payments from "./components/BillingAndInvoice/Payments";
+// import InsuranceClaims from "./components/BillingAndInvoice/InsuranceClaims";
+import WardAllocations from "./components/Ward/WardAllocation";
+// import EmergencyCases from "./components/Emergency/EmergencyCases";
+// import Triage from "./components/Emergency/Triage";
+// import Users from "./components/Admin/Users";
+// import Roles from "./components/Admin/Roles";
+// import AdminSettings from "./components/Admin/Settings";
+import AuditLogs from "./components/Admin/AuditLogs";
 
 // ✅ Import PatientProvider to wrap entire app
-import { PatientProvider } from "../src/Components/Patients/PatientContext";
-import UserTypesList from "./Components/Admin/UserTypes";
-import UserFieldsList from "./Components/Admin/UserFields";
-import Department from "./Components/Departments/Departments";
-import DepartmentUsers from "./Components/Departments/DepartmentUsers";
-import TokenCalendarView from "./Components/Tokens/CalenderView";
-import CreateToken from "./Components/Tokens/CreateToken";
+// import { PatientProvider } from "../src/components/Patients/PatientContext";
+// import UserTypesList from "./components/Admin/UserTypes";
+import UserFieldsList from "./components/Admin/UserFields";
+import Department from "./components/Departments/Departments";
+import DepartmentUsers from "./components/Departments/DepartmentUsers";
+import TokenCalendarView from "./components/Tokens/CalenderView";
+import CreateToken from "./components/Tokens/CreateToken";
 import TokenManagement from "./pages/TokenManagement";
-import Billing from "./Components/BillingAndInvoice/Billing";
-import SurgeryList from "./Components/Surgery/SurgeriesList";
-import SurgeryType from "./Components/Surgery/SurgeryTypes";
-import OperationTheatres from "./Components/Surgery/OperationTheatres";
-import AddReseptionist from "./Components/Receptionist/AddReseptionist";
-import ReseptionistList from "./Components/Receptionist/ReseptionistList";
-import NurseList from "./Components/Nurse/NurseList";
-import AddNurse from "./Components/Nurse/AddNurse";
-import TechnicianList from "./Components/LabTechnicians/TechnicianList";
-import AddTechnician from "./Components/LabTechnicians/AddLabTechnician";
-import PharmacistList from "./Components/Pharmacist/PharmacistList";
-import AddPharmacist from "./Components/Pharmacist/AddPharmacist";
-import LogoUploader from "./Components/Patients/LogoUploader";
-import Login from "./Components/Auth/Login";
-import DoctorList from "./Components/Doctor/DoctorsList";
-import AddDoctor from "./Components/Doctor/AddDoctor";
+import Billing from "./components/BillingAndInvoice/Billing";
+import SurgeryList from "./components/Surgery/SurgeriesList";
+import SurgeryType from "./components/Surgery/SurgeryTypes";
+import OperationTheatres from "./components/Surgery/OperationTheatres";
+import AddReseptionist from "./components/Receptionist/AddReseptionist";
+import ReseptionistList from "./components/Receptionist/ReseptionistList";
+import NurseList from "./components/Nurse/NurseList";
+import AddNurse from "./components/Nurse/AddNurse";
+import TechnicianList from "./components/LabTechnicians/TechnicianList";
+import AddTechnician from "./components/LabTechnicians/AddLabTechnician";
+import PharmacistList from "./components/Pharmacist/PharmacistList";
+import AddPharmacist from "./components/Pharmacist/AddPharmacist";
+import LogoUploader from "./components/Patients/LogoUploader";
+import Login from "./components/Auth/Login";
+import DoctorList from "./components/Doctor/DoctorsList";
+import AddDoctor from "./components/Doctor/AddDoctor";
 import BookAppointment from "./components/Appointments/BookAppointment";
-import WardStatus from "./components/Ward/WardStatus";
+import WardStatus from "./Components/Ward/WardStatus";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PatientManagement = lazy(() => import("./pages/PatientManagement"));
-const DoctorManagement = lazy(() => import("./pages/DoctorManagement"));
+// const DoctorManagement = lazy(() => import("./pages/DoctorManagement"));
 const AppointmentManagement = lazy(() => import("./pages/AppointmentManagement"));
 // const Billing = lazy(() => import("./pages/Billing"));
-const Reports = lazy(() => import("./pages/Reports"));
-const Settings = lazy(() => import("./pages/Settings"));
-const UserManagement = lazy(() => import("./pages/UserManagement"));
-const Index = lazy(() => import("./pages/Index"));
+// const Reports = lazy(() => import("./pages/Reports"));
+// const Settings = lazy(() => import("./pages/Settings"));
+// const UserManagement = lazy(() => import("./pages/UserManagement"));
+// const Index = lazy(() => import("./pages/Index"));
 
 const queryClient = new QueryClient();
 
@@ -76,18 +76,383 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-            <PatientProvider>
+            {/* <PatientProvider> */}
               <Routes>
                 {/* Public Routes */}
                 <Route path="/auth/login" element={<Login />} />
 
-                {/* Protected Routes */}
+                {/* // main */}
                 <Route
                   path="/dashboard"
                   element={
                     <AuthGuard>
                       <Layout>
                         <Dashboard />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/patients"
+                  element={
+                    <AuthGuard requiredPermission="patients:read">
+                      <Layout>
+                        <PatientManagement />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/patients/add"
+                  element={
+                    <AuthGuard requiredPermission="patients:read">
+                      <Layout>
+                        {/* ✅ No more onAddPatient prop */}
+                        <AddPatient />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/patients/records"
+                  element={
+                    <AuthGuard requiredPermission="patients:read">
+                      <Layout>
+                        <MedicalRecords />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/nurse"
+                  element={
+                    <AuthGuard requiredPermission="nurse:read">
+                      <Layout>
+                        <NurseList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/nurse/add"
+                  element={
+                    <AuthGuard requiredPermission="nurse:read">
+                      <Layout>
+                        <AddNurse />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/receptionist"
+                  element={
+                    <AuthGuard requiredPermission="receptionist:read">
+                      <Layout>
+                        <ReseptionistList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/receptionist/add"
+                  element={
+                    <AuthGuard requiredPermission="receptionist:read">
+                      <Layout>
+                        {/* ✅ No more onAddPatient prop */}
+                        <AddReseptionist />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/lab-technician"
+                  element={
+                    <AuthGuard requiredPermission="lab-technician:read">
+                      <Layout>
+                        <TechnicianList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/lab-technician/add"
+                  element={
+                    <AuthGuard requiredPermission="lab-technician:read">
+                      <Layout>
+                        {/* ✅ No more onAddPatient prop */}
+                        <AddTechnician />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/pharmacist"
+                  element={
+                    <AuthGuard requiredPermission="pharmacist:read">
+                      <Layout>
+                        <PharmacistList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/pharmacist/add"
+                  element={
+                    <AuthGuard requiredPermission="pharmacist:read">
+                      <Layout>
+                        {/* ✅ No more onAddPatient prop */}
+                        <AddPharmacist />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/doctors"
+                  element={
+                    <AuthGuard requiredPermission="doctors:read">
+                      <Layout>
+                        <DoctorList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/doctors/add"
+                  element={
+                    <AuthGuard requiredPermission="doctors:write">
+                      <Layout>
+                        <AddDoctor />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/appointments"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <AppointmentManagement />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/appointments/calendar"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <CalenderView />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/appointments/book"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <BookAppointment />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/tokens"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <TokenManagement />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/tokens/calendar"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <TokenCalendarView />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/tokens/create"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <CreateToken />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/pharmacy/medicines"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <MedicalInventory />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/pharmacy/orders"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <PurchaseOrders />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/laboratory/tests"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <LabTests />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/laboratory/results"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <TestResults />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/laboratory/reports"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <LabReports />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/surgery/list"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <SurgeryList />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/surgery/types"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <SurgeryType />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/surgery/operation-theatres"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <OperationTheatres />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/prescriptions"
+                  element={
+                    <AuthGuard requiredPermission="prescriptions:read">
+                      <Layout>
+                        <Prescriptions />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/billing"
+                  element={
+                    <AuthGuard requiredPermission="billing:read">
+                      <Layout>
+                        {/* <Billing /> */}
+                        <Billing />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/billing/payments"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <Payments />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/wards"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <WardStatus />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/wards/beds"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <WardAllocations />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/departments"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <Department />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/departments/users"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <DepartmentUsers />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/admin/audit"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <AuditLogs />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/admin/user-fields"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <UserFieldsList />
                       </Layout>
                     </AuthGuard>
                   }
@@ -103,63 +468,10 @@ const App = () => (
                   }
                 />
 
-                <Route
-                  path="/patients"
-                  element={
-                    <AuthGuard requiredPermission="patients:read">
-                      <Layout>
-                        <PatientManagement />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
+                {/* Protected Routes */}
 
-                <Route
-                  path="/patients/add"
-                  element={
-                    <AuthGuard requiredPermission="patients:read">
-                      <Layout>
-                        {/* ✅ No more onAddPatient prop */}
-                        <AddPatient />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
 
-                <Route
-                  path="/patients/records"
-                  element={
-                    <AuthGuard requiredPermission="patients:read">
-                      <Layout>
-                        <MedicalRecords />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/doctors"
-                  element={
-                    <AuthGuard requiredPermission="doctors:read">
-                      <Layout>
-                        <DoctorList />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/doctors/add"
-                  element={
-                    <AuthGuard requiredPermission="doctors:write">
-                      <Layout>
-                        <AddDoctor />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
+                {/* <Route
                   path="/doctors/schedules"
                   element={
                     <AuthGuard requiredPermission="doctors:read">
@@ -182,323 +494,11 @@ const App = () => (
                 />
 
                 <Route
-                  path="/nurse"
-                  element={
-                    <AuthGuard requiredPermission="nurse:read">
-                      <Layout>
-                        <NurseList />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                  <Route
-                  path="/nurse/add"
-                  element={
-                    <AuthGuard requiredPermission="nurse:read">
-                      <Layout>
-                        <AddNurse />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/receptionist"
-                  element={
-                    <AuthGuard requiredPermission="receptionist:read">
-                      <Layout>
-                        <ReseptionistList />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                  <Route
-                  path="/receptionist/add"
-                  element={
-                    <AuthGuard requiredPermission="receptionist:read">
-                      <Layout>
-                        {/* ✅ No more onAddPatient prop */}
-                        <AddReseptionist />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/lab-technician"
-                  element={
-                    <AuthGuard requiredPermission="lab-technician:read">
-                      <Layout>
-                        <TechnicianList />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                  <Route
-                  path="/lab-technician/add"
-                  element={
-                    <AuthGuard requiredPermission="lab-technician:read">
-                      <Layout>
-                        {/* ✅ No more onAddPatient prop */}
-                        <AddTechnician />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/pharmacist"
-                  element={
-                    <AuthGuard requiredPermission="pharmacist:read">
-                      <Layout>
-                        <PharmacistList />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                  <Route
-                  path="/pharmacist/add"
-                  element={
-                    <AuthGuard requiredPermission="pharmacist:read">
-                      <Layout>
-                        {/* ✅ No more onAddPatient prop */}
-                        <AddPharmacist />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-
-                <Route
-                  path="/appointments"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <AppointmentManagement />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/appointments/calendar"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <CalenderView />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/appointments/book"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <BookAppointment />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/tokens"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <TokenManagement />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/tokens/calendar"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <TokenCalendarView />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/tokens/create"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <CreateToken />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/pharmacy/medicines"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <MedicalInventory />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/prescriptions"
-                  element={
-                    <AuthGuard requiredPermission="prescriptions:read">
-                      <Layout>
-                        <Prescriptions />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/pharmacy/orders"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <PurchaseOrders />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/laboratory/tests"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <LabTests />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/laboratory/results"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <TestResults />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/laboratory/reports"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <LabReports />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/surgery/list"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <SurgeryList />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/surgery/types"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <SurgeryType />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/surgery/operation-theatres"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <OperationTheatres />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/billing/payments"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <Payments />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
                   path="/billing/insurance"
                   element={
                     <AuthGuard requiredPermission="appointments:read">
                       <Layout>
                         <InsuranceClaims />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/wards/beds"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <WardAllocations />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/wards"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <WardStatus />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/departments"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <Department />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/departments/users"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <DepartmentUsers />
                       </Layout>
                     </AuthGuard>
                   }
@@ -535,9 +535,9 @@ const App = () => (
                       </Layout>
                     </AuthGuard>
                   }
-                />
+                /> */}
 
-                <Route
+                {/* <Route
                   path="/admin/roles"
                   element={
                     <AuthGuard requiredPermission="appointments:read">
@@ -546,7 +546,7 @@ const App = () => (
                       </Layout>
                     </AuthGuard>
                   }
-                />
+                /> */}
 
                 {/* <Route
                   path="/admin/settings"
@@ -559,18 +559,7 @@ const App = () => (
                   }
                 /> */}
 
-                <Route
-                  path="/admin/audit"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <AuditLogs />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
+                {/* <Route
                   path="/admin/user-types"
                   element={
                     <AuthGuard requiredPermission="appointments:read">
@@ -582,34 +571,11 @@ const App = () => (
                 />
 
                 <Route
-                  path="/admin/user-fields"
-                  element={
-                    <AuthGuard requiredPermission="appointments:read">
-                      <Layout>
-                        <UserFieldsList />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
                   path="/system-settings"
                   element={
                     <AuthGuard requiredPermission="appointments:read">
                       <Layout>
                         <Settings />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                />
-
-                <Route
-                  path="/billing"
-                  element={
-                    <AuthGuard requiredPermission="billing:read">
-                      <Layout>
-                        {/* <Billing /> */}
-                        <Billing />
                       </Layout>
                     </AuthGuard>
                   }
@@ -646,13 +612,13 @@ const App = () => (
                       </Layout>
                     </AuthGuard>
                   }
-                />
+                /> */}
 
                 {/* Root redirect */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
                 {/* Unauthorized */}
-                <Route
+                {/* <Route
                   path="/unauthorized"
                   element={
                     <div className="min-h-screen flex items-center justify-center">
@@ -666,12 +632,12 @@ const App = () => (
                       </div>
                     </div>
                   }
-                />
+                /> */}
 
                 {/* Fallback */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </PatientProvider>
+            {/* </PatientProvider> */}
           </Suspense>
         </BrowserRouter>
       </TooltipProvider>

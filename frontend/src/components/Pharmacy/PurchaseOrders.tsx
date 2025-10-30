@@ -173,7 +173,6 @@ const ActionButton = ({
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
-  const [data, setdata] = useState<any>({});
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -248,7 +247,6 @@ export default function PurchaseOrders() {
     getApi(`/orders?order_type=medicine&page=${page}&limit=${limit}&q=${searchQuery}`)
       .then((res) => {
         if (!res.error) {
-          setdata(res)
           setOrders(res.data);
         } else {
           toast.error("Failed to load orders.");
@@ -259,7 +257,7 @@ export default function PurchaseOrders() {
   };
 
   const fetchPatients = () => {
-    getApi("/users?user_type=PATIENT")
+    getApi("/users?user_type=DOCTOR")
       .then((res) => {
         if (!res.error) {
           setPatients(res.data);
@@ -388,9 +386,9 @@ export default function PurchaseOrders() {
 
   // Calculate statistics
   const stats = {
-    totalOrders: data?.totalOrders,
-    todayOrders: data?.todayOrders,
-    totalItems: data?.total_items_purchased,
+    totalOrders: orders.length,
+    todayOrders: orders.filter(order => order.received_date === new Date().toISOString().split('T')[0]).length,
+    totalItems: orders.reduce((sum, order) => sum + (order.items?.length || 0), 0),
     pendingOrders: orders.filter(order => !order.received_date).length
   };
 

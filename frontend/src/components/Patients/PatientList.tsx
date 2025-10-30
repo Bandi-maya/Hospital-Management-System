@@ -10,15 +10,14 @@ import {
   Spin,
   Popconfirm,
   message,
-  Divider,
-  Tag,
   Space,
   Row,
   Col,
   Typography,
-  Descriptions,
+  Skeleton,
+  Statistic,
+  Tag,
   Tooltip,
-  Skeleton
 } from "antd";
 import {
   EditOutlined,
@@ -26,189 +25,133 @@ import {
   FileTextOutlined,
   PlusOutlined,
   ReloadOutlined,
-  UserOutlined,
-  MedicineBoxOutlined
+  TeamOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  DashboardOutlined,
+  MedicineBoxOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
-import { countries } from "@/Components/Patients/AddPatient";
 import { DeleteApi, DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
-import { DepartmentInterface } from "@/Components/Departments/Departments";
-import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
-import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
-import { Download, Filter, Search } from "lucide-react";
 import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button as UIButton } from "@/components/ui/button";
+import { Download, Filter, Search } from "lucide-react";
+import { countries } from "./AddPatient";
+import type { DepartmentInterface } from "../Departments/Departments";
+import type { Patient } from "@/types/patient";
 
 const { Option } = Select;
 const { TextArea } = Input;
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function PatientList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
-  const [form] = Form.useForm();
-  const [medicalRecordForm] = Form.useForm();
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  const [extraFields, setExtraFields] = useState<any>([]);
+  const [extraFields, setExtraFields] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
   const [tableLoading, setTableLoading] = useState(false);
-  const [loadingStates, setLoadingStates] = useState({
-    departments: false,
-    extraFields: false,
-    table: false
-  });
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [form] = Form.useForm();
+  const [medicalRecordForm] = Form.useForm();
+  const [data, setData] = useState<any>({});
+  const [statsLoading, setStatsLoading] = useState(true);
+
   const navigate = useNavigate();
+
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
+  const stats = {
+    totalUsers: data?.total_records || 0,
+    activeUsers: data?.active_records || 0,
+    inactiveUsers: data?.inactive_records || 0,
+    recentJoined: data?.recently_added || 0,
+  };
+
   const userTypeId = useMemo(() => extraFields?.[0]?.user_type, [extraFields]);
 
-  async function exportPatients(format = 'csv') {
+  /** ======================== FETCHERS ======================== */
+  const getExtraFields = async () => {
     try {
-      await DownloadApi(`/export?type=users&user_type=patient&format=${format}`, format);
-    } catch (err) {
-      console.error('Export error:', err);
-      alert('Something went wrong while exporting.');
-    }
-  }
-
-  const getExtraFields = () => {
-    setLoadingStates(prev => ({ ...prev, extraFields: true }));
-    getApi("/user-fields")
-      .then((data) => {
-        if (!data?.error) {
-          setExtraFields(
-            data.data.filter(
-              (field: any) => field.user_type_data.type.toUpperCase() === "PATIENT"
-            )
-          );
-        } else message.error("Error fetching user fields: " + data.error);
-      })
-      .catch(() => message.error("Error fetching user fields"))
-      .finally(() => setLoadingStates(prev => ({ ...prev, extraFields: false })));
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      setIsLoading(true);
-
-      if (selectedPatient) {
-        const formData = {
-          ...values,
-          id: selectedPatient.id,
-          user_type_id: selectedPatient.user_type_id,
-          name: `${values.extra_fields?.first_name || ''} ${values.extra_fields?.last_name || ''}`.trim()
-        };
-
-        PutApi(`/users`, formData)
-          .then((data) => {
-            if (!data?.error) {
-              message.success("Patient updated successfully!");
-              loadPatients();
-              setIsModalOpen(false);
-              setSelectedPatient(null);
-              form.resetFields();
-            } else {
-              message.error(data.error);
-            }
-          })
-          .catch((error) => {
-            console.error("Error updating patient:", error);
-            message.error("Error updating patient");
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
+      const res = await getApi("/user-fields");
+      if (!res?.error) {
+        setExtraFields(
+          res.data.filter(
+            (f: any) => f.user_type_data.type.toUpperCase() === "PATIENT"
+          )
+        );
+      } else {
+        message.error("Error fetching extra fields: " + res.error);
       }
-    } catch (error) {
-      message.error("Please fill in all required fields");
+    } catch {
+      message.error("Error fetching user fields");
     }
   };
 
-  const loadDepartments = () => {
-    setLoadingStates(prev => ({ ...prev, departments: true }));
-    getApi("/departments")
-      .then((data) => {
-        if (!data.error) setDepartments(data.data);
-        else message.error(data.error);
-      })
-      .catch(() => message.error("Failed to fetch departments"))
-      .finally(() => setLoadingStates(prev => ({ ...prev, departments: false })));
+  const loadDepartments = async () => {
+    try {
+      const res = await getApi("/departments");
+      if (!res.error) setDepartments(res.data);
+      else message.error(res.error);
+    } catch {
+      message.error("Failed to fetch departments");
+    }
   };
 
-  const loadPatients = async (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) => {
+  const loadPatients = async (
+    page = 1,
+    limit = 10,
+    searchQuery = searchTerm
+  ) => {
     setTableLoading(true);
+    setStatsLoading(true);
     try {
-      const data = await getApi(`/users?user_type=PATIENT&page=${page}&limit=${limit}&q=${searchQuery}`);
-      if (!data?.error) {
-        setPatients(data.data);
-        setPagination(prev => ({
-          ...prev,
+      const res = await getApi(
+        `/users?user_type=PATIENT&page=${page}&limit=${limit}&q=${searchQuery}`
+      );
+      if (!res?.error) {
+        setData(res);
+        setPatients(res.data);
+        setPagination({
           current: page,
           pageSize: limit,
-          total: data.total_records,
-        }));
+          total: res.total_records,
+        });
       } else {
-        message.error(data.error);
+        message.error(res.error);
       }
-    } catch (error) {
-      message.error("Error getting patients");
+    } catch {
+      message.error("Error loading patients");
     } finally {
       setTableLoading(false);
+      setStatsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadPatients(pagination.current, pagination.pageSize, searchTerm);
+    loadPatients();
     loadDepartments();
     getExtraFields();
   }, []);
 
-  const deletePatient = async (record: any) => {
-    setLoadingActionId(record.id);
-    await DeleteApi(`/users`, { id: record.id })
-      .then((data) => {
-        if (!data?.error) {
-          message.success("Patient deleted successfully");
-          loadPatients();
-        } else message.error(data.error);
-      })
-      .catch(() => message.error("Error deleting patient"))
-      .finally(() => setLoadingActionId(null));
-  };
-
-  const handleAddRecord = async () => {
+  /** ======================== ACTIONS ======================== */
+  const exportPatients = async (format = "csv") => {
     try {
-      const values = await medicalRecordForm.validateFields();
-      setLoadingActionId(values.user_id);
-
-      PostApi("/medical-records", values)
-        .then((data) => {
-          if (!data?.error) {
-            message.success("Medical record added successfully");
-            setIsDialogOpen(false);
-            medicalRecordForm.resetFields();
-          } else {
-            message.error("Error adding medical record: " + data.error);
-          }
-        })
-        .catch((error) => {
-          console.error("Error adding record:", error);
-          message.error("Error adding medical record");
-        })
-        .finally(() => setLoadingActionId(null));
-    } catch (error) {
-      message.error("Please enter medical notes");
+      await DownloadApi(
+        `/export?type=users&user_type=patient&format=${format}`,
+        format
+      );
+    } catch {
+      message.error("Something went wrong while exporting.");
     }
   };
 
@@ -227,207 +170,114 @@ export default function PatientList() {
     setIsModalOpen(true);
   };
 
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setIsLoading(true);
+      const formData = {
+        ...values,
+        id: selectedPatient.id,
+        user_type_id: selectedPatient.user_type_id,
+        name: `${values.extra_fields?.first_name || ""} ${values.extra_fields?.last_name || ""
+          }`.trim(),
+      };
+      const res = await PutApi(`/users`, formData);
+      if (!res?.error) {
+        message.success("Patient updated successfully!");
+        loadPatients();
+        setIsModalOpen(false);
+        setSelectedPatient(null);
+        form.resetFields();
+      } else {
+        message.error(res.error);
+      }
+    } catch {
+      message.error("Please fill in all required fields");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deletePatient = async (record: any) => {
+    setLoadingActionId(record.id);
+    try {
+      const res = await DeleteApi(`/users`, { id: record.id });
+      if (!res?.error) {
+        message.success("Patient deleted successfully");
+        loadPatients();
+      } else message.error(res.error);
+    } catch {
+      message.error("Error deleting patient");
+    } finally {
+      setLoadingActionId(null);
+    }
+  };
+
   const handleAddMedicalRecord = (record: any) => {
     medicalRecordForm.setFieldsValue({ user_id: record.id, notes: "" });
     setIsDialogOpen(true);
   };
 
-  const ActionButton = ({
-    icon,
-    label,
-    type = "default",
-    danger = false,
-    onClick,
-    loading = false,
-    confirm = false,
-    confirmAction
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    type?: "primary" | "default" | "dashed" | "link" | "text";
-    danger?: boolean;
-    onClick?: () => void;
-    loading?: boolean;
-    confirm?: boolean;
-    confirmAction?: () => void;
-  }) => {
-    const button = (
-      <motion.div
-        whileHover={{ scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 250 }}
-      >
-        <Tooltip title={label} placement="top">
-          <Button
-            type={type}
-            danger={danger}
-            icon={icon}
-            loading={loading}
-            onClick={onClick}
-            className={`
-              flex items-center justify-center 
-              transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
-                'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
-              }
-              ${danger ?
-                'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
-              }
-              w-10 h-10 rounded-full
-            `}
-            style={{
-              minWidth: '40px',
-              border: '1px solid #d9d9d9'
-            }}
-          />
-        </Tooltip>
-      </motion.div>
-    );
-
-    return confirm ? (
-      <Popconfirm
-        title="Are you sure?"
-        onConfirm={confirmAction}
-        okText="Yes"
-        cancelText="No"
-        placement="top"
-      >
-        {button}
-      </Popconfirm>
-    ) : (
-      button
-    );
+  const handleAddRecord = async () => {
+    try {
+      const values = await medicalRecordForm.validateFields();
+      setLoadingActionId(values.user_id);
+      const res = await PostApi("/medical-records", values);
+      if (!res?.error) {
+        message.success("Medical record added successfully");
+        setIsDialogOpen(false);
+        medicalRecordForm.resetFields();
+      } else message.error(res.error);
+    } catch {
+      message.error("Please enter medical notes");
+    } finally {
+      setLoadingActionId(null);
+    }
   };
 
-  // Skeleton columns for loading state
-  const skeletonColumns = [
-    {
-      title: "Patient ID",
-      dataIndex: "id",
-      key: "id",
-      width: 90,
-      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
-    },
-    {
-      title: "Name",
-      dataIndex: "name",
-      key: "name",
-      render: () => <Skeleton.Input active size="small" style={{ width: 120 }} />,
-    },
-    {
-      title: "Gender",
-      dataIndex: "gender",
-      key: "gender",
-      render: () => <Skeleton.Input active size="small" style={{ width: 80 }} />,
-    },
-    {
-      title: "Blood Type",
-      dataIndex: "blood_type",
-      key: "bloodType",
-      render: () => <Skeleton.Input active size="small" style={{ width: 70 }} />,
-    },
-    {
-      title: "Phone",
-      dataIndex: "phone_no",
-      key: "phone",
-      render: () => <Skeleton.Input active size="small" style={{ width: 100 }} />,
-    },
-    {
-      title: "Doctor",
-      dataIndex: "assignedDoctor",
-      key: "assignedDoctor",
-      render: () => <Skeleton.Input active size="small" style={{ width: 110 }} />,
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      render: () => <Skeleton.Input active size="small" style={{ width: 70 }} />,
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 200,
-      render: () => (
-        <Space size="small">
-          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
-          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
-          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
-        </Space>
-      ),
-    },
-  ];
-
+  /** ======================== TABLE COLUMNS ======================== */
   const columns = [
-    {
-      title: "Patient ID",
-      dataIndex: "id",
-      key: "id",
-      width: 90,
-    },
-    {
-      title: "Name",
-      dataIndex: "name",
-      key: "name",
-    },
-    {
-      title: "Gender",
-      dataIndex: "gender",
-      key: "gender",
-    },
-    {
-      title: "Blood Type",
-      dataIndex: "blood_type",
-      key: "bloodType",
-    },
-    {
-      title: "Phone",
-      dataIndex: "phone_no",
-      key: "phone",
-    },
+    { title: "Patient ID", dataIndex: "id", key: "id", width: 90 },
+    { title: "Name", dataIndex: "name", key: "name" },
+    { title: "Gender", dataIndex: "gender", key: "gender" },
+    { title: "Blood Type", dataIndex: "blood_type", key: "bloodType" },
+    { title: "Phone", dataIndex: "phone_no", key: "phone" },
     {
       title: "Doctor",
       dataIndex: ["extra_fields", "fields_data", "assigned_to_doctor"],
       key: "assignedDoctor",
-      render: (doctor: any) => doctor || "Not assigned",
+      render: (doctor: string) => doctor || "Not assigned",
     },
     {
       title: "Status",
       dataIndex: "is_active",
       key: "status",
-      render: (is_active: boolean) => (
-        <Tag color={is_active ? "green" : "red"}>
-          {is_active ? "Active" : "Inactive"}
+      render: (active: boolean) => (
+        <Tag color={active ? "green" : "red"}>
+          {active ? "Active" : "Inactive"}
         </Tag>
       ),
     },
     {
       title: "Actions",
       key: "actions",
-      width: 200,
       render: (_: any, record: any) => (
-        <Space size="small">
+        <Space>
           <ActionButton
             icon={<EditOutlined />}
             label="Edit"
-            type="default"
-            loading={loadingActionId === record.id}
             onClick={() => handleEditPatient(record)}
           />
-
           <ActionButton
             icon={<DeleteOutlined />}
             label="Delete"
             danger
-            loading={loadingActionId === record.id}
             confirm
             confirmAction={() => deletePatient(record)}
           />
-
           <ActionButton
             icon={<FileTextOutlined />}
             label="Add Record"
-            type="default"
-            loading={loadingActionId === record.id}
             onClick={() => handleAddMedicalRecord(record)}
           />
         </Space>
@@ -435,85 +285,141 @@ export default function PatientList() {
     },
   ];
 
-  const handleTableChange = (newPagination: any) => {
-    loadPatients(newPagination.current, newPagination.pageSize);
+  const handleTableChange = (p: any) => {
+    loadPatients(p.current, p.pageSize);
   };
 
-  // Generate skeleton data for loading state
-  const skeletonData = Array.from({ length: pagination.pageSize }, (_, index) => ({
-    key: index,
-    id: index,
-    name: '',
-    gender: '',
-    blood_type: '',
-    phone_no: '',
-    assignedDoctor: '',
-    status: '',
-    actions: '',
-  }));
+  /** ======================== ACTION BUTTON COMPONENT ======================== */
+  const ActionButton = ({
+    icon,
+    label,
+    danger,
+    confirm,
+    confirmAction,
+    onClick,
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    danger?: boolean;
+    confirm?: boolean;
+    confirmAction?: () => void;
+    onClick?: () => void;
+  }) => {
+    const btn = (
+      <motion.div whileHover={{ scale: 1.1 }}>
+        <Tooltip title={label}>
+          <Button
+            danger={danger}
+            icon={icon}
+            onClick={onClick}
+            shape="circle"
+          />
+        </Tooltip>
+      </motion.div>
+    );
 
+    return confirm ? (
+      <Popconfirm title="Are you sure?" onConfirm={confirmAction}>
+        {btn}
+      </Popconfirm>
+    ) : (
+      btn
+    );
+  };
+
+  const handleSearch = () => {
+    loadPatients(1, pagination.pageSize, searchTerm);
+  };
+
+  /** ======================== RENDER ======================== */
   return (
-    <div className="p-6 space-y-6 rounded-lg" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="p-6 space-y-6 rounded-lg" style={{ background: "#f5f5f5" }}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <Title level={2} className="m-0">Patient List</Title>
+      <div className="flex justify-between items-center mb-4">
+        <Title level={2}>Patient List</Title>
         <Space>
           <Button
-            onClick={() => loadPatients()}
             icon={<ReloadOutlined />}
+            onClick={() => loadPatients()}
             loading={tableLoading}
-            className="flex items-center"
           >
             Refresh
           </Button>
           <Button
             type="primary"
-            onClick={() => navigate("/patients/add")}
             icon={<PlusOutlined />}
-            loading={tableLoading}
-            className="flex items-center"
+            onClick={() => navigate("/patients/add")}
           >
             Add Patient
           </Button>
         </Space>
       </div>
 
+      {/* Stats */}
+      <Row gutter={[16, 16]}>
+        {[
+          { title: "Total Users", icon: <TeamOutlined />, value: stats.totalUsers, color: "#667eea" },
+          { title: "Active", icon: <CheckCircleOutlined />, value: stats.activeUsers, color: "#52c41a" },
+          { title: "Recent Joined", icon: <ClockCircleOutlined />, value: stats.recentJoined, color: "#fa8c16" },
+          {
+            title: "Utilization",
+            icon: <DashboardOutlined />,
+            value: Math.round((stats.activeUsers / (stats.totalUsers || 1)) * 100),
+            color: "#36cfc9",
+            suffix: "%",
+          },
+        ].map((stat, i) => (
+          <Col xs={24} sm={12} md={8} lg={6} key={i}>
+            <Card>
+              {statsLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic
+                  title={
+                    <Space>
+                      {stat.icon} {stat.title}
+                    </Space>
+                  }
+                  value={stat.value}
+                  valueStyle={{ color: stat.color }}
+                  suffix={stat.suffix}
+                />
+              )}
+            </Card>
+          </Col>
+        ))}
+      </Row>
 
-      <Card className="border-0 shadow-sm mb-15">
+      {/* Filters */}
+      <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Filter className="w-5 h-5 text-blue-600" />
-            Filters & Search
+            <Filter className="w-5 h-5 text-blue-600" /> Filters & Search
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex gap-4">
             <div className="flex-1">
               <div className="relative">
-                {/* <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" /> */}
-                <Input.Search
-                  placeholder="Search patients, doctors, or dates..."
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search nurses by name, email, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onPressEnter={handleSearch}
                   className="pl-10 h-12"
-                  onSearch={() => { loadPatients(pagination.current, pagination.pageSize, searchTerm) }}
+                  suffix={
+                    <Button
+                      type="text"
+                      icon={<SearchOutlined />}
+                      onClick={handleSearch}
+                      loading={tableLoading}
+                    />
+                  }
                 />
               </div>
             </div>
-            {/* <div className="w-full md:w-48">
-              <UISelect value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </UISelect>
-            </div> */}
-            <UIButton onClick={() => exportPatients()} variant="outline" className="h-12 px-6">
+            <UIButton onClick={() => exportPatients()} variant="outline">
               <Download className="w-4 h-4 mr-2" />
               Export
             </UIButton>
@@ -521,29 +427,25 @@ export default function PatientList() {
         </CardContent>
       </Card>
 
-      {/* Patients Table with Skeleton Loading */}
-      <Card
-        bodyStyle={{ padding: 0 }}
-        className="overflow-hidden"
-      >
+      {/* Table */}
+      <Card>
         <Table
-          dataSource={tableLoading ? skeletonData : patients}
-          columns={tableLoading ? skeletonColumns : columns}
-          rowKey={tableLoading ? "key" : "id"}
-          pagination={
-            tableLoading ? false : {
-              current: pagination.current,
-              pageSize: pagination.pageSize,
-              total: pagination.total,
-            }
-          }
+          dataSource={patients}
+          columns={columns}
+          rowKey="id"
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showQuickJumper: true,
+          }}
           onChange={handleTableChange}
-          scroll={{ x: 800 }}
-          loading={false} // We handle loading ourselves with skeleton
+          loading={tableLoading}
         />
       </Card>
 
-      {/* Modal for adding medical record */}
+      {/* Add Medical Record Modal */}
       <Modal
         title="Add Medical Record"
         open={isDialogOpen}
@@ -551,49 +453,25 @@ export default function PatientList() {
           setIsDialogOpen(false);
           medicalRecordForm.resetFields();
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setIsDialogOpen(false);
-              medicalRecordForm.resetFields();
-            }}
-          >
-            Cancel
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={loadingActionId === medicalRecordForm.getFieldValue('user_id')}
-            onClick={handleAddRecord}
-            icon={<FileTextOutlined />}
-          >
-            Add Record
-          </Button>,
-        ]}
-        width={500}
+        onOk={handleAddRecord}
+        okText="Add Record"
+        confirmLoading={loadingActionId === medicalRecordForm.getFieldValue("user_id")}
       >
-        <Form
-          form={medicalRecordForm}
-          layout="vertical"
-        >
+        <Form form={medicalRecordForm} layout="vertical">
           <Form.Item name="user_id" hidden>
             <Input />
           </Form.Item>
           <Form.Item
             name="notes"
             label="Medical Notes"
-            rules={[{ required: true, message: 'Please enter medical notes' }]}
+            rules={[{ required: true, message: "Please enter medical notes" }]}
           >
-            <TextArea
-              rows={4}
-              placeholder="Enter medical notes, diagnosis, treatment details..."
-            />
+            <TextArea rows={4} placeholder="Enter diagnosis, treatment..." />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* Modal for editing patient */}
+      {/* Edit Patient Modal */}
       <Modal
         title={
           <Space>
@@ -607,158 +485,97 @@ export default function PatientList() {
           setSelectedPatient(null);
           form.resetFields();
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setIsModalOpen(false);
-              setSelectedPatient(null);
-              form.resetFields();
-            }}
-          >
-            Cancel
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={isLoading}
-            onClick={handleSubmit}
-          >
-            Save Changes
-          </Button>,
-        ]}
+        onOk={handleSubmit}
+        confirmLoading={isLoading}
         width={800}
-        style={{ top: 20 }}
       >
-        <Spin spinning={loadingStates.departments || loadingStates.extraFields}>
-          <Form
-            form={form}
-            layout="vertical"
-            className="mt-4"
-          >
+        <Spin spinning={false}>
+          <Form form={form} layout="vertical">
             <Row gutter={16}>
               <Col span={12}>
-                <Title level={4}>Personal Information</Title>
-
-                <Form.Item
-                  name={['extra_fields', 'first_name']}
-                  label="First Name"
-                >
-                  <Input placeholder="Enter first name" />
+                <Title level={4}>Personal Info</Title>
+                <Form.Item name={["extra_fields", "first_name"]} label="First Name">
+                  <Input />
                 </Form.Item>
-
-                <Form.Item
-                  name={['extra_fields', 'last_name']}
-                  label="Last Name"
-                >
-                  <Input placeholder="Enter last name" />
+                <Form.Item name={["extra_fields", "last_name"]} label="Last Name">
+                  <Input />
                 </Form.Item>
-
                 <Form.Item
                   name="email"
                   label="Email"
-                  rules={[{ required: true, type: 'email', message: 'Please enter a valid email' }]}
+                  rules={[{ required: true, type: "email" }]}
                 >
-                  <Input placeholder="Enter email" />
+                  <Input />
                 </Form.Item>
-
-                <Form.Item
-                  name="phone_no"
-                  label="Phone Number"
-                  rules={[{ required: true, message: 'Please enter phone number' }]}
-                >
-                  <Input placeholder="Enter phone number" />
+                <Form.Item name="phone_no" label="Phone Number" rules={[{ required: true }]}>
+                  <Input />
                 </Form.Item>
-
-                <Form.Item
-                  name="gender"
-                  label="Gender"
-                  rules={[{ required: true, message: 'Please select gender' }]}
-                >
-                  <Select placeholder="Select gender">
+                <Form.Item name="gender" label="Gender" rules={[{ required: true }]}>
+                  <Select>
                     <Option value="Male">Male</Option>
                     <Option value="Female">Female</Option>
                     <Option value="Other">Other</Option>
                   </Select>
                 </Form.Item>
-
                 <Form.Item
                   name="date_of_birth"
                   label="Date of Birth"
-                  rules={[{ required: true, message: 'Please select date of birth' }]}
+                  rules={[{ required: true }]}
                 >
                   <Input type="date" />
                 </Form.Item>
-
-                <Form.Item
-                  name="blood_type"
-                  label="Blood Type"
-                >
-                  <Select placeholder="Select blood type">
-                    <Option value="A+">A+</Option>
-                    <Option value="A-">A-</Option>
-                    <Option value="B+">B+</Option>
-                    <Option value="B-">B-</Option>
-                    <Option value="AB+">AB+</Option>
-                    <Option value="AB-">AB-</Option>
-                    <Option value="O+">O+</Option>
-                    <Option value="O-">O-</Option>
+                <Form.Item name="blood_type" label="Blood Type">
+                  <Select>
+                    {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((b) => (
+                      <Option key={b} value={b}>
+                        {b}
+                      </Option>
+                    ))}
                   </Select>
                 </Form.Item>
               </Col>
 
               <Col span={12}>
-                <Title level={4}>Address Information</Title>
-
+                <Title level={4}>Address</Title>
                 <Form.Item
-                  name={['address', 'city']}
+                  name={["address", "city"]}
                   label="City"
-                  rules={[{ required: true, message: 'Please enter city' }]}
+                  rules={[{ required: true }]}
                 >
-                  <Input placeholder="Enter city" />
+                  <Input />
                 </Form.Item>
-
                 <Form.Item
-                  name={['address', 'state']}
+                  name={["address", "state"]}
                   label="State"
-                  rules={[{ required: true, message: 'Please enter state' }]}
+                  rules={[{ required: true }]}
                 >
-                  <Input placeholder="Enter state" />
+                  <Input />
                 </Form.Item>
-
                 <Form.Item
-                  name={['address', 'zip_code']}
+                  name={["address", "zip_code"]}
                   label="ZIP Code"
-                  rules={[{ required: true, message: 'Please enter ZIP code' }]}
+                  rules={[{ required: true }]}
                 >
-                  <Input placeholder="Enter ZIP code" />
+                  <Input />
                 </Form.Item>
-
                 <Form.Item
-                  name={['address', 'country']}
+                  name={["address", "country"]}
                   label="Country"
-                  rules={[{ required: true, message: 'Please select country' }]}
+                  rules={[{ required: true }]}
                 >
-                  <Select placeholder="Select country">
-                    {countries.map((country) => (
-                      <Option key={country} value={country}>
-                        {country}
+                  <Select>
+                    {countries.map((c) => (
+                      <Option key={c} value={c}>
+                        {c}
                       </Option>
                     ))}
                   </Select>
                 </Form.Item>
-
-                <Form.Item
-                  name="department_id"
-                  label="Department"
-                >
-                  <Select
-                    placeholder="Select department"
-                    loading={loadingStates.departments}
-                  >
-                    {departments.map((dept) => (
-                      <Option key={dept.id} value={dept.id}>
-                        {dept.name}
+                <Form.Item name="department_id" label="Department">
+                  <Select loading={false}>
+                    {departments.map((d) => (
+                      <Option key={d.id} value={d.id}>
+                        {d.name}
                       </Option>
                     ))}
                   </Select>

@@ -16,7 +16,8 @@ import {
   Col,
   Tooltip,
   Skeleton,
-  Spin
+  Spin,
+  Statistic
 } from "antd";
 import {
   PlusOutlined,
@@ -29,70 +30,190 @@ import {
   DeleteOutlined,
   TeamOutlined,
   ReloadOutlined,
-  ExperimentOutlined
+  ExperimentOutlined,
+  DashboardOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  SearchOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { countries } from "@/Components/Patients/AddPatient";
 import { DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
-import { DepartmentInterface } from "@/Components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
-import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
 import { Download, Filter, Search } from "lucide-react";
-import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button as UIButton } from "@/components/ui/button";
+import { DepartmentInterface } from "../Departments/Departments";
+import { CardContent, CardHeader, CardTitle } from "../ui/card";
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import { countries } from "../Patients/AddPatient";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
 
+// Type definitions
+interface ExtraField {
+  field_name: string;
+  is_mandatory: boolean;
+  user_type: number;
+  user_type_data: {
+    type: string;
+  };
+}
+
+interface Address {
+  street: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+}
+
+interface ExtraFieldsData {
+  fields_data?: Record<string, any>;
+}
+
+interface Technician {
+  id?: number;
+  department_id?: number;
+  blood_type?: string;
+  address?: Address;
+  extra_fields?: ExtraFieldsData;
+  user_type_id?: number;
+  date_of_birth?: string;
+  gender?: string;
+  email?: string;
+  phone_no?: string;
+  is_active?: boolean;
+  name?: string;
+}
+
+interface TechnicianStats {
+  total_records?: number;
+  active_records?: number;
+  inactive_records?: number;
+  recently_added?: number;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface LoadingStates {
+  departments: boolean;
+  extraFields: boolean;
+  table: boolean;
+}
+
+interface ActionButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  type?: "primary" | "default" | "dashed" | "link" | "text";
+  danger?: boolean;
+  onClick?: () => void;
+  loading?: boolean;
+  confirm?: boolean;
+  confirmAction?: () => void;
+}
+
+interface FormValues {
+  extra_fields?: Record<string, any>;
+  department_id?: number;
+  date_of_birth?: string;
+  gender?: string;
+  email?: string;
+  phone_no?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  country?: string;
+}
+
+interface ApiResponse {
+  error?: string;
+  data?: any;
+  total_records?: number;
+  active_records?: number;
+  inactive_records?: number;
+  recently_added?: number;
+}
+
 export default function TechnicianList() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [technicians, setTechnicians] = useState<Patient[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [form] = Form.useForm();
-  const [selectedTechnician, setSelectedTechnician] = useState<any>(null);
-  const [extraFields, setExtraFields] = useState<any>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null);
+  const [extraFields, setExtraFields] = useState<ExtraField[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
-  const [tableLoading, setTableLoading] = useState(false);
-  const [loadingStates, setLoadingStates] = useState({
+  const [tableLoading, setTableLoading] = useState<boolean>(false);
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
     departments: false,
     extraFields: false,
     table: false
   });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
+  const [stats, setStats] = useState<TechnicianStats>({});
+  const [statsLoading, setStatsLoading] = useState<boolean>(true);
+
   const userTypeId = useMemo(() => {
     return extraFields?.[0]?.user_type;
   }, [extraFields]);
 
-  
-   async function exportTechnicians(format = 'csv') {
-    try {
-      await DownloadApi(`/export?type=users&user_type=labtechnician&format=${format}`, format);
-    } catch (err) {
-      console.error('Export error:', err);
-      alert('Something went wrong while exporting.');
-    }
-  }
-
   const navigate = useNavigate();
 
+  // Fetch stats function
+  const loadStats = async (): Promise<void> => {
+    setStatsLoading(true);
+    try {
+      const data: ApiResponse = await getApi("/users?user_type=LABTECHNICIAN&stats=true");
+      if (!data?.error) {
+        setStats({
+          total_records: data.total_records,
+          active_records: data.active_records,
+          inactive_records: data.inactive_records,
+          recently_added: data.recently_added,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const exportTechnicians = async (format: string = 'csv'): Promise<void> => {
+    try {
+      await DownloadApi(`/export?type=users&user_type=labtechnician&format=${format}`, format);
+      toast.success(`Technicians exported successfully as ${format.toUpperCase()}`);
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.error('Something went wrong while exporting.');
+    }
+  };
+
   // Fetch data functions
-  const getExtraFields = async () => {
+  const getExtraFields = async (): Promise<void> => {
     setLoadingStates(prev => ({ ...prev, extraFields: true }));
     try {
-      const data = await getApi("/user-fields");
+      const data: ApiResponse = await getApi("/user-fields");
       if (!data?.error) {
-        setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "LABTECHNICIAN"));
+        const technicianFields = data.data.filter((field: ExtraField) => 
+          field.user_type_data?.type?.toUpperCase() === "LABTECHNICIAN"
+        );
+        setExtraFields(technicianFields);
       } else {
         toast.error("Error fetching technician fields: " + data.error);
       }
@@ -104,20 +225,35 @@ export default function TechnicianList() {
     }
   };
 
-  const loadTechnicians = async (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) => {
+  const loadTechnicians = async (
+    page: number = pagination.current, 
+    limit: number = pagination.pageSize, 
+    searchQuery: string = searchTerm, 
+    status: string = statusFilter
+  ): Promise<void> => {
     setTableLoading(true);
     try {
-      const data = await getApi(`/users?user_type=LABTECHNICIAN&page=${page}&limit=${limit}&q=${searchQuery}`);
+      let url = `/users?user_type=LABTECHNICIAN&page=${page}&limit=${limit}`;
+      
+      if (searchQuery) {
+        url += `&q=${encodeURIComponent(searchQuery)}`;
+      }
+      
+      if (status !== "all") {
+        url += `&status=${status}`;
+      }
+
+      const data: ApiResponse = await getApi(url);
       if (!data?.error) {
         setPagination(prev => ({
           ...prev,
           current: page,
           pageSize: limit,
-          total: data.total_records,
+          total: data.total_records || 0,
         }));
-        setTechnicians(data.data);
+        setTechnicians(data.data || []);
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to load technicians");
       }
     } catch (error) {
       toast.error("Error getting technicians");
@@ -127,14 +263,14 @@ export default function TechnicianList() {
     }
   };
 
-  const loadDepartments = async () => {
+  const loadDepartments = async (): Promise<void> => {
     setLoadingStates(prev => ({ ...prev, departments: true }));
     try {
-      const data = await getApi('/departments');
-      if (!data.error) {
-        setDepartments(data.data);
+      const data: ApiResponse = await getApi('/departments');
+      if (!data?.error) {
+        setDepartments(data.data || []);
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to load departments");
       }
     } catch (error) {
       console.error("Error fetching departments:", error);
@@ -145,39 +281,47 @@ export default function TechnicianList() {
   };
 
   useEffect(() => {
-    loadTechnicians(pagination.current, pagination.pageSize);
+    loadTechnicians();
     loadDepartments();
     getExtraFields();
+    loadStats();
   }, []);
 
   // Form submission handler
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: FormValues): Promise<void> => {
     setIsLoading(true);
 
     try {
       const formData = {
         ...values,
         name: `${values?.extra_fields?.first_name || ''} ${values?.extra_fields?.last_name || ''}`.trim(),
-        user_type_id: selectedTechnician ? selectedTechnician.user_type_id : 5, // Assuming 5 is LABTECHNICIAN type
+        user_type_id: selectedTechnician ? selectedTechnician.user_type_id : 5,
         id: selectedTechnician?.id,
         address: {
-          street: values.street,
-          city: values.city,
-          state: values.state,
-          zip_code: values.zip_code,
-          country: values.country,
+          street: values.street || '',
+          city: values.city || '',
+          state: values.state || '',
+          zip_code: values.zip_code || '',
+          country: values.country || '',
+        },
+        extra_fields: {
+          fields_data: values.extra_fields || {}
         }
       };
 
-      const data = await PutApi(`/users`, formData);
+      const endpoint = '/users';
+      const apiMethod = selectedTechnician ? PutApi : PostApi;
+
+      const data: ApiResponse = await apiMethod(endpoint, formData);
       if (!data?.error) {
         toast.success(selectedTechnician ? "Technician updated successfully!" : "Technician added successfully!");
         loadTechnicians(pagination.current, pagination.pageSize);
+        loadStats();
         setIsModalOpen(false);
         setSelectedTechnician(null);
         form.resetFields();
       } else {
-        toast.error(data.error);
+        toast.error(data.error || `Failed to ${selectedTechnician ? 'update' : 'add'} technician`);
       }
     } catch (error) {
       toast.error(`Error ${selectedTechnician ? 'updating' : 'adding'} technician`);
@@ -187,20 +331,34 @@ export default function TechnicianList() {
     }
   };
 
-  const handleTableChange = (newPagination: any) => {
-    loadTechnicians(newPagination.current, newPagination.pageSize);
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
+    if (newPagination.current && newPagination.pageSize) {
+      setPagination({
+        current: newPagination.current,
+        pageSize: newPagination.pageSize,
+        total: newPagination.total || 0,
+      });
+      loadTechnicians(newPagination.current, newPagination.pageSize);
+    }
   };
 
   // Delete technician handler
-  const deleteTechnician = async (record: any) => {
+  const deleteTechnician = async (record: Technician): Promise<void> => {
+    if (!record.id) return;
+    
     setLoadingActionId(record.id);
     try {
-      const data = await PutApi(`/users`, { ...record, is_active: false });
+      const data: ApiResponse = await PutApi(`/users`, { 
+        ...record, 
+        is_active: false,
+        id: record.id 
+      });
       if (!data?.error) {
         toast.success("Technician deactivated successfully!");
         loadTechnicians(pagination.current, pagination.pageSize);
+        loadStats(); // Refresh stats after deactivation
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to deactivate technician");
       }
     } catch (error) {
       toast.error("Error deactivating technician");
@@ -211,9 +369,10 @@ export default function TechnicianList() {
   };
 
   // Open modal for editing
-  const handleEdit = (record: any) => {
+  const handleEdit = (record: Technician): void => {
     setSelectedTechnician(record);
-    form.setFieldsValue({
+    
+    const formValues: FormValues = {
       extra_fields: { ...record.extra_fields?.fields_data ?? {} },
       department_id: record.department_id,
       date_of_birth: record.date_of_birth?.split("T")[0],
@@ -225,15 +384,23 @@ export default function TechnicianList() {
       state: record.address?.state,
       zip_code: record.address?.zip_code,
       country: record.address?.country,
-    });
+    };
+
+    form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };
 
   // Close modal
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setIsModalOpen(false);
     setSelectedTechnician(null);
     form.resetFields();
+  };
+
+  // Handle search
+  const handleSearch = (): void => {
+    setPagination(prev => ({ ...prev, current: 1 }));
+    loadTechnicians(1, pagination.pageSize, searchTerm, statusFilter);
   };
 
   // Enhanced Action Button Component
@@ -246,19 +413,10 @@ export default function TechnicianList() {
     loading = false,
     confirm = false,
     confirmAction
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    type?: "primary" | "default" | "dashed" | "link" | "text";
-    danger?: boolean;
-    onClick?: () => void;
-    loading?: boolean;
-    confirm?: boolean;
-    confirmAction?: () => void;
-  }) => {
+  }: ActionButtonProps): React.ReactElement => {
     const button = (
       <motion.div
-        whileHover={{ scale: 1.1 }}
+        whileHover={{ scale: 1.05 }}
         transition={{ type: "spring", stiffness: 250 }}
       >
         <Tooltip title={label} placement="top">
@@ -271,7 +429,7 @@ export default function TechnicianList() {
             className={`
               flex items-center justify-center 
               transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
+              ${!danger && type !== 'primary' ?
                 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
               }
               ${danger ?
@@ -290,7 +448,7 @@ export default function TechnicianList() {
 
     return confirm ? (
       <Popconfirm
-        title="Are you sure?"
+        title="Are you sure you want to deactivate this technician?"
         onConfirm={confirmAction}
         okText="Yes"
         cancelText="No"
@@ -304,7 +462,7 @@ export default function TechnicianList() {
   };
 
   // Skeleton columns for loading state
-  const skeletonColumns = [
+  const skeletonColumns: ColumnsType<any> = [
     {
       title: "Technician ID",
       dataIndex: "id",
@@ -375,7 +533,7 @@ export default function TechnicianList() {
   ];
 
   // Actual columns
-  const columns = [
+  const columns: ColumnsType<Technician> = [
     {
       title: "Technician ID",
       dataIndex: "id",
@@ -389,7 +547,7 @@ export default function TechnicianList() {
       render: (text: string) => (
         <Space>
           <UserOutlined className="text-blue-500" />
-          <Text strong>{text}</Text>
+          <Text strong>{text || 'N/A'}</Text>
         </Space>
       ),
     },
@@ -398,6 +556,7 @@ export default function TechnicianList() {
       dataIndex: "gender",
       key: "gender",
       width: 100,
+      render: (gender: string) => gender || 'N/A',
     },
     {
       title: "Blood Type",
@@ -417,7 +576,7 @@ export default function TechnicianList() {
       render: (phone: string) => (
         <Space>
           <PhoneOutlined className="text-green-500" />
-          {phone}
+          {phone || 'N/A'}
         </Space>
       ),
     },
@@ -445,7 +604,7 @@ export default function TechnicianList() {
       title: "Actions",
       key: "actions",
       width: 150,
-      render: (_: any, record: any) => (
+      render: (_: any, record: Technician) => (
         <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
@@ -455,14 +614,16 @@ export default function TechnicianList() {
             onClick={() => handleEdit(record)}
           />
 
-          <ActionButton
-            icon={<DeleteOutlined />}
-            label="Delete"
-            danger
-            loading={loadingActionId === record.id}
-            confirm
-            confirmAction={() => deleteTechnician(record)}
-          />
+          {record.is_active && (
+            <ActionButton
+              icon={<DeleteOutlined />}
+              label="Deactivate"
+              danger
+              loading={loadingActionId === record.id}
+              confirm
+              confirmAction={() => deleteTechnician(record)}
+            />
+          )}
         </Space>
       ),
     },
@@ -488,7 +649,10 @@ export default function TechnicianList() {
         <Title level={2} className="m-0">Lab Technician Management</Title>
         <Space>
           <Button
-            onClick={() => loadTechnicians()}
+            onClick={() => {
+              loadTechnicians();
+              loadStats();
+            }}
             icon={<ReloadOutlined />}
             loading={tableLoading}
             className="flex items-center"
@@ -497,9 +661,8 @@ export default function TechnicianList() {
           </Button>
           <Button
             type="primary"
-            onClick={() => navigate("/technicians/add")}
+            onClick={() => setIsModalOpen(true)}
             icon={<PlusOutlined />}
-            loading={tableLoading}
             className="flex items-center"
           >
             Add Technician
@@ -507,8 +670,65 @@ export default function TechnicianList() {
         </Space>
       </div>
 
+      {/* Statistics Cards */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><TeamOutlined /> Total Technicians</Space>}
+                value={stats.total_records || 0}
+                valueStyle={{ color: '#667eea' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><CheckCircleOutlined /> Active</Space>}
+                value={stats.active_records || 0}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><ClockCircleOutlined /> Recent Joined</Space>}
+                value={stats.recently_added || 0}
+                valueStyle={{ color: '#fa8c16' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><DashboardOutlined /> Utilization</Space>}
+                value={Math.round(((stats.active_records || 0) / (stats.total_records || 1)) * 100)}
+                suffix="%"
+                valueStyle={{ color: '#36cfc9' }}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
 
-      <Card className="border-0 shadow-sm mb-15">
+      {/* Filters & Search */}
+      <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <Filter className="w-5 h-5 text-blue-600" />
@@ -520,29 +740,41 @@ export default function TechnicianList() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <Input.Search
-                  placeholder="Search patients, doctors, or dates..."
+                <Input
+                  placeholder="Search nurses by name, email, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onPressEnter={handleSearch}
                   className="pl-10 h-12"
-                  onSearch={() => { loadTechnicians(pagination.current, pagination.pageSize, searchTerm) }}
+                  suffix={
+                    <Button 
+                      type="text" 
+                      icon={<SearchOutlined />} 
+                      onClick={handleSearch}
+                      loading={tableLoading}
+                    />
+                  }
                 />
               </div>
             </div>
-            {/* <div className="w-full md:w-48">
-              <UISelect value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </UISelect>
-            </div> */}
-            <UIButton onClick={() => exportTechnicians()} variant="outline" className="h-12 px-6">
+            <div className="w-full md:w-48">
+              <Select
+                value={statusFilter}
+                onChange={(value: string) => setStatusFilter(value)}
+                className="w-full h-12"
+                placeholder="Filter by status"
+              >
+                <Option value="all">All Status</Option>
+                <Option value="active">Active</Option>
+                <Option value="inactive">Inactive</Option>
+              </Select>
+            </div>
+            <UIButton 
+              onClick={() => exportTechnicians()} 
+              variant="outline" 
+              className="h-12 px-6"
+              disabled={tableLoading}
+            >
               <Download className="w-4 h-4 mr-2" />
               Export
             </UIButton>
@@ -572,7 +804,7 @@ export default function TechnicianList() {
           }
           onChange={handleTableChange}
           scroll={{ x: 1000 }}
-          loading={false} // We handle loading ourselves with skeleton
+          loading={false}
         />
       </Card>
 
@@ -589,6 +821,7 @@ export default function TechnicianList() {
         footer={null}
         width={800}
         style={{ top: 20 }}
+        destroyOnClose
       >
         <Spin spinning={loadingStates.departments || loadingStates.extraFields}>
           <Form
@@ -603,7 +836,7 @@ export default function TechnicianList() {
                 <Title level={4} className="!mb-4">Personal Information</Title>
               </Col>
 
-              {extraFields.map((field: any) => (
+              {extraFields.map((field: ExtraField) => (
                 <Col span={12} key={field.field_name}>
                   <Form.Item
                     label={field.field_name}
@@ -797,6 +1030,7 @@ export default function TechnicianList() {
               <Button
                 onClick={handleCancel}
                 size="large"
+                disabled={isLoading}
               >
                 Cancel
               </Button>

@@ -16,7 +16,8 @@ import {
   Col,
   Tooltip,
   Skeleton,
-  Spin
+  Spin,
+  Statistic
 } from "antd";
 import {
   SearchOutlined,
@@ -29,33 +30,107 @@ import {
   EditOutlined,
   DeleteOutlined,
   TeamOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  DashboardOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { countries } from "@/Components/Patients/AddPatient";
-import { DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
-import { DepartmentInterface } from "@/Components/Departments/Departments";
-import { Patient } from "@/types/patient";
+import { DownloadApi, getApi, PutApi } from "@/ApiService";
 import { useNavigate } from "react-router-dom";
-import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
 import { Download, Filter, Search } from "lucide-react";
-import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button as UIButton } from "@/components/ui/button";
+import { DepartmentInterface } from "../Departments/Departments";
+import { CardContent, CardHeader, CardTitle } from "../ui/card";
+import { countries } from "./AddNurse";
 
 const { Title, Text } = Typography;
 
+// Type definitions
+interface ExtraField {
+  id: number;
+  field_name: string;
+  is_mandatory: boolean;
+  user_type: number;
+  user_type_data: {
+    type: string;
+  };
+}
+
+interface Nurse {
+  id: number;
+  name: string;
+  gender: string;
+  blood_type?: string;
+  phone_no: string;
+  email: string;
+  department_id?: number;
+  is_active: boolean;
+  date_of_birth?: string;
+  user_type_id: number;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip_code: string;
+    country: string;
+  };
+  extra_fields?: {
+    fields_data?: Record<string, any>;
+  };
+}
+
+interface Stats {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  recentJoined: number;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface LoadingStates {
+  departments: boolean;
+  extraFields: boolean;
+  table: boolean;
+}
+
+interface ActionButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  type?: "primary" | "default" | "dashed" | "link" | "text";
+  danger?: boolean;
+  onClick?: () => void;
+  loading?: boolean;
+  confirm?: boolean;
+  confirmAction?: () => void;
+}
+
+interface ApiResponse {
+  data?: any;
+  error?: string;
+  total_records?: number;
+  active_records?: number;
+  inactive_records?: number;
+  recently_added?: number;
+}
+
 export default function NurseList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [nurses, setNurses] = useState<Patient[]>([]);
+  const [nurses, setNurses] = useState<Nurse[]>([]);
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [form] = Form.useForm();
-  const [selectedNurse, setSelectedNurse] = useState<any>(null);
-  const [extraFields, setExtraFields] = useState<any>([]);
+  const [selectedNurse, setSelectedNurse] = useState<Nurse | null>(null);
+  const [extraFields, setExtraFields] = useState<ExtraField[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
   const [tableLoading, setTableLoading] = useState(false);
-  const [loadingStates, setLoadingStates] = useState({
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
     departments: false,
     extraFields: false,
     table: false
@@ -63,11 +138,20 @@ export default function NurseList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
+  
+  const [stats, setStats] = useState<Stats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0,
+    recentJoined: 0,
+  });
+  
+  const [statsLoading, setStatsLoading] = useState(true);
 
   const userTypeId = useMemo(() => {
     return extraFields?.[0]?.user_type;
@@ -75,23 +159,27 @@ export default function NurseList() {
 
   const navigate = useNavigate();
 
-
-  async function exportNurse(format = 'csv') {
+  // Export function
+  const exportNurses = async (format = 'csv') => {
     try {
       await DownloadApi(`/export?type=users&user_type=nurse&format=${format}`, format);
+      toast.success(`Nurses exported successfully as ${format.toUpperCase()}`);
     } catch (err) {
       console.error('Export error:', err);
-      alert('Something went wrong while exporting.');
+      toast.error('Something went wrong while exporting.');
     }
-  }
+  };
 
   // Fetch data functions
   const getExtraFields = async () => {
     setLoadingStates(prev => ({ ...prev, extraFields: true }));
     try {
-      const data = await getApi("/user-fields");
+      const data: ApiResponse = await getApi("/user-fields");
       if (!data?.error) {
-        setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "NURSE"));
+        const nurseFields = data.data.filter((field: ExtraField) => 
+          field.user_type_data.type.toUpperCase() === "NURSE"
+        );
+        setExtraFields(nurseFields);
       } else {
         toast.error("Error fetching nurse fields: " + data.error);
       }
@@ -103,18 +191,34 @@ export default function NurseList() {
     }
   };
 
-  const loadNurses = async (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) => {
+  const loadNurses = async (
+    page = pagination.current, 
+    limit = pagination.pageSize, 
+    searchQuery = searchTerm, 
+    status = statusFilter
+  ) => {
     setTableLoading(true);
     try {
-      const data = await getApi(`/users?user_type=NURSE&page=${page}&limit=${limit}&q=${searchQuery}`);
+      const data: ApiResponse = await getApi(
+        `/users?user_type=NURSE&page=${page}&limit=${limit}&q=${searchQuery}`
+      );
       if (!data?.error) {
         setPagination(prev => ({
           ...prev,
           current: page,
           pageSize: limit,
-          total: data.total_records,
+          total: data.total_records || 0,
         }));
-        setNurses(data.data);
+        setNurses(data.data || []);
+        
+        // Update stats
+        setStats({
+          totalUsers: data.total_records || 0,
+          activeUsers: data.active_records || 0,
+          inactiveUsers: data.inactive_records || 0,
+          recentJoined: data.recently_added || 0,
+        });
+        setStatsLoading(false);
       } else {
         toast.error(data.error);
       }
@@ -129,9 +233,9 @@ export default function NurseList() {
   const loadDepartments = async () => {
     setLoadingStates(prev => ({ ...prev, departments: true }));
     try {
-      const data = await getApi('/departments');
+      const data: ApiResponse = await getApi('/departments');
       if (!data.error) {
-        setDepartments(data.data);
+        setDepartments(data.data || []);
       } else {
         toast.error(data.error);
       }
@@ -144,7 +248,7 @@ export default function NurseList() {
   };
 
   useEffect(() => {
-    loadNurses(pagination.current, pagination.pageSize);
+    loadNurses();
     loadDepartments();
     getExtraFields();
   }, []);
@@ -157,20 +261,22 @@ export default function NurseList() {
       const formData = {
         ...values,
         name: `${values?.extra_fields?.first_name || ''} ${values?.extra_fields?.last_name || ''}`.trim(),
-        user_type_id: selectedNurse ? selectedNurse.user_type_id : 4,
+        user_type_id: selectedNurse ? selectedNurse.user_type_id : 4, // Assuming 4 is nurse type ID
         id: selectedNurse?.id,
         address: {
-          street: values.street,
-          city: values.city,
-          state: values.state,
-          zip_code: values.zip_code,
-          country: values.country,
+          street: values.street || '',
+          city: values.city || '',
+          state: values.state || '',
+          zip_code: values.zip_code || '',
+          country: values.country || '',
         }
       };
 
-      const data = await PutApi(`/users`, formData);
+      const data: ApiResponse = await PutApi(`/users`, formData);
       if (!data?.error) {
-        toast.success(selectedNurse ? "Nurse updated successfully!" : "Nurse added successfully!");
+        toast.success(
+          selectedNurse ? "Nurse updated successfully!" : "Nurse added successfully!"
+        );
         loadNurses(pagination.current, pagination.pageSize);
         setIsModalOpen(false);
         setSelectedNurse(null);
@@ -191,10 +297,10 @@ export default function NurseList() {
   };
 
   // Delete nurse handler
-  const deleteNurse = async (record: any) => {
+  const deleteNurse = async (record: Nurse) => {
     setLoadingActionId(record.id);
     try {
-      const data = await PutApi(`/users`, { ...record, is_active: false });
+      const data: ApiResponse = await PutApi(`/users`, { ...record, is_active: false });
       if (!data?.error) {
         toast.success("Nurse deactivated successfully!");
         loadNurses(pagination.current, pagination.pageSize);
@@ -210,10 +316,10 @@ export default function NurseList() {
   };
 
   // Open modal for editing
-  const handleEdit = (record: any) => {
+  const handleEdit = (record: Nurse) => {
     setSelectedNurse(record);
-    form.setFieldsValue({
-      ...record.extra_fields?.fields_data,
+    const formValues = {
+      extra_fields: { ...record.extra_fields?.fields_data ?? {} },
       department_id: record.department_id,
       date_of_birth: record.date_of_birth?.split("T")[0],
       gender: record.gender,
@@ -224,7 +330,9 @@ export default function NurseList() {
       state: record.address?.state,
       zip_code: record.address?.zip_code,
       country: record.address?.country,
-    });
+    };
+    
+    form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };
 
@@ -245,20 +353,12 @@ export default function NurseList() {
     loading = false,
     confirm = false,
     confirmAction
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    type?: "primary" | "default" | "dashed" | "link" | "text";
-    danger?: boolean;
-    onClick?: () => void;
-    loading?: boolean;
-    confirm?: boolean;
-    confirmAction?: () => void;
-  }) => {
+  }: ActionButtonProps) => {
     const button = (
       <motion.div
-        whileHover={{ scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 250 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
       >
         <Tooltip title={label} placement="top">
           <Button
@@ -269,17 +369,17 @@ export default function NurseList() {
             onClick={onClick}
             className={`
               flex items-center justify-center 
-              transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
+              transition-all duration-200 ease-in-out
+              ${!danger && type === "default" ?
                 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
               }
               ${danger ?
                 'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
               }
-              w-10 h-10 rounded-full
+              w-9 h-9 rounded-lg
             `}
             style={{
-              minWidth: '40px',
+              minWidth: '36px',
               border: '1px solid #d9d9d9'
             }}
           />
@@ -287,19 +387,27 @@ export default function NurseList() {
       </motion.div>
     );
 
-    return confirm ? (
-      <Popconfirm
-        title="Are you sure?"
-        onConfirm={confirmAction}
-        okText="Yes"
-        cancelText="No"
-        placement="top"
-      >
-        {button}
-      </Popconfirm>
-    ) : (
-      button
-    );
+    if (confirm && confirmAction) {
+      return (
+        <Popconfirm
+          title="Are you sure you want to deactivate this nurse?"
+          description="This action can be reversed by editing the nurse."
+          onConfirm={confirmAction}
+          okText="Yes"
+          cancelText="No"
+          placement="top"
+        >
+          {button}
+        </Popconfirm>
+      );
+    }
+
+    return button;
+  };
+
+  // Search handler
+  const handleSearch = () => {
+    loadNurses(1, pagination.pageSize, searchTerm);
   };
 
   // Skeleton columns for loading state
@@ -308,8 +416,8 @@ export default function NurseList() {
       title: "Nurse ID",
       dataIndex: "id",
       key: "id",
-      width: 100,
-      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
+      width: 120,
+      render: () => <Skeleton.Input active size="small" style={{ width: 80 }} />,
     },
     {
       title: "Name",
@@ -327,14 +435,14 @@ export default function NurseList() {
       dataIndex: "gender",
       key: "gender",
       width: 100,
-      render: () => <Skeleton.Input active size="small" style={{ width: 80 }} />,
+      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
     },
     {
       title: "Blood Type",
       dataIndex: "blood_type",
       key: "bloodType",
-      width: 120,
-      render: () => <Skeleton.Input active size="small" style={{ width: 70 }} />,
+      width: 100,
+      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
     },
     {
       title: "Phone",
@@ -343,7 +451,7 @@ export default function NurseList() {
       render: () => (
         <Space>
           <Skeleton.Avatar active size="small" />
-          <Skeleton.Input active size="small" style={{ width: 100 }} />
+          <Skeleton.Input active size="small" style={{ width: 120 }} />
         </Space>
       ),
     },
@@ -351,7 +459,7 @@ export default function NurseList() {
       title: "Department",
       dataIndex: "department_id",
       key: "department",
-      render: () => <Skeleton.Input active size="small" style={{ width: 110 }} />,
+      render: () => <Skeleton.Input active size="small" style={{ width: 100 }} />,
     },
     {
       title: "Status",
@@ -363,11 +471,11 @@ export default function NurseList() {
     {
       title: "Actions",
       key: "actions",
-      width: 150,
+      width: 120,
       render: () => (
         <Space size="small">
-          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
-          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
+          <Skeleton.Button active size="small" style={{ width: 36, height: 36 }} />
+          <Skeleton.Button active size="small" style={{ width: 36, height: 36 }} />
         </Space>
       ),
     },
@@ -379,7 +487,8 @@ export default function NurseList() {
       title: "Nurse ID",
       dataIndex: "id",
       key: "id",
-      width: 100,
+      width: 120,
+      sorter: true,
     },
     {
       title: "Name",
@@ -397,12 +506,13 @@ export default function NurseList() {
       dataIndex: "gender",
       key: "gender",
       width: 100,
+      render: (gender: string) => gender || "N/A",
     },
     {
       title: "Blood Type",
       dataIndex: "blood_type",
       key: "bloodType",
-      width: 120,
+      width: 100,
       render: (bloodType: string) => (
         <Tag color={bloodType ? "red" : "default"}>
           {bloodType || "N/A"}
@@ -416,7 +526,7 @@ export default function NurseList() {
       render: (phone: string) => (
         <Space>
           <PhoneOutlined className="text-green-500" />
-          {phone}
+          {phone || "N/A"}
         </Space>
       ),
     },
@@ -443,48 +553,42 @@ export default function NurseList() {
     {
       title: "Actions",
       key: "actions",
-      width: 150,
-      render: (_: any, record: any) => (
+      width: 120,
+      render: (_: any, record: Nurse) => (
         <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
-            label="Edit"
+            label="Edit Nurse"
             type="default"
-            loading={loadingActionId === record.id}
             onClick={() => handleEdit(record)}
           />
 
-          <ActionButton
-            icon={<DeleteOutlined />}
-            label="Delete"
-            danger
-            loading={loadingActionId === record.id}
-            confirm
-            confirmAction={() => deleteNurse(record)}
-          />
+          {record.is_active && (
+            <ActionButton
+              icon={<DeleteOutlined />}
+              label="Deactivate Nurse"
+              danger
+              loading={loadingActionId === record.id}
+              confirm
+              confirmAction={() => deleteNurse(record)}
+            />
+          )}
         </Space>
       ),
     },
   ];
 
   // Generate skeleton data for loading state
-  const skeletonData = Array.from({ length: pagination.pageSize }, (_, index) => ({
+  const skeletonData: any = Array.from({ length: pagination.pageSize }, (_, index) => ({
     key: index,
-    id: index,
-    name: '',
-    gender: '',
-    blood_type: '',
-    phone_no: '',
-    department: '',
-    status: '',
-    actions: '',
+    id: `loading-${index}`,
   }));
 
   return (
-    <div className="p-6 space-y-6 rounded-lg" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <Title level={2} className="m-0">Nurse Management</Title>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <Title level={2} className="m-0 text-gray-800">Nurse Management</Title>
         <Space>
           <Button
             onClick={() => loadNurses()}
@@ -498,16 +602,73 @@ export default function NurseList() {
             type="primary"
             onClick={() => navigate("/nurse/add")}
             icon={<PlusOutlined />}
-            loading={tableLoading}
-            className="flex items-center"
+            className="flex items-center bg-blue-600 hover:bg-blue-700"
           >
             Add Nurse
           </Button>
         </Space>
       </div>
 
-      <Card className="border-0 shadow-sm mb-15">
-        <CardHeader>
+      {/* Statistics Cards */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm">
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><TeamOutlined className="text-blue-500" /> Total Nurses</Space>}
+                value={stats.totalUsers}
+                valueStyle={{ color: '#667eea' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm">
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><CheckCircleOutlined className="text-green-500" /> Active</Space>}
+                value={stats.activeUsers}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm">
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><ClockCircleOutlined className="text-orange-500" /> Recent Joined</Space>}
+                value={stats.recentJoined}
+                valueStyle={{ color: '#fa8c16' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm">
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><DashboardOutlined className="text-cyan-500" /> Utilization</Space>}
+                value={Math.round((stats.activeUsers / (stats.totalUsers || 1)) * 100)}
+                suffix="%"
+                valueStyle={{ color: '#36cfc9' }}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Filters & Search Card */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
@@ -518,29 +679,29 @@ export default function NurseList() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <Input.Search
-                  placeholder="Search patients, doctors, or dates..."
+                <Input
+                  placeholder="Search nurses by name, email, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onPressEnter={handleSearch}
                   className="pl-10 h-12"
-                  onSearch={() => { loadNurses(pagination.current, pagination.pageSize, searchTerm) }}
+                  suffix={
+                    <Button 
+                      type="text" 
+                      icon={<SearchOutlined />} 
+                      onClick={handleSearch}
+                      loading={tableLoading}
+                    />
+                  }
                 />
               </div>
             </div>
-            {/* <div className="w-full md:w-48">
-              <UISelect value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </UISelect>
-            </div> */}
-            <UIButton onClick={() => exportNurse()} variant="outline" className="h-12 px-6">
+
+            <UIButton 
+              onClick={() => exportNurses()} 
+              variant="outline" 
+              className="h-12 px-6 border-gray-300"
+            >
               <Download className="w-4 h-4 mr-2" />
               Export
             </UIButton>
@@ -548,11 +709,8 @@ export default function NurseList() {
         </CardContent>
       </Card>
 
-      {/* Nurses Table with Skeleton Loading */}
-      <Card
-        bodyStyle={{ padding: 0 }}
-        className="overflow-hidden"
-      >
+      {/* Nurses Table */}
+      <Card className="shadow-sm">
         <Table
           dataSource={tableLoading ? skeletonData : nurses}
           columns={tableLoading ? skeletonColumns : columns}
@@ -566,11 +724,12 @@ export default function NurseList() {
               showQuickJumper: true,
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} of ${total} nurses`,
+              pageSizeOptions: ['10', '20', '50', '100'],
             }
           }
           onChange={handleTableChange}
+          loading={tableLoading}
           scroll={{ x: 1000 }}
-          loading={false} // We handle loading ourselves with skeleton
         />
       </Card>
 
@@ -579,14 +738,16 @@ export default function NurseList() {
         title={
           <Space>
             <TeamOutlined className="text-blue-600" />
-            <span>{selectedNurse ? "Edit Nurse" : "Add New Nurse"}</span>
+            <span className="text-lg font-semibold">
+              {selectedNurse ? "Edit Nurse" : "Add New Nurse"}
+            </span>
           </Space>
         }
         open={isModalOpen}
         onCancel={handleCancel}
         footer={null}
         width={800}
-        style={{ top: 20 }}
+        destroyOnClose
       >
         <Spin spinning={loadingStates.departments || loadingStates.extraFields}>
           <Form
@@ -598,10 +759,10 @@ export default function NurseList() {
             <Row gutter={[16, 16]}>
               {/* Personal Information */}
               <Col span={24}>
-                <Title level={4} className="!mb-4">Personal Information</Title>
+                <Title level={4} className="!mb-4 text-gray-800">Personal Information</Title>
               </Col>
 
-              {extraFields.map((field: any) => (
+              {extraFields.map((field: ExtraField) => (
                 <Col span={12} key={field.field_name}>
                   <Form.Item
                     label={field.field_name}
@@ -616,7 +777,7 @@ export default function NurseList() {
                     <Input
                       placeholder={`Enter ${field.field_name}`}
                       size="large"
-                      prefix={<UserOutlined />}
+                      prefix={<UserOutlined className="text-gray-400" />}
                     />
                   </Form.Item>
                 </Col>
@@ -631,7 +792,7 @@ export default function NurseList() {
                   <Input
                     type="date"
                     size="large"
-                    prefix={<CalendarOutlined />}
+                    prefix={<CalendarOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
               </Col>
@@ -656,7 +817,7 @@ export default function NurseList() {
 
               {/* Contact Information */}
               <Col span={24}>
-                <Title level={4} className="!mb-4">Contact Information</Title>
+                <Title level={4} className="!mb-4 text-gray-800">Contact Information</Title>
               </Col>
 
               <Col span={12}>
@@ -672,7 +833,7 @@ export default function NurseList() {
                     type="email"
                     placeholder="Email address"
                     size="large"
-                    prefix={<MailOutlined />}
+                    prefix={<MailOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
               </Col>
@@ -686,14 +847,14 @@ export default function NurseList() {
                   <Input
                     placeholder="Phone number"
                     size="large"
-                    prefix={<PhoneOutlined />}
+                    prefix={<PhoneOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
               </Col>
 
               {/* Address Information */}
               <Col span={24}>
-                <Title level={4} className="!mb-4">Address Information</Title>
+                <Title level={4} className="!mb-4 text-gray-800">Address Information</Title>
               </Col>
 
               <Col span={24}>
@@ -705,7 +866,7 @@ export default function NurseList() {
                   <Input
                     placeholder="Street address"
                     size="large"
-                    prefix={<EnvironmentOutlined />}
+                    prefix={<EnvironmentOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
               </Col>
@@ -767,7 +928,7 @@ export default function NurseList() {
 
               {/* Professional Information */}
               <Col span={24}>
-                <Title level={4} className="!mb-4">Professional Information</Title>
+                <Title level={4} className="!mb-4 text-gray-800">Professional Information</Title>
               </Col>
 
               <Col span={24}>
@@ -779,6 +940,7 @@ export default function NurseList() {
                   <Select
                     placeholder="Select department"
                     size="large"
+                    loading={loadingStates.departments}
                     options={departments.map((d) => ({
                       value: d.id,
                       label: d.name
@@ -795,6 +957,7 @@ export default function NurseList() {
               <Button
                 onClick={handleCancel}
                 size="large"
+                disabled={isLoading}
               >
                 Cancel
               </Button>

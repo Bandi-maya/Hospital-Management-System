@@ -42,6 +42,7 @@ import {
 import { getApi, PostApi } from "@/ApiService";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { setDefaultAutoSelectFamily } from "net";
 
 const { Option } = Select;
 
@@ -149,6 +150,7 @@ const ActionButton = ({
 
 export default function LabTests() {
   const [tests, setTests] = useState([]);
+  const [data, setData] = useState({});
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "Available" | "Not Available">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -168,6 +170,7 @@ export default function LabTests() {
     await getApi(`/lab-tests?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status === true ? true : false}`)
       .then((data) => {
         if (!data?.error) {
+          setData(data)
           setTests(data.data);
         }
         else {
@@ -198,6 +201,7 @@ export default function LabTests() {
   // }, [autoRefresh]);
 
   const handleTableChange = (newPagination: any) => {
+    setPagination(newPagination);
     loadData(newPagination.current, newPagination.pageSize);
   };
 
@@ -244,10 +248,10 @@ export default function LabTests() {
 
   // Calculate statistics
   const stats = {
-    totalTests: tests.length,
-    availableTests: tests.filter(test => test.is_available).length,
-    unavailableTests: tests.filter(test => !test.is_available).length,
-    averagePrice: tests.length > 0 ? tests.reduce((sum, test) => sum + test.price, 0) / tests.length : 0
+    totalTests: data?.['total_records'],
+    availableTests: data?.['total_available_tests'],
+    unavailableTests: data?.['total_unavailable_tests'],
+    averagePrice: data?.['average_price'],
   };
 
   const columns = [
@@ -588,7 +592,9 @@ export default function LabTests() {
             rowKey="id"
             onChange={handleTableChange}
             pagination={{
-              pageSize: 10,
+              pageSize: pagination.pageSize,
+              current: pagination.current,
+              total: data?.['total_records'] || 0,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>

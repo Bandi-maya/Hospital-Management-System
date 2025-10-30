@@ -486,7 +486,7 @@ export default function Department() {
           </Tag>
           {record.updated_at && (
             <div style={{ fontSize: '12px', color: '#999' }}>
-              <SyncOutlined /> Updated: {dayjs(record.updated_at).fromNow()}
+              <SyncOutlined /> Updated: {dayjs(record.updated_at).format('MMM D, YYYY')}
             </div>
           )}
         </Space>
@@ -688,7 +688,7 @@ export default function Department() {
           key="departments"
           tab={
             <Space>
-              <BuildOutlined /> All Departments <Badge count={filteredDepartments.length} overflowCount={99} />
+              <BuildOutlined /> All Departments <Badge count={data?.total_records} overflowCount={99} />
             </Space>
           }
         >

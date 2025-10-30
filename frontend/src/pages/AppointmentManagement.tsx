@@ -1,20 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Input as AntInput, Table as AntdTable } from "antd";
+import { Input as AntInput, Button as AntdButton, Table as AntdTable } from "antd";
 import { toast } from "sonner";
 import { getApi, PutApi, DeleteApi } from "@/ApiService";
 import {
@@ -29,9 +21,7 @@ import {
   Edit,
   Eye,
   Trash2,
-  MoreHorizontal
 } from "lucide-react";
-import FullscreenLoader from "@/components/Loader/FullscreenLoader";
 import {
   Dialog,
   DialogContent,
@@ -40,12 +30,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import {
   Tooltip,
@@ -53,16 +37,58 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SearchOutlined } from "@ant-design/icons";
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+
+interface Patient {
+  username?: string;
+}
+
+interface Doctor {
+  username?: string;
+}
 
 interface Appointment {
   id: string;
-  patient: any;
-  doctor: any;
+  patient: Patient;
+  doctor: Doctor;
   appointment_date: string;
   appointment_start_time: string;
-  status: "CANCELED" | "CONFIRMED" | "SCHEDULED";
+  status: "CANCELED" | "COMPLETED" | "SCHEDULED";
   patient_id: string;
   doctor_id: string;
+  token_number?: string;
+}
+
+interface FormData {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  appointment_date: string;
+  appointment_start_time: string;
+  status: string;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface Stats {
+  total?: number;
+  pending?: number;
+  confirmed?: number;
+  completed?: number;
+}
+
+interface ApiResponse {
+  error?: string;
+  data?: any;
+  total_records?: number;
+  scheduled_records?: number;
+  confirmed_records?: number;
+  completed_records?: number;
 }
 
 // Skeleton Loader Components
@@ -187,11 +213,11 @@ const ActionButton = ({
 export default function AppointmentManagement() {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [loading, setLoading] = useState<boolean>(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormData>({
     id: "",
     patient_id: "",
     doctor_id: "",
@@ -199,29 +225,30 @@ export default function AppointmentManagement() {
     appointment_start_time: "",
     status: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [data, setData] = useState<ApiResponse>({});
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [viewModalOpen, setViewModalOpen] = useState<boolean>(false);
+  const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  const handleChange = (key: string, value: string) => {
+  const handleChange = (key: keyof FormData, value: string): void => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   useEffect(() => {
-    loadData(pagination.current, pagination.pageSize, searchTerm, statusFilter)
-  }, [statusFilter])
+    loadData(pagination.current, pagination.pageSize, searchTerm, statusFilter);
+  }, [statusFilter]);
 
-  const handleSubmit = () => {
+  const handleSubmit = (): void => {
     setIsSubmitting(true);
     PutApi(`/appointment`, form)
-      .then((res) => {
+      .then((res: ApiResponse) => {
         if (!res?.error) {
           toast.success("Appointment updated successfully!");
           setEditModalOpen(false);
@@ -243,12 +270,12 @@ export default function AppointmentManagement() {
       .finally(() => setIsSubmitting(false));
   };
 
-  const handleDelete = () => {
+  const handleDelete = (): void => {
     if (!selectedAppointment) return;
 
     setLoadingActionId(selectedAppointment.id);
     DeleteApi(`/appointment/${selectedAppointment.id}`)
-      .then((res) => {
+      .then((res: ApiResponse) => {
         if (!res?.error) {
           toast.success("Appointment deleted successfully!");
           setDeleteModalOpen(false);
@@ -262,33 +289,45 @@ export default function AppointmentManagement() {
       .finally(() => setLoadingActionId(null));
   };
 
-  function loadData(page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) {
+  const loadData = (
+    page: number = 1, 
+    limit: number = 10, 
+    searchQuery: string = searchTerm, 
+    status: string = statusFilter
+  ): void => {
     setLoading(true);
     getApi(`/appointment?page=${page}&limit=${limit}&q=${searchQuery}&status=${statusFilter === 'all' ? "" : statusFilter}`)
-      .then((data) => {
+      .then((data: ApiResponse) => {
         if (!data.error) {
-          setAppointments(data.data);
+          setData(data);
+          setAppointments(data.data || []);
+          setPagination(prev => ({
+            ...prev,
+            current: page,
+            pageSize: limit,
+            total: data.total_records || 0,
+          }));
         } else {
           toast.error(data.error);
         }
       })
-      .catch((error) => {
+      .catch((error: Error) => {
         console.error("Error:", error);
         toast.error("Error occurred while getting appointments");
       })
       .finally(() => {
         setLoading(false);
       });
-  }
+  };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleUpdateStatus = (id: string, status: Appointment["status"]) => {
+  const handleUpdateStatus = (id: string, status: Appointment["status"]): void => {
     setLoadingActionId(id);
     PutApi(`/appointment`, { id, status })
-      .then((res) => {
+      .then((res: ApiResponse) => {
         if (!res?.error) {
           setAppointments(prev =>
             prev.map(app => (app.id === id ? { ...app, status } : app))
@@ -302,12 +341,12 @@ export default function AppointmentManagement() {
       .finally(() => setLoadingActionId(null));
   };
 
-  const handleView = (appointment: Appointment) => {
+  const handleView = (appointment: Appointment): void => {
     setSelectedAppointment(appointment);
     setViewModalOpen(true);
   };
 
-  const handleEdit = (appointment: Appointment) => {
+  const handleEdit = (appointment: Appointment): void => {
     setSelectedAppointment(appointment);
     setForm({
       id: appointment.id,
@@ -320,89 +359,93 @@ export default function AppointmentManagement() {
     setEditModalOpen(true);
   };
 
-  const handleDeleteClick = (appointment: Appointment) => {
+  const handleDeleteClick = (appointment: Appointment): void => {
     setSelectedAppointment(appointment);
     setDeleteModalOpen(true);
   };
 
-  const filteredAppointments = appointments.filter(app => {
-    const matchesSearch =
-      app.patient?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.doctor?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.appointment_date.includes(searchTerm);
+  const filteredAppointments = appointments
+  // .filter(app => {
+  //   const matchesSearch =
+  //     app.patient?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     app.doctor?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     app.appointment_date.includes(searchTerm);
 
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+  //   const matchesStatus = statusFilter === "all" || app.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+  //   return matchesSearch && matchesStatus;
+  // });
 
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case "SCHEDULED": return "default";
-      case "CONFIRMED": return "secondary";
+      case "COMPLETED": return "secondary";
       case "CANCELED": return "destructive";
       default: return "outline";
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case "SCHEDULED": return "text-green-600 bg-green-50 border-green-200";
-      case "CONFIRMED": return "text-blue-600 bg-blue-50 border-blue-200";
+      case "COMPLETED": return "text-blue-600 bg-blue-50 border-blue-200";
       case "CANCELED": return "text-orange-600 bg-orange-50 border-orange-200";
       default: return "";
     }
   };
 
-  const stats = {
-    total: appointments.length,
-    pending: appointments.filter(app => app.status === "CANCELED").length,
-    confirmed: appointments.filter(app => app.status === "CONFIRMED").length,
-    completed: appointments.filter(app => app.status === "SCHEDULED").length,
+  const stats: Stats = {
+    total: data?.total_records,
+    pending: data?.scheduled_records,
+    confirmed: data?.confirmed_records,
+    completed: data?.completed_records,
   };
 
-  const columns = [
+  const columns: ColumnsType<Appointment> = [
     {
       title: "Patient",
       dataIndex: ['patient', 'username'],
-      key: "",
-      width: 100
+      key: "patient",
+      width: 100,
+      render: (username: string) => username || "N/A"
     },
     {
       title: "Doctor",
       dataIndex: ['doctor', 'username'],
-      key: "",
-      width: 100
+      key: "doctor",
+      width: 100,
+      render: (username: string) => username ? `Dr. ${username}` : "N/A"
     },
     {
       title: "Date",
       dataIndex: "appointment_date",
-      key: "",
-      width: 100
+      key: "appointment_date",
+      width: 100,
     },
     {
       title: "Token",
       dataIndex: "token_number",
-      key: "",
-      width: 100
+      key: "token_number",
+      width: 100,
+      render: (token: string) => token || "N/A"
     },
     {
       title: "Time",
       dataIndex: "appointment_start_time",
-      key: "",
-      width: 100
+      key: "appointment_start_time",
+      width: 100,
     },
     {
       title: "Status",
       dataIndex: "status",
-      key: "",
+      key: "status",
       width: 100,
-      render: (_: any, record: any) => (
+      render: (status: string, record: Appointment) => (
         <Badge
-          variant={getStatusVariant(record.status)}
-          className={`font-medium ${getStatusColor(record.status)}`}
+          variant={getStatusVariant(status)}
+          className={`font-medium ${getStatusColor(status)}`}
         >
-          {record.status}
+          {status}
         </Badge>
       )
     },
@@ -410,64 +453,64 @@ export default function AppointmentManagement() {
       title: "Actions",
       key: "actions",
       width: 150,
-      render: (_: any, record: any) => (
-        <TableCell className="text-right">
-          <div className="flex items-center justify-end gap-2">
-            {record.status !== "SCHEDULED" && (
-              <Select
-                value={record.status}
-                onValueChange={(status: Appointment["status"]) =>
-                  handleUpdateStatus(record.id, status)
-                }
-                disabled={loadingActionId === record.id}
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CANCELED">CANCELED</SelectItem>
-                  <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
-                  <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+      render: (_: any, record: Appointment) => (
+        <div className="flex items-center justify-end gap-2">
+          {record.status !== "SCHEDULED" && (
+            <Select
+              value={record.status}
+              onValueChange={(status: Appointment["status"]) =>
+                handleUpdateStatus(record.id, status)
+              }
+              disabled={loadingActionId === record.id}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CANCELED">CANCELED</SelectItem>
+                <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
 
-            <div className="flex gap-1 ml-2">
-              <ActionButton
-                icon={<Eye className="w-4 h-4" />}
-                label="View Details"
-                onClick={() => handleView(record)}
-                loading={loadingActionId === record.id}
-              />
+          <div className="flex gap-1 ml-2">
+            <ActionButton
+              icon={<Eye className="w-4 h-4" />}
+              label="View Details"
+              onClick={() => handleView(record)}
+              loading={loadingActionId === record.id}
+            />
 
-              <ActionButton
-                icon={<Edit className="w-4 h-4" />}
-                label="Edit Appointment"
-                onClick={() => handleEdit(record)}
-                loading={loadingActionId === record.id}
-              />
+            <ActionButton
+              icon={<Edit className="w-4 h-4" />}
+              label="Edit Appointment"
+              onClick={() => handleEdit(record)}
+              loading={loadingActionId === record.id}
+            />
 
-              <ActionButton
-                icon={<Trash2 className="w-4 h-4 text-red-500" />} // 🔴 Red by default
-                label="Delete Appointment"
-                onClick={() => handleDeleteClick(record)}
-                loading={loadingActionId === record.id}
-              />
-
-            </div>
+            <ActionButton
+              icon={<Trash2 className="w-4 h-4" />}
+              label="Delete Appointment"
+              onClick={() => handleDeleteClick(record)}
+              loading={loadingActionId === record.id}
+              variant="destructive"
+            />
           </div>
-        </TableCell>
+        </div>
       ),
     },
   ];
 
-  const handleTableChange = (newPagination: any) => {
-    loadData(newPagination.current, newPagination.pageSize);
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
+    if (newPagination.current && newPagination.pageSize) {
+      loadData(newPagination.current, newPagination.pageSize);
+    }
   };
 
-  // if (loading && appointments.length === 0) {
-  //   return <FullscreenLoader />;
-  // }
+  const handleSearch = (): void => {
+    loadData(1, pagination.pageSize, searchTerm);
+  };
 
   return (
     <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
@@ -517,7 +560,7 @@ export default function AppointmentManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Appointments</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total || 0}</p>
                 </div>
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Calendar className="w-4 h-4 text-blue-600" />
@@ -531,7 +574,7 @@ export default function AppointmentManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">CANCELED</p>
-                  <p className="text-2xl font-bold text-orange-600">{stats.pending}</p>
+                  <p className="text-2xl font-bold text-orange-600">{stats.confirmed || 0}</p>
                 </div>
                 <div className="p-2 bg-orange-100 rounded-lg">
                   <Clock className="w-4 h-4 text-orange-600" />
@@ -544,8 +587,8 @@ export default function AppointmentManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">CONFIRMED</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats.confirmed}</p>
+                  <p className="text-sm font-medium text-gray-600">COMPLETED</p>
+                  <p className="text-2xl font-bold text-blue-600">{stats.completed || 0}</p>
                 </div>
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <User className="w-4 h-4 text-blue-600" />
@@ -559,7 +602,7 @@ export default function AppointmentManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">SCHEDULED</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.pending || 0}</p>
                 </div>
                 <div className="p-2 bg-green-100 rounded-lg">
                   <Stethoscope className="w-4 h-4 text-green-600" />
@@ -583,12 +626,19 @@ export default function AppointmentManagement() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <AntInput.Search
-                  placeholder="Search patients, doctors, or dates..."
+                <AntInput
+                  placeholder="Search appointments by patient, doctor, or date..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onPressEnter={handleSearch}
                   className="pl-10 h-12"
-                  onSearch={() => { loadData(pagination.current, pagination.pageSize, searchTerm) }}
+                  suffix={
+                    <AntdButton
+                      type="text"
+                      icon={<SearchOutlined />}
+                      onClick={handleSearch}
+                    />
+                  }
                 />
               </div>
             </div>
@@ -600,7 +650,7 @@ export default function AppointmentManagement() {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="CANCELED">CANCELED</SelectItem>
-                  <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
                   <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
                 </SelectContent>
               </Select>
@@ -634,124 +684,19 @@ export default function AppointmentManagement() {
                 dataSource={filteredAppointments}
                 columns={columns}
                 rowKey={"id"}
-                pagination={
-                  {
-                    current: pagination.current,
-                    pageSize: pagination.pageSize,
-                    total: pagination.total,
-                    showSizeChanger: true,
-                    showQuickJumper: true,
-                    showTotal: (total, range) =>
-                      `${range[0]}-${range[1]} of ${total} RECEPTIONISTs`,
-                  }
-                }
+                pagination={{
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: pagination.total,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total} appointments`,
+                }}
                 onChange={handleTableChange}
                 scroll={{ x: 1000 }}
-                loading={false} // We handle loading ourselves with skeleton
+                loading={false}
               />
-              // <Table>
-              //   <TableHeader>
-              //     <TableRow className="bg-gray-50 hover:bg-gray-50">
-              //       <TableHead className="font-semibold">Patient</TableHead>
-              //       <TableHead className="font-semibold">Doctor</TableHead>
-              //       <TableHead className="font-semibold">Date</TableHead>
-              //       <TableHead className="font-semibold">Time</TableHead>
-              //       <TableHead className="font-semibold">Status</TableHead>
-              //       <TableHead className="font-semibold text-right">Actions</TableHead>
-              //     </TableRow>
-              //   </TableHeader>
-              //   <TableBody>
-              //     {filteredAppointments.length === 0 ? (
-              //       <TableRow>
-              //         <TableCell colSpan={6} className="text-center py-8">
-              //           <div className="flex flex-col items-center justify-center">
-              //             <Calendar className="w-12 h-12 text-gray-300 mb-2" />
-              //             <p className="text-gray-500 text-lg">No appointments found</p>
-              //             <p className="text-gray-400 text-sm">
-              //               {searchTerm || statusFilter !== "all"
-              //                 ? "Try adjusting your search or filters"
-              //                 : "Create your first appointment"
-              //               }
-              //             </p>
-              //           </div>
-              //         </TableCell>
-              //       </TableRow>
-              //     ) : (
-              //       filteredAppointments.map(app => (
-              //         <TableRow key={app.id} className="hover:bg-gray-50">
-              //           <TableCell className="font-medium">
-              //             <div className="flex items-center gap-2">
-              //               <User className="w-4 h-4 text-gray-400" />
-              //               {app?.patient?.username || "N/A"}
-              //             </div>
-              //           </TableCell>
-              //           <TableCell>
-              //             <div className="flex items-center gap-2">
-              //               <Stethoscope className="w-4 h-4 text-gray-400" />
-              //               Dr. {app?.doctor?.username || "N/A"}
-              //             </div>
-              //           </TableCell>
-              //           <TableCell>{app.appointment_date}</TableCell>
-              //           <TableCell>{app.appointment_start_time}</TableCell>
-              //           <TableCell>
-              //             <Badge
-              //               variant={getStatusVariant(app.status)}
-              //               className={`font-medium ${getStatusColor(app.status)}`}
-              //             >
-              //               {app.status}
-              //             </Badge>
-              //           </TableCell>
-              //           <TableCell className="text-right">
-              //             <div className="flex items-center justify-end gap-2">
-              //               {app.status !== "SCHEDULED" && (
-              //                 <Select
-              //                   value={app.status}
-              //                   onValueChange={(status: Appointment["status"]) =>
-              //                     handleUpdateStatus(app.id, status)
-              //                   }
-              //                   disabled={loadingActionId === app.id}
-              //                 >
-              //                   <SelectTrigger className="w-[140px]">
-              //                     <SelectValue />
-              //                   </SelectTrigger>
-              //                   <SelectContent>
-              //                     <SelectItem value="CANCELED">CANCELED</SelectItem>
-              //                     <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
-              //                     <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
-              //                   </SelectContent>
-              //                 </Select>
-              //               )}
-
-              //               <div className="flex gap-1 ml-2">
-              //                 <ActionButton
-              //                   icon={<Eye className="w-4 h-4" />}
-              //                   label="View Details"
-              //                   onClick={() => handleView(app)}
-              //                   loading={loadingActionId === app.id}
-              //                 />
-
-              //                 <ActionButton
-              //                   icon={<Edit className="w-4 h-4" />}
-              //                   label="Edit Appointment"
-              //                   onClick={() => handleEdit(app)}
-              //                   loading={loadingActionId === app.id}
-              //                 />
-
-              //                 <ActionButton
-              //                   icon={<Trash2 className="w-4 h-4 text-red-500" />} // 🔴 Red by default
-              //                   label="Delete Appointment"
-              //                   onClick={() => handleDeleteClick(app)}
-              //                   loading={loadingActionId === app.id}
-              //                 />
-
-              //               </div>
-              //             </div>
-              //           </TableCell>
-              //         </TableRow>
-              //       ))
-              //     )}
-              //   </TableBody>
-              // </Table>
             )}
           </div>
         </CardContent>
@@ -825,15 +770,6 @@ export default function AppointmentManagement() {
             >
               Close
             </Button>
-            {/* <Button
-              onClick={() => {
-                setViewModalOpen(false);
-                handleEdit(selectedAppointment!);
-              }}
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Appointment
-            </Button> */}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -891,7 +827,7 @@ export default function AppointmentManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CANCELED">CANCELED</SelectItem>
-                    <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
                     <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
                   </SelectContent>
                 </Select>

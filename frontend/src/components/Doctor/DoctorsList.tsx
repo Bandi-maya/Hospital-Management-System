@@ -16,7 +16,8 @@ import {
   Col,
   Tooltip,
   Skeleton,
-  Spin
+  Spin,
+  Statistic
 } from "antd";
 import {
   SearchOutlined,
@@ -29,55 +30,156 @@ import {
   EditOutlined,
   DeleteOutlined,
   TeamOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  DashboardOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { countries } from "@/Components/Patients/AddPatient";
 import { DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
-import { DepartmentInterface } from "@/Components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
-import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
 import { Download, Filter, Search } from "lucide-react";
-import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button as UIButton } from "@/components/ui/button";
+import { DepartmentInterface } from "../Departments/Departments";
+import { CardContent, CardHeader, CardTitle } from "../ui/card";
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import { countries } from "../Patients/AddPatient";
 
 const { Title, Text } = Typography;
 
+// Type definitions
+interface ExtraField {
+  field_name: string;
+  is_mandatory: boolean;
+  user_type: number;
+  user_type_data: {
+    type: string;
+  };
+}
+
+interface Address {
+  street: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+}
+
+interface ExtraFieldsData {
+  fields_data?: Record<string, any>;
+}
+
+interface Doctor {
+  id?: number;
+  department_id?: number;
+  blood_type?: string;
+  address?: Address;
+  extra_fields?: ExtraFieldsData;
+  user_type_id?: number;
+  date_of_birth?: string;
+  gender?: string;
+  email?: string;
+  phone_no?: string;
+  is_active?: boolean;
+  name?: string;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface LoadingStates {
+  departments: boolean;
+  extraFields: boolean;
+  table: boolean;
+}
+
+interface ActionButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  type?: "primary" | "default" | "dashed" | "link" | "text";
+  danger?: boolean;
+  onClick?: () => void;
+  loading?: boolean;
+  confirm?: boolean;
+  confirmAction?: () => void;
+}
+
+interface FormValues {
+  extra_fields?: Record<string, any>;
+  department_id?: number;
+  date_of_birth?: string;
+  gender?: string;
+  email?: string;
+  phone_no?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  country?: string;
+}
+
+interface ScheduleItem {
+  title: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  notes: string;
+}
+
+interface ScheduleFormValues {
+  shift_type: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
+
+interface ApiResponse {
+  error?: string;
+  data?: any;
+  total_records?: number;
+  active_records?: number;
+  inactive_records?: number;
+  recently_added?: number;
+}
+
+interface Stats {
+  total_records?: number;
+  active_records?: number;
+  inactive_records?: number;
+  recently_added?: number;
+}
+
 export default function DoctorList() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [nurses, setNurses] = useState<Patient[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [form] = Form.useForm();
-  const [selectedNurse, setSelectedNurse] = useState<any>(null);
-  const [extraFields, setExtraFields] = useState<any>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [extraFields, setExtraFields] = useState<ExtraField[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
-  const [tableLoading, setTableLoading] = useState(false);
-  const [loadingStates, setLoadingStates] = useState({
+  const [tableLoading, setTableLoading] = useState<boolean>(false);
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
     departments: false,
     extraFields: false,
     table: false
   });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
-  
-   async function exportdoctors(format = 'csv') {
-    try {
-      await DownloadApi(`/export?type=users&user_type=doctor&format=${format}`, format);
-    } catch (err) {
-      console.error('Export error:', err);
-      alert('Something went wrong while exporting.');
-    }
-  }
 
+  const [stats, setStats] = useState<Stats>({});
+  const [statsLoading, setStatsLoading] = useState<boolean>(true);
 
   const userTypeId = useMemo(() => {
     return extraFields?.[0]?.user_type;
@@ -85,13 +187,27 @@ export default function DoctorList() {
 
   const navigate = useNavigate();
 
+  // Export function
+  const exportDoctors = async (format: string = 'csv'): Promise<void> => {
+    try {
+      await DownloadApi(`/export?type=users&user_type=doctor&format=${format}`, format);
+      toast.success(`Doctors exported successfully as ${format.toUpperCase()}`);
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.error('Something went wrong while exporting.');
+    }
+  };
+
   // Fetch data functions
-  const getExtraFields = async () => {
+  const getExtraFields = async (): Promise<void> => {
     setLoadingStates(prev => ({ ...prev, extraFields: true }));
     try {
-      const data = await getApi("/user-fields");
+      const data: ApiResponse = await getApi("/user-fields");
       if (!data?.error) {
-        setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "DOCTOR"));
+        const doctorFields = data.data.filter((field: ExtraField) => 
+          field.user_type_data.type.toUpperCase() === "DOCTOR"
+        );
+        setExtraFields(doctorFields);
       } else {
         toast.error("Error fetching doctor fields: " + data.error);
       }
@@ -103,37 +219,49 @@ export default function DoctorList() {
     }
   };
 
-  const loadNurses = async (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) => {
+  const loadDoctors = async (
+    page: number = 1, 
+    limit: number = 10, 
+    searchQuery: string = searchTerm, 
+    status: string = statusFilter
+  ): Promise<void> => {
     setTableLoading(true);
     try {
-      const data = await getApi(`/users?user_type=Doctor&page=${page}&limit=${limit}&q=${searchQuery}`);
+      const data: ApiResponse = await getApi(`/users?user_type=Doctor&page=${page}&limit=${limit}&q=${searchQuery}`);
       if (!data?.error) {
         setPagination(prev => ({
           ...prev,
           current: page,
           pageSize: limit,
-          total: data.total_records,
+          total: data.total_records || 0,
         }));
-        setNurses(data.data);
+        setDoctors(data.data || []);
+        setStats({
+          total_records: data.total_records,
+          active_records: data.active_records,
+          inactive_records: data.inactive_records,
+          recently_added: data.recently_added,
+        });
+        setStatsLoading(false);
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to load doctors");
       }
     } catch (error) {
-      toast.error("Error getting nurses");
-      console.error("Error getting nurse data:", error);
+      toast.error("Error getting doctors");
+      console.error("Error getting doctor data:", error);
     } finally {
       setTableLoading(false);
     }
   };
 
-  const loadDepartments = async () => {
+  const loadDepartments = async (): Promise<void> => {
     setLoadingStates(prev => ({ ...prev, departments: true }));
     try {
-      const data = await getApi('/departments');
+      const data: ApiResponse = await getApi('/departments');
       if (!data.error) {
-        setDepartments(data.data);
+        setDepartments(data.data || []);
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to load departments");
       }
     } catch (error) {
       console.error("Error fetching departments:", error);
@@ -144,62 +272,66 @@ export default function DoctorList() {
   };
 
   useEffect(() => {
-    loadNurses(pagination.current, pagination.pageSize);
+    loadDoctors(pagination.current, pagination.pageSize);
     loadDepartments();
     getExtraFields();
   }, []);
 
   // Form submission handler
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: FormValues): Promise<void> => {
     setIsLoading(true);
 
     try {
       const formData = {
         ...values,
         name: `${values?.extra_fields?.first_name || ''} ${values?.extra_fields?.last_name || ''}`.trim(),
-        user_type_id: selectedNurse ? selectedNurse.user_type_id : 4,
-        id: selectedNurse?.id,
+        user_type_id: selectedDoctor ? selectedDoctor.user_type_id : 4,
+        id: selectedDoctor?.id,
         address: {
-          street: values.street,
-          city: values.city,
-          state: values.state,
-          zip_code: values.zip_code,
-          country: values.country,
+          street: values.street || '',
+          city: values.city || '',
+          state: values.state || '',
+          zip_code: values.zip_code || '',
+          country: values.country || '',
         }
       };
 
-      const data = await PutApi(`/users`, formData);
+      const data: ApiResponse = await PutApi(`/users`, formData);
       if (!data?.error) {
-        toast.success(selectedNurse ? "Doctor updated successfully!" : "Doctor added successfully!");
-        loadNurses(pagination.current, pagination.pageSize);
+        toast.success(selectedDoctor ? "Doctor updated successfully!" : "Doctor added successfully!");
+        loadDoctors(pagination.current, pagination.pageSize);
         setIsModalOpen(false);
-        setSelectedNurse(null);
+        setSelectedDoctor(null);
         form.resetFields();
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Operation failed");
       }
     } catch (error) {
-      toast.error(`Error ${selectedNurse ? 'updating' : 'adding'} Doctor`);
-      console.error(`Error ${selectedNurse ? 'updating' : 'adding'} Doctor:`, error);
+      toast.error(`Error ${selectedDoctor ? 'updating' : 'adding'} Doctor`);
+      console.error(`Error ${selectedDoctor ? 'updating' : 'adding'} Doctor:`, error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleTableChange = (newPagination: any) => {
-    loadNurses(newPagination.current, newPagination.pageSize);
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
+    if (newPagination.current && newPagination.pageSize) {
+      loadDoctors(newPagination.current, newPagination.pageSize);
+    }
   };
 
-  // Delete nurse handler
-  const deleteNurse = async (record: any) => {
+  // Delete doctor handler
+  const deleteDoctor = async (record: Doctor): Promise<void> => {
+    if (!record.id) return;
+    
     setLoadingActionId(record.id);
     try {
-      const data = await PutApi(`/users`, { ...record, is_active: false });
+      const data: ApiResponse = await PutApi(`/users`, { ...record, is_active: false });
       if (!data?.error) {
         toast.success("Doctor deactivated successfully!");
-        loadNurses(pagination.current, pagination.pageSize);
+        loadDoctors(pagination.current, pagination.pageSize);
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to deactivate doctor");
       }
     } catch (error) {
       toast.error("Error deactivating Doctor");
@@ -210,9 +342,9 @@ export default function DoctorList() {
   };
 
   // Open modal for editing
-  const handleEdit = (record: any) => {
-    setSelectedNurse(record);
-    form.setFieldsValue({
+  const handleEdit = (record: Doctor): void => {
+    setSelectedDoctor(record);
+    const formValues: FormValues = {
       extra_fields: { ...record.extra_fields?.fields_data ?? {} },
       department_id: record.department_id,
       date_of_birth: record.date_of_birth?.split("T")[0],
@@ -224,14 +356,15 @@ export default function DoctorList() {
       state: record.address?.state,
       zip_code: record.address?.zip_code,
       country: record.address?.country,
-    });
+    };
+    form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };
 
   // Close modal
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setIsModalOpen(false);
-    setSelectedNurse(null);
+    setSelectedDoctor(null);
     form.resetFields();
   };
 
@@ -245,16 +378,7 @@ export default function DoctorList() {
     loading = false,
     confirm = false,
     confirmAction
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    type?: "primary" | "default" | "dashed" | "link" | "text";
-    danger?: boolean;
-    onClick?: () => void;
-    loading?: boolean;
-    confirm?: boolean;
-    confirmAction?: () => void;
-  }) => {
+  }: ActionButtonProps): React.ReactElement => {
     const button = (
       <motion.div
         whileHover={{ scale: 1.1 }}
@@ -270,7 +394,7 @@ export default function DoctorList() {
             className={`
               flex items-center justify-center 
               transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
+              ${!danger && type !== 'primary' ?
                 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
               }
               ${danger ?
@@ -302,8 +426,68 @@ export default function DoctorList() {
     );
   };
 
+  // Handle search
+  const handleSearch = (): void => {
+    loadDoctors(1, pagination.pageSize, searchTerm);
+  };
+
+  // ------------------ SCHEDULE MANAGEMENT -------------------
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState<boolean>(false);
+  const [selectedDoctorForSchedule, setSelectedDoctorForSchedule] = useState<Doctor | null>(null);
+  const [scheduleForm] = Form.useForm();
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([
+    { title: "", start_time: "", end_time: "", location: "", notes: "" },
+  ]);
+  const [isScheduleLoading, setIsScheduleLoading] = useState<boolean>(false);
+
+  const openScheduleModal = (doctor: Doctor): void => {
+    setSelectedDoctorForSchedule(doctor);
+    setIsScheduleModalOpen(true);
+    scheduleForm.resetFields();
+    setScheduleItems([{ title: "", start_time: "", end_time: "", location: "", notes: "" }]);
+  };
+
+  const handleAddScheduleItem = (): void => {
+    setScheduleItems([...scheduleItems, { title: "", start_time: "", end_time: "", location: "", notes: "" }]);
+  };
+
+  const handleRemoveScheduleItem = (index: number): void => {
+    const updated = [...scheduleItems];
+    updated.splice(index, 1);
+    setScheduleItems(updated);
+  };
+
+  const handleScheduleSubmit = async (values: ScheduleFormValues): Promise<void> => {
+    if (!selectedDoctorForSchedule?.id) return;
+    
+    setIsScheduleLoading(true);
+    try {
+      const payload = {
+        doctor_id: selectedDoctorForSchedule.id,
+        shift_type: values.shift_type,
+        start_time: values.start_time,
+        end_time: values.end_time,
+        status: values.status,
+        schedule_items: scheduleItems,
+      };
+
+      const data: ApiResponse = await PostApi(`/user-schedules`, payload);
+      if (!data?.error) {
+        toast.success("Schedule added successfully!");
+        setIsScheduleModalOpen(false);
+      } else {
+        toast.error(data.error || "Failed to add schedule");
+      }
+    } catch (err) {
+      console.error("Error adding schedule:", err);
+      toast.error("Failed to add schedule");
+    } finally {
+      setIsScheduleLoading(false);
+    }
+  };
+
   // Skeleton columns for loading state
-  const skeletonColumns = [
+  const skeletonColumns: ColumnsType<any> = [
     {
       title: "Doctor ID",
       dataIndex: "id",
@@ -374,7 +558,7 @@ export default function DoctorList() {
   ];
 
   // Actual columns
-  const columns = [
+  const columns: ColumnsType<Doctor> = [
     {
       title: "Doctor ID",
       dataIndex: "id",
@@ -388,7 +572,7 @@ export default function DoctorList() {
       render: (text: string) => (
         <Space>
           <UserOutlined className="text-blue-500" />
-          <Text strong>{text}</Text>
+          <Text strong>{text || 'N/A'}</Text>
         </Space>
       ),
     },
@@ -397,6 +581,7 @@ export default function DoctorList() {
       dataIndex: "gender",
       key: "gender",
       width: 100,
+      render: (gender: string) => gender || 'N/A',
     },
     {
       title: "Blood Type",
@@ -416,7 +601,7 @@ export default function DoctorList() {
       render: (phone: string) => (
         <Space>
           <PhoneOutlined className="text-green-500" />
-          {phone}
+          {phone || 'N/A'}
         </Space>
       ),
     },
@@ -443,28 +628,30 @@ export default function DoctorList() {
     {
       title: "Actions",
       key: "actions",
-      width: 150,
-      render: (_: any, record: any) => (
+      width: 200,
+      render: (_: any, record: Doctor) => (
         <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
             label="Edit"
-            type="default"
-            loading={loadingActionId === record.id}
             onClick={() => handleEdit(record)}
           />
-
           <ActionButton
             icon={<DeleteOutlined />}
             label="Delete"
             danger
-            loading={loadingActionId === record.id}
             confirm
-            confirmAction={() => deleteNurse(record)}
+            confirmAction={() => deleteDoctor(record)}
+          />
+          <ActionButton
+            icon={<CalendarOutlined />}
+            label="Add Schedule"
+            type="primary"
+            onClick={() => openScheduleModal(record)}
           />
         </Space>
       ),
-    },
+    }
   ];
 
   // Generate skeleton data for loading state
@@ -480,8 +667,6 @@ export default function DoctorList() {
     actions: '',
   }));
 
-  console.log(form, selectedNurse)
-
   return (
     <div className="p-6 space-y-6 rounded-lg" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
@@ -489,7 +674,7 @@ export default function DoctorList() {
         <Title level={2} className="m-0">Doctor Management</Title>
         <Space>
           <Button
-            onClick={() => loadNurses()}
+            onClick={() => loadDoctors()}
             icon={<ReloadOutlined />}
             loading={tableLoading}
             className="flex items-center"
@@ -508,6 +693,62 @@ export default function DoctorList() {
         </Space>
       </div>
 
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><TeamOutlined /> Total Doctors</Space>}
+                value={stats.total_records || 0}
+                valueStyle={{ color: '#667eea' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><CheckCircleOutlined /> Active</Space>}
+                value={stats.active_records || 0}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><ClockCircleOutlined /> Recent Joined</Space>}
+                value={stats.recently_added || 0}
+                valueStyle={{ color: '#fa8c16' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><DashboardOutlined /> Utilization</Space>}
+                value={Math.round(((stats.active_records || 0) / (stats.total_records || 1)) * 100)}
+                suffix="%"
+                valueStyle={{ color: '#36cfc9' }}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
       <Card className="border-0 shadow-sm mb-15">
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -520,29 +761,24 @@ export default function DoctorList() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <Input.Search
-                  placeholder="Search patients, doctors, or dates..."
+                <Input
+                  placeholder="Search doctors by name, email, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onPressEnter={handleSearch}
                   className="pl-10 h-12"
-                  onSearch={() => { loadNurses(pagination.current, pagination.pageSize, searchTerm) }}
+                  suffix={
+                    <Button 
+                      type="text" 
+                      icon={<SearchOutlined />} 
+                      onClick={handleSearch}
+                      loading={tableLoading}
+                    />
+                  }
                 />
               </div>
             </div>
-            {/* <div className="w-full md:w-48">
-              <UISelect value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </UISelect>
-            </div> */}
-            <UIButton onClick={()=> exportdoctors()} variant="outline" className="h-12 px-6">
+            <UIButton onClick={() => exportDoctors()} variant="outline" className="h-12 px-6">
               <Download className="w-4 h-4 mr-2" />
               Export
             </UIButton>
@@ -550,13 +786,13 @@ export default function DoctorList() {
         </CardContent>
       </Card>
 
-      {/* Nurses Table with Skeleton Loading */}
+      {/* Doctors Table with Skeleton Loading */}
       <Card
         bodyStyle={{ padding: 0 }}
         className="overflow-hidden"
       >
         <Table
-          dataSource={tableLoading ? skeletonData : nurses}
+          dataSource={tableLoading ? skeletonData : doctors}
           columns={tableLoading ? skeletonColumns : columns}
           rowKey={tableLoading ? "key" : "id"}
           pagination={
@@ -572,16 +808,16 @@ export default function DoctorList() {
           }
           onChange={handleTableChange}
           scroll={{ x: 1000 }}
-          loading={false} // We handle loading ourselves with skeleton
+          loading={false}
         />
       </Card>
 
-      {/* Add/Edit Nurse Modal */}
+      {/* Add/Edit Doctor Modal */}
       <Modal
         title={
           <Space>
             <TeamOutlined className="text-blue-600" />
-            <span>{selectedNurse ? "Edit Doctor" : "Add New Doctor"}</span>
+            <span>{selectedDoctor ? "Edit Doctor" : "Add New Doctor"}</span>
           </Space>
         }
         open={isModalOpen}
@@ -589,6 +825,7 @@ export default function DoctorList() {
         footer={null}
         width={800}
         style={{ top: 20 }}
+        destroyOnClose
       >
         <Spin spinning={loadingStates.departments || loadingStates.extraFields}>
           <Form
@@ -603,7 +840,7 @@ export default function DoctorList() {
                 <Title level={4} className="!mb-4">Personal Information</Title>
               </Col>
 
-              {extraFields.map((field: any) => (
+              {extraFields.map((field: ExtraField) => (
                 <Col span={12} key={field.field_name}>
                   <Form.Item
                     label={field.field_name}
@@ -797,6 +1034,7 @@ export default function DoctorList() {
               <Button
                 onClick={handleCancel}
                 size="large"
+                disabled={isLoading}
               >
                 Cancel
               </Button>
@@ -807,11 +1045,201 @@ export default function DoctorList() {
                 size="large"
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {selectedNurse ? "Update Doctor" : "Add Doctor"}
+                {selectedDoctor ? "Update Doctor" : "Add Doctor"}
               </Button>
             </div>
           </Form>
         </Spin>
+      </Modal>
+
+      {/* ---------------- SCHEDULE MODAL ---------------- */}
+      <Modal
+        title={
+          <Space>
+            <CalendarOutlined className="text-blue-600" />
+            <span>Add Schedule for Dr. {selectedDoctorForSchedule?.name}</span>
+          </Space>
+        }
+        open={isScheduleModalOpen}
+        onCancel={() => setIsScheduleModalOpen(false)}
+        footer={null}
+        width={850}
+        style={{ top: 20 }}
+        destroyOnClose
+      >
+        <Form
+          form={scheduleForm}
+          layout="vertical"
+          onFinish={handleScheduleSubmit}
+          className="mt-4"
+        >
+          <Row gutter={[16, 16]}>
+            <Col span={8}>
+              <Form.Item
+                label="Shift Type"
+                name="shift_type"
+                rules={[{ required: true, message: "Please select shift type" }]}
+              >
+                <Select
+                  placeholder="Select shift"
+                  size="large"
+                  options={[
+                    { value: "morning", label: "Morning" },
+                    { value: "evening", label: "Evening" },
+                    { value: "night", label: "Night" },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col span={4}>
+              <Form.Item
+                label="Start Time"
+                name="start_time"
+                rules={[{ required: true, message: "Enter start time" }]}
+              >
+                <Input type="time" size="large" />
+              </Form.Item>
+            </Col>
+
+            <Col span={4}>
+              <Form.Item
+                label="End Time"
+                name="end_time"
+                rules={[{ required: true, message: "Enter end time" }]}
+              >
+                <Input type="time" size="large" />
+              </Form.Item>
+            </Col>
+
+            <Col span={8}>
+              <Form.Item
+                label="Status"
+                name="status"
+                initialValue="scheduled"
+              >
+                <Select
+                  size="large"
+                  options={[
+                    { value: "scheduled", label: "Scheduled" },
+                    { value: "completed", label: "Completed" },
+                    { value: "cancelled", label: "Cancelled" },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider>Schedule Items</Divider>
+
+          {scheduleItems.map((item, index) => (
+            <Card
+              key={index}
+              size="small"
+              title={`Item ${index + 1}`}
+              extra={
+                scheduleItems.length > 1 && (
+                  <Button
+                    type="text"
+                    danger
+                    onClick={() => handleRemoveScheduleItem(index)}
+                  >
+                    Remove
+                  </Button>
+                )
+              }
+              className="mb-3 border border-gray-200"
+            >
+              <Row gutter={[16, 16]}>
+                <Col span={12}>
+                  <Input
+                    placeholder="Title"
+                    size="large"
+                    value={item.title}
+                    onChange={(e) => {
+                      const updated = [...scheduleItems];
+                      updated[index].title = e.target.value;
+                      setScheduleItems(updated);
+                    }}
+                  />
+                </Col>
+                <Col span={6}>
+                  <Input
+                    type="time"
+                    placeholder="Start"
+                    size="large"
+                    value={item.start_time}
+                    onChange={(e) => {
+                      const updated = [...scheduleItems];
+                      updated[index].start_time = e.target.value;
+                      setScheduleItems(updated);
+                    }}
+                  />
+                </Col>
+                <Col span={6}>
+                  <Input
+                    type="time"
+                    placeholder="End"
+                    size="large"
+                    value={item.end_time}
+                    onChange={(e) => {
+                      const updated = [...scheduleItems];
+                      updated[index].end_time = e.target.value;
+                      setScheduleItems(updated);
+                    }}
+                  />
+                </Col>
+                <Col span={12}>
+                  <Input
+                    placeholder="Location"
+                    size="large"
+                    value={item.location}
+                    onChange={(e) => {
+                      const updated = [...scheduleItems];
+                      updated[index].location = e.target.value;
+                      setScheduleItems(updated);
+                    }}
+                  />
+                </Col>
+                <Col span={12}>
+                  <Input.TextArea
+                    placeholder="Notes"
+                    rows={1}
+                    value={item.notes}
+                    onChange={(e) => {
+                      const updated = [...scheduleItems];
+                      updated[index].notes = e.target.value;
+                      setScheduleItems(updated);
+                    }}
+                  />
+                </Col>
+              </Row>
+            </Card>
+          ))}
+
+          <Button
+            type="dashed"
+            onClick={handleAddScheduleItem}
+            block
+            icon={<PlusOutlined />}
+            className="mb-4"
+          >
+            Add Another Item
+          </Button>
+
+          <Divider />
+
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setIsScheduleModalOpen(false)}>Cancel</Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isScheduleLoading}
+            >
+              Save Schedule
+            </Button>
+          </div>
+        </Form>
       </Modal>
     </div>
   );

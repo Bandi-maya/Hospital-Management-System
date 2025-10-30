@@ -174,6 +174,11 @@ export default function AddReseptionist({ onAddPatient }: AddPatientProps) {
         }
     };
 
+    useEffect(() => {
+        getDepartments();
+        getExtraFields();
+    }, []);
+
     const handleSubmit = async (values: any) => {
         setIsLoading(true);
         showLoader();

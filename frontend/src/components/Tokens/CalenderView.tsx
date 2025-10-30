@@ -11,7 +11,8 @@ import {
   Tooltip,
   message,
   Button,
-  Skeleton
+  Skeleton,
+  Switch
 } from "antd";
 import Calendar from "react-calendar";
 import 'react-calendar/dist/Calendar.css';
@@ -41,6 +42,8 @@ interface Token {
   date: string;
   time_slot: string;
   department?: string;
+  appointment_date?: string;
+  appointment_start_time?: string;
 }
 
 // Skeleton Loader Components
@@ -173,7 +176,7 @@ export default function TokenCalendarView() {
     initial: true
   });
 
-  function getDoctors() {
+  const getDoctors = () => {
     setLoading(prev => ({ ...prev, doctors: true }));
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
@@ -189,9 +192,9 @@ export default function TokenCalendarView() {
       .finally(() => {
         setLoading(prev => ({ ...prev, doctors: false }));
       });
-  }
+  };
 
-  function getDepartments() {
+  const getDepartments = () => {
     setLoading(prev => ({ ...prev, departments: true }));
     getApi('/departments')
       .then((data) => {
@@ -207,44 +210,44 @@ export default function TokenCalendarView() {
       .finally(() => {
         setLoading(prev => ({ ...prev, departments: false }));
       });
-  }
+  };
 
-  function loadData(doctorId: string, date: Date, departmentId: string) {
+  const loadData = (doctorId: string, date: Date, departmentId: string) => {
     setLoading(prev => ({ ...prev, tokens: true }));
-    let params = [];
+    
+    const params = new URLSearchParams();
+    
     if (doctorId) {
-      params.push(`doctor_id=${doctorId}`);
+      params.append('doctor_id', doctorId);
     }
     if (date) {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
-
-      params.push(`date=${year}-${month}-${day}`);
+      params.append('date', `${year}-${month}-${day}`);
     }
     if (departmentId) {
-      params.push(`department_id=${departmentId}`);
+      params.append('department_id', departmentId);
     }
 
-    if (params.length > 0) {
-      getApi(`/tokens?${params.join('&')}`)
-        .then((data) => {
-          if (!data.error) {
-            setTokens(data.data);
-          } else {
-            toast.error(data.error);
-          }
-        }).catch((err) => {
-          toast.error("Error occurred while getting tokens");
-          console.error("Error: ", err);
-        })
-        .finally(() => {
-          setLoading(prev => ({ ...prev, tokens: false, initial: false }));
-        });
-    } else {
-      setLoading(prev => ({ ...prev, tokens: false, initial: false }));
-    }
-  }
+    // Always load data, even without filters
+    getApi(`/tokens?${params.toString()}`)
+      .then((data) => {
+        if (!data.error) {
+          setTokens(data.data || []);
+        } else {
+          toast.error(data.error);
+          setTokens([]);
+        }
+      }).catch((err) => {
+        toast.error("Error occurred while getting tokens");
+        console.error("Error: ", err);
+        setTokens([]);
+      })
+      .finally(() => {
+        setLoading(prev => ({ ...prev, tokens: false, initial: false }));
+      });
+  };
 
   useEffect(() => {
     getDoctors();
@@ -253,13 +256,24 @@ export default function TokenCalendarView() {
 
   // Auto refresh notifier
   useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
     if (autoRefresh) {
-      const interval = setInterval(() => {
-        message.info("🔄 Auto-refresh: Token calendar data reloaded");
+      interval = setInterval(() => {
+        message.info({
+          content: "🔄 Auto-refresh: Token calendar data reloaded",
+          duration: 2,
+          key: 'auto-refresh'
+        });
         loadData(selectedDoctor, selectedDate, selectedDepartment);
-      }, 30000);
-      return () => clearInterval(interval);
+      }, 30000); // 30 seconds
     }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [autoRefresh, selectedDoctor, selectedDate, selectedDepartment]);
 
   useEffect(() => {
@@ -289,6 +303,7 @@ export default function TokenCalendarView() {
   const resetFilters = () => {
     setSelectedDoctor("");
     setSelectedDepartment("");
+    setSelectedDate(new Date());
   };
 
   const formatDate = (date: Date) => {
@@ -298,6 +313,14 @@ export default function TokenCalendarView() {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const getDisplayTime = (token: Token) => {
+    return token.appointment_start_time || token.time_slot || "Time not specified";
+  };
+
+  const getDisplayDate = (token: Token) => {
+    return token.appointment_date || token.date;
   };
 
   const isLoading = loading.initial || loading.doctors || loading.departments;
@@ -320,25 +343,26 @@ export default function TokenCalendarView() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
-              <Tooltip title="Auto Refresh">
+              <Tooltip title={autoRefresh ? "Auto refresh enabled" : "Auto refresh disabled"}>
                 <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
                   <SyncOutlined className="w-4 h-4 text-gray-600" />
                   <span className="text-sm text-gray-600">Auto Refresh</span>
-                  <div
-                    className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${autoRefresh ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                    onClick={() => setAutoRefresh(!autoRefresh)}
-                  >
-                    <div
-                      className={`w-3 h-3 rounded-full bg-white transform transition-transform ${autoRefresh ? 'translate-x-4' : 'translate-x-1'
-                        }`}
-                    />
-                  </div>
+                  <Switch
+                    size="small"
+                    checked={autoRefresh}
+                    onChange={setAutoRefresh}
+                    checkedChildren="ON"
+                    unCheckedChildren="OFF"
+                  />
                 </div>
               </Tooltip>
 
-              <Tooltip title="Reset Filters">
-                <Button icon={<ReloadOutlined />} onClick={resetFilters}>
+              <Tooltip title="Reset all filters">
+                <Button 
+                  icon={<ReloadOutlined />} 
+                  onClick={resetFilters}
+                  disabled={loading.tokens}
+                >
                   Reset Filters
                 </Button>
               </Tooltip>
@@ -361,6 +385,15 @@ export default function TokenCalendarView() {
                 </Space>
               }
               className="shadow-sm h-full"
+              extra={
+                <Button 
+                  type="link" 
+                  size="small" 
+                  onClick={() => setSelectedDate(new Date())}
+                >
+                  Today
+                </Button>
+              }
             >
               <div className="flex justify-center">
                 <Calendar
@@ -372,8 +405,28 @@ export default function TokenCalendarView() {
                     }
                   }}
                   value={selectedDate}
-                  className="border-0 w-full max-w-md"
+                  className="border-0 w-full max-w-md react-calendar-custom"
+                  tileClassName={({ date, view }) => {
+                    if (view === 'month') {
+                      const isToday = date.toDateString() === new Date().toDateString();
+                      const isSelected = date.toDateString() === selectedDate.toDateString();
+                      
+                      if (isToday && isSelected) {
+                        return 'bg-blue-600 text-white rounded';
+                      }
+                      if (isToday) {
+                        return 'bg-blue-100 text-blue-600 rounded';
+                      }
+                      if (isSelected) {
+                        return 'bg-gray-200 rounded';
+                      }
+                    }
+                    return '';
+                  }}
                 />
+              </div>
+              <div className="mt-4 text-center text-sm text-gray-500">
+                Selected: {formatDate(selectedDate)}
               </div>
             </Card>
           )}
@@ -392,6 +445,11 @@ export default function TokenCalendarView() {
                 </Space>
               }
               className="shadow-sm h-full"
+              extra={
+                <div className="text-sm text-gray-500">
+                  {tokens.length} token{tokens.length !== 1 ? 's' : ''} found
+                </div>
+              }
             >
               <Space direction="vertical" size="middle" className="w-full">
                 <div>
@@ -406,6 +464,7 @@ export default function TokenCalendarView() {
                     className="w-full"
                     allowClear
                     loading={loading.departments}
+                    disabled={loading.departments}
                   >
                     {departments.map((dept: any) => (
                       <Option key={dept.id} value={dept.id}>
@@ -427,10 +486,11 @@ export default function TokenCalendarView() {
                     className="w-full"
                     allowClear
                     loading={loading.doctors}
+                    disabled={loading.doctors}
                   >
                     {doctors.map((doctor: any) => (
                       <Option key={doctor.id} value={doctor.id}>
-                        {doctor.username}
+                        Dr. {doctor.username}
                       </Option>
                     ))}
                   </Select>
@@ -471,7 +531,14 @@ export default function TokenCalendarView() {
                     </Space>
                   ) : tokens.length === 0 ? (
                     <Empty
-                      description="No tokens scheduled for this day"
+                      description={
+                        <div>
+                          <p>No tokens scheduled for this day</p>
+                          <p className="text-sm text-gray-500 mt-2">
+                            Try selecting a different date or adjusting your filters
+                          </p>
+                        </div>
+                      }
                       image={Empty.PRESENTED_IMAGE_SIMPLE}
                     />
                   ) : (
@@ -480,7 +547,10 @@ export default function TokenCalendarView() {
                         <Card
                           key={token.id}
                           size="small"
-                          className="hover:shadow-md transition-shadow"
+                          className="hover:shadow-md transition-shadow cursor-pointer border-l-4"
+                          style={{
+                            borderLeftColor: getStatusColor(token.status)
+                          }}
                         >
                           <div className="flex justify-between items-start">
                             <div className="space-y-2 flex-1">
@@ -493,7 +563,7 @@ export default function TokenCalendarView() {
                                     Token #{token.token_number}
                                   </div>
                                   <div className="text-sm text-gray-600">
-                                    {token.time_slot || "Time not specified"}
+                                    {getDisplayTime(token)}
                                   </div>
                                 </div>
                               </div>
@@ -525,7 +595,7 @@ export default function TokenCalendarView() {
                             <Tag
                               color={getStatusColor(token.status)}
                               icon={getStatusIcon(token.status)}
-                              className="ml-2"
+                              className="ml-2 whitespace-nowrap"
                             >
                               {token.status}
                             </Tag>
@@ -540,6 +610,30 @@ export default function TokenCalendarView() {
           )}
         </Col>
       </Row>
+
+      {/* <style jsx global>{`
+        .react-calendar-custom {
+          border: 1px solid #d9d9d9;
+          border-radius: 8px;
+          padding: 16px;
+          background: white;
+        }
+        
+        .react-calendar-custom .react-calendar__tile--active {
+          background: #1890ff;
+          color: white;
+        }
+        
+        .react-calendar-custom .react-calendar__tile--now {
+          background: #e6f7ff;
+          color: #1890ff;
+        }
+        
+        .react-calendar-custom .react-calendar__navigation button:enabled:hover,
+        .react-calendar-custom .react-calendar__navigation button:enabled:focus {
+          background-color: #f0f0f0;
+        }
+      `}</style> */}
     </div>
   );
 }

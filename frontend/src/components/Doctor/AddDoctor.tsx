@@ -35,7 +35,7 @@ import { useNavigate } from "react-router-dom";
 import { getApi, PostApi } from "@/ApiService";
 import dayjs from "dayjs";
 import { motion } from "framer-motion";
-import FullscreenLoader from "@/components/Loader/FullscreenLoader";
+import FullscreenLoader from "../Loader/FullscreenLoader";
 
 interface AddNurseProps {
     onAddNurse?: (nurse: any) => void;

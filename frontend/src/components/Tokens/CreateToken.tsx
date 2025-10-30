@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getApi, PostApi } from "@/ApiService";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +19,29 @@ export interface Token {
   token_number?: string;
   appointment_date: string;
   status?: "Pending" | "Confirmed" | "Completed";
+}
+
+// Interface for form data
+interface FormData {
+  patient_id: string;
+  doctor_id: string;
+  appointment_date: string;
+  department_id: string;
+}
+
+// Interface for API responses
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  specialization?: string;
+  department_id?: string;
+  user_type: string;
+}
+
+interface Department {
+  id: string;
+  name: string;
 }
 
 // Validation Types
@@ -100,7 +122,7 @@ const HeaderSkeleton = () => (
 );
 
 // Validation function
-const validateForm = (form: any): FormErrors => {
+const validateForm = (form: FormData): FormErrors => {
   const errors: FormErrors = {};
 
   if (!form.patient_id) {
@@ -131,17 +153,18 @@ const validateForm = (form: any): FormErrors => {
 };
 
 export default function CreateToken() {
-  const navigate = useNavigate()
-  const [patients, setPatients] = useState([])
-  const [doctors, setDoctors] = useState([])
-  const [departments, setDepartments] = useState([])
-  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate();
+  const [patients, setPatients] = useState<User[]>([]);
+  const [doctors, setDoctors] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [filteredDoctors, setFilteredDoctors] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState({
     patients: true,
     doctors: true,
     departments: true
-  })
-  const [form, setForm] = useState({
+  });
+  const [form, setForm] = useState<FormData>({
     patient_id: "",
     doctor_id: "",
     appointment_date: "",
@@ -155,71 +178,90 @@ export default function CreateToken() {
     department_id: false,
   });
 
-  function getPatients() {
+  // Fetch patients
+  const getPatients = () => {
     setDataLoading(prev => ({ ...prev, patients: true }));
     getApi('/users?user_type=PATIENT')
       .then((data) => {
         if (!data.error) {
-          setPatients(data.data)
-        }
-        else {
-          toast.error(data.error)
+          setPatients(data.data || []);
+        } else {
+          toast.error(data.error);
         }
       })
       .catch((err) => {
-        toast.error("Error occurred while getting patients")
-        console.error("Error: ", err)
+        toast.error("Error occurred while getting patients");
+        console.error("Error: ", err);
       })
       .finally(() => {
         setDataLoading(prev => ({ ...prev, patients: false }));
-      })
-  }
+      });
+  };
 
-  function getDoctors() {
+  // Fetch doctors
+  const getDoctors = () => {
     setDataLoading(prev => ({ ...prev, doctors: true }));
     getApi('/users?user_type=DOCTOR')
       .then((data) => {
         if (!data.error) {
-          setDoctors(data.data)
-        }
-        else {
-          toast.error(data.error)
+          const doctorsData = data.data || [];
+          setDoctors(doctorsData);
+          setFilteredDoctors(doctorsData); // Initialize filtered doctors with all doctors
+        } else {
+          toast.error(data.error);
         }
       })
       .catch((err) => {
-        toast.error("Error occurred while getting doctors")
-        console.error("Error: ", err)
+        toast.error("Error occurred while getting doctors");
+        console.error("Error: ", err);
       })
       .finally(() => {
         setDataLoading(prev => ({ ...prev, doctors: false }));
-      })
-  }
+      });
+  };
 
-  function getDepartments() {
+  // Fetch departments
+  const getDepartments = () => {
     setDataLoading(prev => ({ ...prev, departments: true }));
     getApi('/departments')
       .then((data) => {
         if (!data.error) {
-          setDepartments(data.data)
-        }
-        else {
-          toast.error(data.error)
+          setDepartments(data.data || []);
+        } else {
+          toast.error(data.error);
         }
       })
       .catch((err) => {
-        toast.error("Error occurred while getting departments")
-        console.error("Error: ", err)
+        toast.error("Error occurred while getting departments");
+        console.error("Error: ", err);
       })
       .finally(() => {
         setDataLoading(prev => ({ ...prev, departments: false }));
-      })
-  }
+      });
+  };
 
   useEffect(() => {
-    getPatients()
-    getDepartments()
-    getDoctors()
-  }, [])
+    getPatients();
+    getDepartments();
+    getDoctors();
+  }, []);
+
+  // Filter doctors when department changes
+  useEffect(() => {
+    if (form.department_id && doctors.length > 0) {
+      const departmentDoctors = doctors.filter(doctor => 
+        doctor.department_id === form.department_id
+      );
+      setFilteredDoctors(departmentDoctors);
+      
+      // Reset doctor selection if current doctor is not in the filtered list
+      if (form.doctor_id && !departmentDoctors.some(d => d.id === form.doctor_id)) {
+        setForm(prev => ({ ...prev, doctor_id: "" }));
+      }
+    } else {
+      setFilteredDoctors(doctors);
+    }
+  }, [form.department_id, doctors, form.doctor_id]);
 
   // Validate form on change
   useEffect(() => {
@@ -229,12 +271,12 @@ export default function CreateToken() {
     }
   }, [form, touched]);
 
-  const handleFieldChange = (field: string, value: string) => {
+  const handleFieldChange = (field: keyof FormData, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
     setTouched(prev => ({ ...prev, [field]: true }));
   };
 
-  const handleBlur = (field: string) => {
+  const handleBlur = (field: keyof FormData) => {
     setTouched(prev => ({ ...prev, [field]: true }));
     const newErrors = validateForm(form);
     setErrors(newErrors);
@@ -268,19 +310,18 @@ export default function CreateToken() {
       .then((data) => {
         if (!data.error) {
           toast.success("Token created successfully!");
-          navigate('/tokens')
-        }
-        else {
-          toast.error(data.error)
-          console.error("Error occurred", data.error)
+          navigate('/tokens');
+        } else {
+          toast.error(data.error);
+          console.error("Error occurred", data.error);
         }
       }).catch((error) => {
-        toast.error("Error occurred while creating token")
-        console.log("Error occurred while creating token", error)
+        toast.error("Error occurred while creating token");
+        console.log("Error occurred while creating token", error);
       })
       .finally(() => {
         setLoading(false);
-      })
+      });
   };
 
   const isFormValid = () => {
@@ -291,7 +332,7 @@ export default function CreateToken() {
   const isLoading = dataLoading.patients || dataLoading.doctors || dataLoading.departments;
 
   return (
-    <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       {/* Header Card */}
       {isLoading ? (
         <HeaderSkeleton />
@@ -347,17 +388,16 @@ export default function CreateToken() {
                 <Select 
                   value={form.patient_id} 
                   onValueChange={(val) => handleFieldChange("patient_id", val)}
-                  
                 >
                   <SelectTrigger className={`h-12 ${errors.patient_id ? 'border-red-500' : ''}`}>
                     <SelectValue placeholder="Select patient" />
                   </SelectTrigger>
                   <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="py-3">
+                    {patients.map((patient) => (
+                      <SelectItem key={patient.id} value={patient.id} className="py-3">
                         <div className="flex flex-col">
-                          <span className="font-medium">{p.username}</span>
-                          <span className="text-xs text-gray-500">{p.email}</span>
+                          <span className="font-medium">{patient.username}</span>
+                          <span className="text-xs text-gray-500">{patient.email}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -380,15 +420,14 @@ export default function CreateToken() {
                 <Select 
                   value={form.department_id} 
                   onValueChange={(val) => handleFieldChange("department_id", val)}
-                  
                 >
                   <SelectTrigger className={`h-12 ${errors.department_id ? 'border-red-500' : ''}`}>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((s) => (
-                      <SelectItem key={s.id} value={s.id} className="py-3">
-                        {s.name}
+                    {departments.map((department) => (
+                      <SelectItem key={department.id} value={department.id} className="py-3">
+                        {department.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -410,17 +449,27 @@ export default function CreateToken() {
                 <Select 
                   value={form.doctor_id} 
                   onValueChange={(val) => handleFieldChange("doctor_id", val)}
-                  
+                  disabled={!form.department_id || filteredDoctors.length === 0}
                 >
-                  <SelectTrigger className={`h-12 ${errors.doctor_id ? 'border-red-500' : ''}`}>
-                    <SelectValue placeholder="Select doctor" />
+                  <SelectTrigger className={`h-12 ${errors.doctor_id ? 'border-red-500' : ''} ${!form.department_id ? 'bg-gray-100' : ''}`}>
+                    <SelectValue 
+                      placeholder={
+                        !form.department_id 
+                          ? "Select department first" 
+                          : filteredDoctors.length === 0 
+                            ? "No doctors available" 
+                            : "Select doctor"
+                      } 
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {doctors.map((d) => (
-                      <SelectItem key={d.id} value={d.id} className="py-3">
+                    {filteredDoctors.map((doctor) => (
+                      <SelectItem key={doctor.id} value={doctor.id} className="py-3">
                         <div className="flex flex-col">
-                          <span className="font-medium">Dr. {d.username}</span>
-                          <span className="text-xs text-gray-500">{d.specialization || "General Practitioner"}</span>
+                          <span className="font-medium">Dr. {doctor.username}</span>
+                          <span className="text-xs text-gray-500">
+                            {doctor.specialization || "General Practitioner"}
+                          </span>
                         </div>
                       </SelectItem>
                     ))}
@@ -430,6 +479,12 @@ export default function CreateToken() {
                   <div className="flex items-center gap-1 text-red-600 text-sm">
                     <AlertCircle className="w-4 h-4" />
                     {errors.doctor_id}
+                  </div>
+                )}
+                {form.department_id && filteredDoctors.length === 0 && (
+                  <div className="flex items-center gap-1 text-amber-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    No doctors available in this department
                   </div>
                 )}
               </div>

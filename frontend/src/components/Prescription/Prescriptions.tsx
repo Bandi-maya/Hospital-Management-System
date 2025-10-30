@@ -356,7 +356,7 @@ export default function Prescriptions() {
 
   const handleDelete = (prescription: Prescription) => {
     setLoadingActionId(prescription.id!);
-    DeleteApi("/prescriptions", { id: prescription.id })
+    DeleteApi("/orders", { id: prescription.id })
       .then((data) => {
         if (!data.error) {
           loadPrescriptions();

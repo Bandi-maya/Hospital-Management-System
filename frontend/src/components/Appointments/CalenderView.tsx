@@ -5,12 +5,41 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getApi } from "@/ApiService";
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Appointment } from "./BookAppointment";
 import { Calendar as CalendarIcon, User, Clock, Stethoscope, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Label } from "../ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+
+// Define interfaces
+interface Patient {
+  name?: string;
+  username?: string;
+}
+
+interface Doctor {
+  id: string;
+  username: string;
+  name?: string;
+  specialization?: string;
+}
+
+interface Appointment {
+  id: string;
+  patient: Patient;
+  doctor: Doctor;
+  appointment_date: string;
+  appointment_start_time: string;
+  appointment_end_time?: string;
+  status?: string;
+  patient_id: string;
+  doctor_id: string;
+}
+
+interface ApiResponse {
+  error?: string;
+  data?: any;
+}
 
 // Skeleton Loader Components
 const CalendarSkeleton = () => (
@@ -81,16 +110,6 @@ const AppointmentsSkeleton = () => (
   </Card>
 );
 
-const DoctorSelectSkeleton = () => (
-  <div className="space-y-3">
-    <div className="flex items-center gap-2">
-      <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
-      <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-    </div>
-    <div className="h-12 bg-gray-200 rounded animate-pulse"></div>
-  </div>
-);
-
 const AppointmentCardSkeleton = () => (
   <Card className="border border-gray-200 shadow-sm">
     <CardContent className="p-4">
@@ -118,32 +137,31 @@ const AppointmentCardSkeleton = () => (
 export default function CalendarView() {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedDoctor, setSelectedDoctor] = useState("")
-  const [doctors, setDoctors] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [doctorsLoading, setDoctorsLoading] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDoctor, setSelectedDoctor] = useState<string>("");
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [doctorsLoading, setDoctorsLoading] = useState<boolean>(false);
 
-  function getDoctors() {
+  const getDoctors = (): void => {
     setDoctorsLoading(true);
     getApi('/users?user_type=DOCTOR')
-      .then((data) => {
+      .then((data: ApiResponse) => {
         if (!data.error) {
-          setDoctors(data.data)
+          setDoctors(data.data || []);
+        } else {
+          toast.error(data.error);
         }
-        else {
-          toast.error(data.error)
-        }
-      }).catch((err) => {
-        toast.error("Error occurred while getting doctors")
-        console.error("Error: ", err)
+      }).catch((err: Error) => {
+        toast.error("Error occurred while getting doctors");
+        console.error("Error: ", err);
       })
       .finally(() => {
         setDoctorsLoading(false);
-      })
-  }
+      });
+  };
 
-  function loadData(doctorId: string, date: Date) {
+  const loadData = (doctorId: string, date: Date): void => {
     setLoading(true);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -151,25 +169,24 @@ export default function CalendarView() {
 
     const dateString = `${year}-${month}-${day}`;
     getApi(`/appointment?doctor_id=${doctorId}&date=${dateString}`)
-      .then((data) => {
+      .then((data: ApiResponse) => {
         if (!data.error) {
-          setAppointments(data.data)
+          setAppointments(data.data || []);
+        } else {
+          toast.error(data.error);
         }
-        else {
-          toast.error(data.error)
-        }
-      }).catch((err) => {
-        toast.error("Error occurred while getting appointments")
-        console.error("Error: ", err)
+      }).catch((err: Error) => {
+        toast.error("Error occurred while getting appointments");
+        console.error("Error: ", err);
       })
       .finally(() => {
         setLoading(false);
-      })
-  }
+      });
+  };
 
   useEffect(() => {
-    getDoctors()
-  }, [])
+    getDoctors();
+  }, []);
 
   useEffect(() => {
     if (selectedDate && selectedDoctor) {
@@ -179,11 +196,8 @@ export default function CalendarView() {
 
   // Get appointments for the selected date
   const dailyAppointments = appointments;
-  // .filter(
-    // app => app.appointment_date.split("T")[0] === selectedDate.toISOString().split("T")[0]
-  // );
 
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case "Completed": return "default";
       case "Confirmed": return "secondary";
@@ -192,12 +206,20 @@ export default function CalendarView() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case "Completed": return "text-green-600 bg-green-50 border-green-200";
       case "Confirmed": return "text-blue-600 bg-blue-50 border-blue-200";
       case "Pending": return "text-orange-600 bg-orange-50 border-orange-200";
       default: return "";
+    }
+  };
+
+  const handleCalendarChange = (value: any): void => {
+    if (value instanceof Date) {
+      setSelectedDate(value);
+    } else if (Array.isArray(value) && value[0] instanceof Date) {
+      setSelectedDate(value[0]);
     }
   };
 
@@ -246,13 +268,7 @@ export default function CalendarView() {
             </CardHeader>
             <CardContent>
               <Calendar
-                onChange={(value) => {
-                  if (value instanceof Date) {
-                    setSelectedDate(value);
-                  } else if (Array.isArray(value) && value[0] instanceof Date) {
-                    setSelectedDate(value[0]);
-                  }
-                }}
+                onChange={handleCalendarChange}
                 value={selectedDate}
                 className="border-0 rounded-lg w-full"
               />
@@ -281,16 +297,16 @@ export default function CalendarView() {
                   <Stethoscope className="w-4 h-4 text-gray-600" />
                   Filter by Doctor
                 </Label>
-                <Select value={selectedDoctor} onValueChange={(val) => setSelectedDoctor(val)}>
+                <Select value={selectedDoctor} onValueChange={(val: string) => setSelectedDoctor(val)}>
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select doctor to view appointments" />
                   </SelectTrigger>
                   <SelectContent>
-                    {doctors.map((d) => (
-                      <SelectItem key={d.id} value={d.id} className="py-3">
+                    {doctors.map((doctor: Doctor) => (
+                      <SelectItem key={doctor.id} value={doctor.id} className="py-3">
                         <div className="flex flex-col">
-                          <span className="font-medium">Dr. {d.username}</span>
-                          <span className="text-xs text-gray-500">{d.specialization || "General Practitioner"}</span>
+                          <span className="font-medium">Dr. {doctor.username}</span>
+                          <span className="text-xs text-gray-500">{doctor.specialization || "General Practitioner"}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -319,7 +335,7 @@ export default function CalendarView() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {dailyAppointments.map(app => (
+                  {dailyAppointments.map((app: Appointment) => (
                     <Card key={app.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start">
@@ -335,7 +351,7 @@ export default function CalendarView() {
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-gray-400" />
                               <span className="text-sm text-gray-600">
-                                {app.appointment_start_time} - {app.appointment_end_time}
+                                {app.appointment_start_time} {app.appointment_end_time ? `- ${app.appointment_end_time}` : ''}
                               </span>
                             </div>
                           </div>

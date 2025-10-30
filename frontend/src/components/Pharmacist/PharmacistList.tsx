@@ -1,434 +1,3 @@
-// import { useState, useEffect, useMemo } from "react";
-// import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-// import { Input } from "@/components/ui/input";
-// import { Button } from "@/components/ui/button";
-// import { Label } from "@/components/ui/label";
-// import { Badge } from "@/components/ui/badge";
-// import { toast } from "sonner";
-// import { InputNumber, Popconfirm, Select, Table } from "antd";
-// import { countries } from "@/components/Patients/AddPatient";
-// import { getApi, PostApi, PutApi } from "@/ApiService";
-// import { DepartmentInterface } from "@/components/Departments/Departments";
-// import { Search, PlusCircle, User, Stethoscope, Mail, Phone, MapPin, Calendar, Edit, Trash2, Filter, Download } from "lucide-react";
-// import { Patient } from "@/types/patient";
-// import { useNavigate } from "react-router-dom";
-
-// const { Option } = Select;
-
-// export default function PharmacistList() {
-//   const [isDialogOpen, setIsDialogOpen] = useState(false);
-//   const [patients, setPatients] = useState<Patient[]>([]);
-//   const [isModalOpen, setIsModalOpen] = useState(false);
-//   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
-//   const [form, setForm] = useState<any>({});
-//   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
-//   const [extraFields, setExtraFields] = useState<any>([])
-//   const userTypeId = useMemo(() => {
-//     return extraFields?.[0]?.user_type
-//   }, [extraFields])
-//   const [isLoading, setIsLoading] = useState(false);
-
-//   function getExtraFields() {
-//     getApi("/user-fields")
-//       .then((data) => {
-//         if (!data?.error) {
-//           setExtraFields(data.data.filter((field) => field.user_type_data.type.toUpperCase() === "NURSE"));
-//         }
-//         else {
-//           toast.error("Error fetching doctors: " + data.error);
-//           console.error("Error fetching doctors:", data.error);
-//         }
-//       }).catch((error) => {
-//         toast.error("Error fetching doctors");
-//         console.error("Error deleting doctors:", error);
-//       });
-//   }
-
-//   const handleSubmit = () => {
-//     setIsLoading(true)
-
-//     console.log(!form.gender, !form.date_of_birth, !form.address.city, !form.address.state, !form.address.zip_code, !form.address.country, !form.email, !form.phone_no)
-//     if (!form.gender || !form.date_of_birth || !form.address.city || !form.address.state || !form.address.zip_code || !form.address.country || !form.email || !form.phone_no) {
-//       toast.error("Please fill in all fields");
-//       setIsLoading(false);
-//       return;
-//     }
-
-//     form.name = form?.extra_fields?.first_name + " " + form?.extra_fields?.last_name
-
-//     if (selectedDoctor) {
-//       PutApi(`/users`, { ...form, id: selectedDoctor.id, user_type_id: selectedDoctor.user_type_id })
-//         .then((data) => {
-//           if (!data?.error) {
-//             toast.success("Doctor updated successfully!");
-//             loadPatients()
-//           }
-//           else {
-//             toast.error(data.error);
-//             console.error("Error updating doctor:", data.error);
-//           }
-//         }).catch((error) => {
-//           toast.error("Error updating doctor");
-//           console.error("Error updating doctor:", error);
-//         }).finally(() => {
-//           setIsLoading(false);
-//         })
-//     }
-//     setIsModalOpen(false);
-//     setSelectedDoctor(null);
-//     setIsLoading(false);
-//   };
-
-//   function loadDepartments() {
-//     getApi('/departments')
-//       .then((data) => {
-//         if (!data.error) {
-//           setDepartments(data.data);
-//         }
-//         else {
-//           toast.error(data.error);
-//         }
-//       })
-//       .catch((error) => {
-//         console.error("Error fetching departments:", error);
-//         toast.error("Failed to fetch departments");
-//       })
-//   }
-
-
-//   const navigate = useNavigate();
-
-//   const loadPatients = async () => {
-//     await getApi(`/users?user_type=PHARMACIST`)
-//       .then((data) => {
-//         if (!data?.error) {
-//           setPatients(data.data);
-//         }
-//         else {
-//           toast.error(data.error)
-//           console.error("Error fetching user fields:", data.error);
-//         }
-//       }).catch((error) => {
-//         toast.error("Error getting users")
-//         console.error("Error getting user data:", error);
-//       });
-//   };
-
-//   useEffect(() => {
-//     loadPatients();
-//     loadDepartments()
-//     getExtraFields()
-//   }, []);
-
-//   const deletePatient = async (record: any) => {
-//     await PutApi(`/users`, { ...record, is_active: false })
-//       .then((data) => {
-//         if (!data?.error) {
-//           loadPatients();
-//         }
-//         else {
-//           console.error("Error fetching user fields:", data.error);
-//         }
-//       }).catch((error) => {
-//         console.error("Error deleting user field:", error);
-//       });
-//   };
-
-//   const columns = [
-//     { title: "Patient ID", dataIndex: "id", key: "patientId" },
-//     {
-//       title: "Name",
-//       dataIndex: "name",
-//       key: "name",
-//     },
-//     {
-//       title: "Gender",
-//       dataIndex: "gender",
-//       key: "gender"
-//     },
-//     {
-//       title: "Blood Type",
-//       dataIndex: "blood_type",
-//       key: "bloodType"
-//     },
-//     {
-//       title: "Phone",
-//       dataIndex: "phone_no",
-//       key: "phone"
-//     },
-//     {
-//       title: "Doctor",
-//       dataIndex: ["extra_fields", "fields_data", "assigned_to_doctor"],
-//       key: "assignedDoctor",
-//     },
-//     {
-//       title: "Status",
-//       dataIndex: "is_active",
-//       key: "status",
-//       render: (is_active: boolean) => (is_active ? "Active" : "Inactive"),
-//     },
-//     {
-//       title: "Action",
-//       key: "action",
-//       render: (_: any, record: any) => (
-//         <>
-//         <Button onClick={() => {
-//             setSelectedDoctor(record);
-//             setForm({
-//               address: {
-//                 street: record.address.street,
-//                 city: record.address.city,
-//                 state: record.address.state,
-//                 country: record.address.country,
-//                 zip_code: record.address.zip_code,
-//               },
-//               department_id: record.department_id,
-//               date_of_birth: record.date_of_birth.split("T")[0],
-//               gender: record.gender,
-//               extra_fields: record.extra_fields.fields_data,
-//               email: record.email,
-//               phone_no: record.phone_no,
-//             });
-//             setIsModalOpen(true)
-//           }}>Edit</Button>
-//           <Popconfirm
-//             title="Are you sure you want to delete?"
-//             onConfirm={() => deletePatient(record)}
-//           >
-//             <Button >Delete</Button>
-//           </Popconfirm>
-//         </>
-//       ),
-//     },
-//   ];
-
-//   return (
-//     <div className="p-6 bg-white rounded-lg shadow">
-//       <div className="flex justify-between items-center mb-4">
-//         <h1 className="text-2xl font-bold">Patient List</h1>
-//         <Button onClick={() => navigate("/nurse/add")}>
-//           Add Pharmacist
-//         </Button>
-//       </div>
-
-//       <Table dataSource={patients} columns={columns} rowKey="id" />
-
-//       {isModalOpen && (
-//         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-//           <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-//             <CardHeader className="px-6 py-5 border-b border-gray-200 bg-white sticky top-0 z-10">
-//               <div className="flex items-center gap-3">
-//                 <div className="p-2 bg-blue-100 rounded-lg">
-//                   <Stethoscope className="w-5 h-5 text-blue-600" />
-//                 </div>
-//                 <div>
-//                   <CardTitle className="text-xl font-semibold text-gray-900">
-//                     {selectedDoctor ? "Edit Doctor" : "Add New Doctor"}
-//                   </CardTitle>
-//                   <CardDescription className="text-gray-600">
-//                     {selectedDoctor ? "Update doctor information" : "Fill in the details to add a new doctor"}
-//                   </CardDescription>
-//                 </div>
-//               </div>
-//             </CardHeader>
-
-//             <div className="flex-1 overflow-y-auto">
-//               <CardContent className="p-6">
-//                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-//                   {/* Personal Information */}
-//                   <div className="space-y-4">
-//                     <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Personal Information</h3>
-
-//                     {
-//                       extraFields.map((field) => {
-//                         return <div className="space-y-3">
-//                           <Label htmlFor={field.field_name} className="text-sm font-medium text-gray-700">{field.field_name} *</Label>
-//                           <Input
-//                             id={field.field_name}
-//                             value={form.extra_fields?.[field.field_name]}
-//                             onChange={(e) => setForm({ ...form, extra_fields: { ...form.extra_fields, [field.field_name]: e.target.value } })}
-//                             placeholder={`Enter ${field.field_name}`}
-//                             className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-//                           />
-//                         </div>
-//                       })
-//                     }
-
-//                     <div className="space-y-3">
-//                       <Label htmlFor="date_of_birth" className="text-sm font-medium text-gray-700">Date Of Birth *</Label>
-//                       <Input
-//                         type="date"
-//                         id="date_of_birth"
-//                         value={form.date_of_birth}
-//                         onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
-//                         className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-//                       />
-//                     </div>
-
-//                     <div className="space-y-3">
-//                       <Label htmlFor="gender" className="text-sm font-medium text-gray-700">Gender *</Label>
-//                       <Select
-//                         options={[
-//                           { value: "MALE", label: "Male" },
-//                           { value: "FEMALE", label: "Female" },
-//                           { value: "OTHER", label: "Other" },
-//                         ]}
-//                         id="gender"
-//                         value={form.gender}
-//                         onChange={(value) => setForm({ ...form, gender: value })}
-//                         placeholder="Select gender"
-//                         className="w-full [&_.ant-select-selector]:h-11 [&_.ant-select-selection-item]:leading-9"
-//                         dropdownStyle={{ minWidth: '200px' }}
-//                         popupMatchSelectWidth={false}
-//                       />
-//                     </div>
-//                   </div>
-
-//                   {/* Professional Information */}
-//                   <div className="space-y-4">
-//                     <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Professional Information</h3>
-
-//                     <div className="space-y-3">
-//                       <Label htmlFor="department_id" className="text-sm font-medium text-gray-700">Department *</Label>
-//                       <Select
-//                         id="department_id"
-//                         options={departments.map((d) => ({ value: d.id, label: d.name, key: d.id }))}
-//                         value={form.department_id}
-//                         onChange={(value) => setForm({ ...form, department_id: value })}
-//                         placeholder="Select department"
-//                         className="w-full [&_.ant-select-selector]:h-11 [&_.ant-select-selection-item]:leading-9"
-//                         dropdownStyle={{ minWidth: '250px' }}
-//                         popupMatchSelectWidth={false}
-//                       />
-//                     </div>
-//                   </div>
-
-//                   {/* Contact Information */}
-//                   <div className="space-y-4">
-//                     <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Contact Information</h3>
-
-//                     <div className="space-y-3">
-//                       <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email *</Label>
-//                       <Input
-//                         id="email"
-//                         type="email"
-//                         value={form.email}
-//                         onChange={(e) => setForm({ ...form, email: e.target.value })}
-//                         placeholder="Email address"
-//                         className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-//                       />
-//                     </div>
-
-//                     <div className="space-y-3">
-//                       <Label htmlFor="phone_no" className="text-sm font-medium text-gray-700">Phone *</Label>
-//                       <Input
-//                         id="phone_no"
-//                         value={form.phone_no}
-//                         onChange={(e) => setForm({ ...form, phone_no: e.target.value })}
-//                         placeholder="Phone number"
-//                         className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-//                       />
-//                     </div>
-//                   </div>
-
-//                   {/* Address Information */}
-//                   <div className="space-y-4">
-//                     <h3 className="text-lg font-semibold text-gray-900 pb-2 border-b border-gray-200">Address Information</h3>
-
-//                     <div className="space-y-3">
-//                       <Label htmlFor="street" className="text-sm font-medium text-gray-700">Street *</Label>
-//                       <Input
-//                         value={form.address.street || undefined}
-//                         onChange={(e) => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
-//                         placeholder="Street address"
-//                         className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-//                       />
-//                     </div>
-
-//                     <div className="grid grid-cols-2 gap-4">
-//                       <div className="space-y-3">
-//                         <Label htmlFor="city" className="text-sm font-medium text-gray-700">City *</Label>
-//                         <Input
-//                           value={form.address.city || undefined}
-//                           onChange={(e) => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
-//                           placeholder="City"
-//                           className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-//                         />
-//                       </div>
-
-//                       <div className="space-y-3">
-//                         <Label htmlFor="state" className="text-sm font-medium text-gray-700">State *</Label>
-//                         <Input
-//                           value={form.address.state || undefined}
-//                           onChange={(e) => setForm({ ...form, address: { ...form.address, state: e.target.value } })}
-//                           placeholder="State"
-//                           className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-//                         />
-//                       </div>
-//                     </div>
-
-//                     <div className="grid grid-cols-2 gap-4">
-//                       <div className="space-y-3">
-//                         <Label htmlFor="zip_code" className="text-sm font-medium text-gray-700">ZIP Code *</Label>
-//                         <Input
-//                           value={form.address.zip_code || undefined}
-//                           onChange={(e) => setForm({ ...form, address: { ...form.address, zip_code: e.target.value } })}
-//                           placeholder="ZIP code"
-//                           className="h-11 border-gray-300 focus:border-blue-500 text-base w-full"
-//                         />
-//                       </div>
-
-//                       <div className="space-y-3">
-//                         <Label htmlFor="country" className="text-sm font-medium text-gray-700">Country *</Label>
-//                         <Select
-//                           placeholder="Select country"
-//                           value={form.address.country || undefined}
-//                           onChange={(value) => setForm({ ...form, address: { ...form.address, country: value } })}
-//                           showSearch
-//                           options={countries.map((c) => ({ value: c, label: c }))}
-//                           className="w-full [&_.ant-select-selector]:h-11 [&_.ant-select-selection-item]:leading-9"
-//                           dropdownStyle={{ minWidth: '250px' }}
-//                           popupMatchSelectWidth={false}
-//                         />
-//                       </div>
-//                     </div>
-//                   </div>
-//                 </div>
-//               </CardContent>
-//             </div>
-
-//             {/* Footer Actions */}
-//             <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 sticky bottom-0">
-//               <div className="flex justify-end gap-3">
-//                 <Button
-//                   variant="outline"
-//                   onClick={() => setIsModalOpen(false)}
-//                   className="h-11 px-6 text-base border-gray-300 hover:bg-gray-50"
-//                 >
-//                   Cancel
-//                 </Button>
-//                 <Button
-//                   onClick={handleSubmit}
-//                   disabled={isLoading}
-//                   className="h-11 px-8 text-base bg-blue-600 hover:bg-blue-700"
-//                 >
-//                   {isLoading ? (
-//                     <>
-//                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-//                       {selectedDoctor ? "Updating..." : "Adding..."}
-//                     </>
-//                   ) : (
-//                     selectedDoctor ? "Update Doctor" : "Add Doctor"
-//                   )}
-//                 </Button>
-//               </div>
-//             </div>
-//           </Card>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
 import { useState, useEffect, useMemo } from "react";
 import {
   Card,
@@ -447,7 +16,8 @@ import {
   Col,
   Tooltip,
   Skeleton,
-  Spin
+  Spin,
+  Statistic
 } from "antd";
 import {
   SearchOutlined,
@@ -460,45 +30,148 @@ import {
   EditOutlined,
   DeleteOutlined,
   TeamOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  DashboardOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { countries } from "@/Components/Patients/AddPatient";
 import { DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
-import { DepartmentInterface } from "@/Components/Departments/Departments";
 import { Patient } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
-import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
 import { Download, Filter, Search } from "lucide-react";
-import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button as UIButton } from "@/components/ui/button";
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import { DepartmentInterface } from "../Departments/Departments";
+import { CardContent, CardHeader, CardTitle } from "../ui/card";
+import { countries } from "../Patients/AddPatient";
 
 const { Title, Text } = Typography;
 
+// Type definitions
+interface ExtraField {
+  field_name: string;
+  is_mandatory: boolean;
+  user_type: number;
+  user_type_data: {
+    type: string;
+  };
+}
+
+interface Address {
+  street: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+}
+
+interface ExtraFieldsData {
+  fields_data?: Record<string, any>;
+}
+
+interface Pharmacist {
+  id?: number;
+  department_id?: number;
+  blood_type?: string;
+  address?: Address;
+  extra_fields?: ExtraFieldsData;
+  user_type_id?: number;
+  date_of_birth?: string;
+  gender?: string;
+  email?: string;
+  phone_no?: string;
+  is_active?: boolean;
+  name?: string;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface LoadingStates {
+  departments: boolean;
+  extraFields: boolean;
+  table: boolean;
+}
+
+interface ActionButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  type?: "primary" | "default" | "dashed" | "link" | "text";
+  danger?: boolean;
+  onClick?: () => void;
+  loading?: boolean;
+  confirm?: boolean;
+  confirmAction?: () => void;
+}
+
+interface FormValues {
+  extra_fields?: Record<string, any>;
+  department_id?: number;
+  date_of_birth?: string;
+  gender?: string;
+  email?: string;
+  phone_no?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  country?: string;
+}
+
+interface ApiResponse {
+  error?: string;
+  data?: any;
+  total_records?: number;
+  active_records?: number;
+  inactive_records?: number;
+  recently_added?: number;
+}
+
+interface Stats {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  recentJoined: number;
+}
+
 export default function PharmacistList() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [nurses, setNurses] = useState<Patient[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [pharmacists, setPharmacists] = useState<Pharmacist[]>([]);
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [form] = Form.useForm();
-  const [selectedNurse, setSelectedNurse] = useState<any>(null);
-  const [extraFields, setExtraFields] = useState<any>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPharmacist, setSelectedPharmacist] = useState<Pharmacist | null>(null);
+  const [extraFields, setExtraFields] = useState<ExtraField[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
-  const [tableLoading, setTableLoading] = useState(false);
-  const [loadingStates, setLoadingStates] = useState({
+  const [tableLoading, setTableLoading] = useState<boolean>(false);
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
     departments: false,
     extraFields: false,
     table: false
   });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
+  
+    const [stats, setStats] = useState<any>({});
+    const [statsLoading, setStatsLoading] = useState<boolean>(true);
+  
+  // const [stats, setStats] = useState<Stats>({
+  //   totalUsers: 0,
+  //   activeUsers: 0,
+  //   inactiveUsers: 0,
+  //   recentJoined: 0,
+  // });
 
   const userTypeId = useMemo(() => {
     return extraFields?.[0]?.user_type;
@@ -507,12 +180,15 @@ export default function PharmacistList() {
   const navigate = useNavigate();
 
   // Fetch data functions
-  const getExtraFields = async () => {
+  const getExtraFields = async (): Promise<void> => {
     setLoadingStates(prev => ({ ...prev, extraFields: true }));
     try {
-      const data = await getApi("/user-fields");
+      const data: ApiResponse = await getApi("/user-fields");
       if (!data?.error) {
-        setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "PHARMACIST"));
+        const pharmacistFields = data.data.filter((field: ExtraField) => 
+          field.user_type_data.type.toUpperCase() === "PHARMACIST"
+        );
+        setExtraFields(pharmacistFields);
       } else {
         toast.error("Error fetching pharmacist fields: " + data.error);
       }
@@ -524,20 +200,31 @@ export default function PharmacistList() {
     }
   };
 
-  const loadNurses = async (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) => {
+  const loadPharmacists = async (
+    page: number = 1, 
+    limit: number = 10, 
+    searchQuery: string = searchTerm, 
+    status: string = statusFilter
+  ): Promise<void> => {
     setTableLoading(true);
     try {
-      const data = await getApi(`/users?user_type=PHARMACIST&page=${page}&limit=${limit}&q=${searchQuery}`);
+      const data: ApiResponse = await getApi(`/users?user_type=PHARMACIST&page=${page}&limit=${limit}&q=${searchQuery}`);
       if (!data?.error) {
         setPagination(prev => ({
           ...prev,
           current: page,
           pageSize: limit,
-          total: data.total_records,
+          total: data.total_records || 0,
         }));
-        setNurses(data.data);
+        setPharmacists(data.data || []);
+        
+        // Update stats
+        setStats({
+          ...data
+        });
+        setStatsLoading(false);
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to load pharmacists");
       }
     } catch (error) {
       toast.error("Error getting pharmacists");
@@ -547,14 +234,14 @@ export default function PharmacistList() {
     }
   };
 
-  const loadDepartments = async () => {
+  const loadDepartments = async (): Promise<void> => {
     setLoadingStates(prev => ({ ...prev, departments: true }));
     try {
-      const data = await getApi('/departments');
+      const data: ApiResponse = await getApi('/departments');
       if (!data.error) {
-        setDepartments(data.data);
+        setDepartments(data.data || []);
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to load departments");
       }
     } catch (error) {
       console.error("Error fetching departments:", error);
@@ -565,62 +252,66 @@ export default function PharmacistList() {
   };
 
   useEffect(() => {
-    loadNurses(pagination.current, pagination.pageSize);
+    loadPharmacists(pagination.current, pagination.pageSize);
     loadDepartments();
     getExtraFields();
   }, []);
 
   // Form submission handler
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: FormValues): Promise<void> => {
     setIsLoading(true);
 
     try {
       const formData = {
         ...values,
         name: `${values?.extra_fields?.first_name || ''} ${values?.extra_fields?.last_name || ''}`.trim(),
-        user_type_id: selectedNurse ? selectedNurse.user_type_id : 4,
-        id: selectedNurse?.id,
+        user_type_id: selectedPharmacist ? selectedPharmacist.user_type_id : 4,
+        id: selectedPharmacist?.id,
         address: {
-          street: values.street,
-          city: values.city,
-          state: values.state,
-          zip_code: values.zip_code,
-          country: values.country,
+          street: values.street || '',
+          city: values.city || '',
+          state: values.state || '',
+          zip_code: values.zip_code || '',
+          country: values.country || '',
         }
       };
 
-      const data = await PutApi(`/users`, formData);
+      const data: ApiResponse = await PutApi(`/users`, formData);
       if (!data?.error) {
-        toast.success(selectedNurse ? "Pharmacist updated successfully!" : "Pharmacist added successfully!");
-        loadNurses(pagination.current, pagination.pageSize);
+        toast.success(selectedPharmacist ? "Pharmacist updated successfully!" : "Pharmacist added successfully!");
+        loadPharmacists(pagination.current, pagination.pageSize);
         setIsModalOpen(false);
-        setSelectedNurse(null);
+        setSelectedPharmacist(null);
         form.resetFields();
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Operation failed");
       }
     } catch (error) {
-      toast.error(`Error ${selectedNurse ? 'updating' : 'adding'} pharmacist`);
-      console.error(`Error ${selectedNurse ? 'updating' : 'adding'} pharmacist:`, error);
+      toast.error(`Error ${selectedPharmacist ? 'updating' : 'adding'} pharmacist`);
+      console.error(`Error ${selectedPharmacist ? 'updating' : 'adding'} pharmacist:`, error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleTableChange = (newPagination: any) => {
-    loadNurses(newPagination.current, newPagination.pageSize);
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
+    if (newPagination.current && newPagination.pageSize) {
+      loadPharmacists(newPagination.current, newPagination.pageSize);
+    }
   };
 
-  // Delete nurse handler
-  const deleteNurse = async (record: any) => {
+  // Delete pharmacist handler
+  const deletePharmacist = async (record: Pharmacist): Promise<void> => {
+    if (!record.id) return;
+    
     setLoadingActionId(record.id);
     try {
-      const data = await PutApi(`/users`, { ...record, is_active: false });
+      const data: ApiResponse = await PutApi(`/users`, { ...record, is_active: false });
       if (!data?.error) {
         toast.success("Pharmacist deactivated successfully!");
-        loadNurses(pagination.current, pagination.pageSize);
+        loadPharmacists(pagination.current, pagination.pageSize);
       } else {
-        toast.error(data.error);
+        toast.error(data.error || "Failed to deactivate pharmacist");
       }
     } catch (error) {
       toast.error("Error deactivating pharmacist");
@@ -631,9 +322,9 @@ export default function PharmacistList() {
   };
 
   // Open modal for editing
-  const handleEdit = (record: any) => {
-    setSelectedNurse(record);
-    form.setFieldsValue({
+  const handleEdit = (record: Pharmacist): void => {
+    setSelectedPharmacist(record);
+    const formValues: FormValues = {
       extra_fields: { ...record.extra_fields?.fields_data ?? {} },
       department_id: record.department_id,
       date_of_birth: record.date_of_birth?.split("T")[0],
@@ -645,14 +336,15 @@ export default function PharmacistList() {
       state: record.address?.state,
       zip_code: record.address?.zip_code,
       country: record.address?.country,
-    });
+    };
+    form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };
 
   // Close modal
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setIsModalOpen(false);
-    setSelectedNurse(null);
+    setSelectedPharmacist(null);
     form.resetFields();
   };
 
@@ -666,16 +358,7 @@ export default function PharmacistList() {
     loading = false,
     confirm = false,
     confirmAction
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    type?: "primary" | "default" | "dashed" | "link" | "text";
-    danger?: boolean;
-    onClick?: () => void;
-    loading?: boolean;
-    confirm?: boolean;
-    confirmAction?: () => void;
-  }) => {
+  }: ActionButtonProps): React.ReactElement => {
     const button = (
       <motion.div
         whileHover={{ scale: 1.1 }}
@@ -691,7 +374,7 @@ export default function PharmacistList() {
             className={`
               flex items-center justify-center 
               transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
+              ${!danger && type !== 'primary' ?
                 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
               }
               ${danger ?
@@ -723,18 +406,23 @@ export default function PharmacistList() {
     );
   };
 
-   async function exportPharmacists(format = 'csv') {
+  const exportPharmacists = async (format: string = 'csv'): Promise<void> => {
     try {
       await DownloadApi(`/export?type=users&user_type=pharmacist&format=${format}`, format);
+      toast.success(`Pharmacists exported successfully as ${format.toUpperCase()}`);
     } catch (err) {
       console.error('Export error:', err);
-      alert('Something went wrong while exporting.');
+      toast.error('Something went wrong while exporting.');
     }
-  }
+  };
 
+  // Handle search
+  const handleSearch = (): void => {
+    loadPharmacists(1, pagination.pageSize, searchTerm);
+  };
 
   // Skeleton columns for loading state
-  const skeletonColumns = [
+  const skeletonColumns: ColumnsType<any> = [
     {
       title: "Pharmacist ID",
       dataIndex: "id",
@@ -805,7 +493,7 @@ export default function PharmacistList() {
   ];
 
   // Actual columns
-  const columns = [
+  const columns: ColumnsType<Pharmacist> = [
     {
       title: "Pharmacist ID",
       dataIndex: "id",
@@ -819,7 +507,7 @@ export default function PharmacistList() {
       render: (text: string) => (
         <Space>
           <UserOutlined className="text-blue-500" />
-          <Text strong>{text}</Text>
+          <Text strong>{text || 'N/A'}</Text>
         </Space>
       ),
     },
@@ -828,6 +516,7 @@ export default function PharmacistList() {
       dataIndex: "gender",
       key: "gender",
       width: 100,
+      render: (gender: string) => gender || 'N/A',
     },
     {
       title: "Blood Type",
@@ -847,7 +536,7 @@ export default function PharmacistList() {
       render: (phone: string) => (
         <Space>
           <PhoneOutlined className="text-green-500" />
-          {phone}
+          {phone || 'N/A'}
         </Space>
       ),
     },
@@ -875,7 +564,7 @@ export default function PharmacistList() {
       title: "Actions",
       key: "actions",
       width: 150,
-      render: (_: any, record: any) => (
+      render: (_: any, record: Pharmacist) => (
         <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
@@ -891,7 +580,7 @@ export default function PharmacistList() {
             danger
             loading={loadingActionId === record.id}
             confirm
-            confirmAction={() => deleteNurse(record)}
+            confirmAction={() => deletePharmacist(record)}
           />
         </Space>
       ),
@@ -911,8 +600,6 @@ export default function PharmacistList() {
     actions: '',
   }));
 
-  console.log(form, selectedNurse)
-
   return (
     <div className="p-6 space-y-6 rounded-lg" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
@@ -920,7 +607,7 @@ export default function PharmacistList() {
         <Title level={2} className="m-0">Pharmacist Management</Title>
         <Space>
           <Button
-            onClick={() => loadNurses()}
+            onClick={() => loadPharmacists()}
             icon={<ReloadOutlined />}
             loading={tableLoading}
             className="flex items-center"
@@ -939,6 +626,61 @@ export default function PharmacistList() {
         </Space>
       </div>
 
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><TeamOutlined /> Total Technicians</Space>}
+                value={stats.total_records || 0}
+                valueStyle={{ color: '#667eea' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><CheckCircleOutlined /> Active</Space>}
+                value={stats.active_records || 0}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><ClockCircleOutlined /> Recent Joined</Space>}
+                value={stats.recently_added || 0}
+                valueStyle={{ color: '#fa8c16' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <Card>
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><DashboardOutlined /> Utilization</Space>}
+                value={Math.round(((stats.active_records || 0) / (stats.total_records || 1)) * 100)}
+                suffix="%"
+                valueStyle={{ color: '#36cfc9' }}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
 
       <Card className="border-0 shadow-sm mb-15">
         <CardHeader>
@@ -952,28 +694,23 @@ export default function PharmacistList() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <Input.Search
-                  placeholder="Search patients, doctors, or dates..."
+                <Input
+                  placeholder="Search nurses by name, email, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onPressEnter={handleSearch}
                   className="pl-10 h-12"
-                  onSearch={() => { loadNurses(pagination.current, pagination.pageSize, searchTerm) }}
+                  suffix={
+                    <Button 
+                      type="text" 
+                      icon={<SearchOutlined />} 
+                      onClick={handleSearch}
+                      loading={tableLoading}
+                    />
+                  }
                 />
               </div>
             </div>
-            {/* <div className="w-full md:w-48">
-              <UISelect value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </UISelect>
-            </div> */}
             <UIButton onClick={() => exportPharmacists()} variant="outline" className="h-12 px-6">
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -982,13 +719,13 @@ export default function PharmacistList() {
         </CardContent>
       </Card>
 
-      {/* Nurses Table with Skeleton Loading */}
+      {/* Pharmacists Table with Skeleton Loading */}
       <Card
         bodyStyle={{ padding: 0 }}
         className="overflow-hidden"
       >
         <Table
-          dataSource={tableLoading ? skeletonData : nurses}
+          dataSource={tableLoading ? skeletonData : pharmacists}
           columns={tableLoading ? skeletonColumns : columns}
           rowKey={tableLoading ? "key" : "id"}
           pagination={
@@ -1004,16 +741,16 @@ export default function PharmacistList() {
           }
           onChange={handleTableChange}
           scroll={{ x: 1000 }}
-          loading={false} // We handle loading ourselves with skeleton
+          loading={false}
         />
       </Card>
 
-      {/* Add/Edit Nurse Modal */}
+      {/* Add/Edit Pharmacist Modal */}
       <Modal
         title={
           <Space>
             <TeamOutlined className="text-blue-600" />
-            <span>{selectedNurse ? "Edit Pharmacist" : "Add New Pharmacist"}</span>
+            <span>{selectedPharmacist ? "Edit Pharmacist" : "Add New Pharmacist"}</span>
           </Space>
         }
         open={isModalOpen}
@@ -1021,6 +758,7 @@ export default function PharmacistList() {
         footer={null}
         width={800}
         style={{ top: 20 }}
+        destroyOnClose
       >
         <Spin spinning={loadingStates.departments || loadingStates.extraFields}>
           <Form
@@ -1035,7 +773,7 @@ export default function PharmacistList() {
                 <Title level={4} className="!mb-4">Personal Information</Title>
               </Col>
 
-              {extraFields.map((field: any) => (
+              {extraFields.map((field: ExtraField) => (
                 <Col span={12} key={field.field_name}>
                   <Form.Item
                     label={field.field_name}
@@ -1229,6 +967,7 @@ export default function PharmacistList() {
               <Button
                 onClick={handleCancel}
                 size="large"
+                disabled={isLoading}
               >
                 Cancel
               </Button>
@@ -1239,7 +978,7 @@ export default function PharmacistList() {
                 size="large"
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {selectedNurse ? "Update Pharmacist" : "Add Pharmacist"}
+                {selectedPharmacist ? "Update Pharmacist" : "Add Pharmacist"}
               </Button>
             </div>
           </Form>

@@ -1,14 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,21 +12,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { Label } from "@/components/ui/label";
 import { Input as AntInput, Popconfirm, Button as AntdButton, Tooltip as AntdTooltip, Space, Typography, Table as AntdTable } from "antd";
 import { motion } from "framer-motion";
+import { SearchOutlined } from "@ant-design/icons";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { message, Modal } from "antd";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Appointment {
   id: string;
@@ -43,13 +29,10 @@ interface Appointment {
   token_number?: any;
   appointment_date: string;
   appointment_start_time: string;
-  status: "Pending" | "Confirmed" | "Completed";
-  // Add the missing properties
+  status: "Pending" | "Confirmed" | "Completed" | "Alloted";
   patient_id?: string;
   doctor_id?: string;
 }
-
-
 
 // Skeleton Loader Components
 const StatsSkeleton = () => (
@@ -69,7 +52,6 @@ const StatsSkeleton = () => (
     ))}
   </div>
 );
-
 
 const TableSkeleton = () => (
   <div className="space-y-3">
@@ -137,7 +119,7 @@ const ActionButton = ({
 }) => {
   const button = (
     <motion.div
-      whileHover={{ scale: 1.1 }}
+      whileHover={{ scale: 1.05 }}
       transition={{ type: "spring", stiffness: 250 }}
     >
       <AntdTooltip title={label} placement="top">
@@ -148,16 +130,16 @@ const ActionButton = ({
           loading={loading}
           onClick={onClick}
           className={`
-              flex items-center justify-center 
-              transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
+            flex items-center justify-center 
+            transition-all duration-300 ease-in-out
+            ${!danger && type !== 'primary' ?
               'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
             }
             ${danger ?
               'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
             }
-              w-10 h-10 rounded-full
-              `}
+            w-10 h-10 rounded-full
+          `}
           style={{
             minWidth: '40px',
             border: '1px solid #d9d9d9'
@@ -166,7 +148,6 @@ const ActionButton = ({
       </AntdTooltip>
     </motion.div>
   );
-
 
   return confirm ? (
     <Popconfirm
@@ -183,16 +164,13 @@ const ActionButton = ({
   );
 };
 
-const { Title, ...typography } = Typography;
-
-// Enhanced Action Button Component
 export default function TokenManagement() {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth()
+  const { user } = useAuth();
   const [appointment, setAppointment] = useState<any>(null);
   const [form, setForm] = useState({
     id: "",
@@ -210,6 +188,7 @@ export default function TokenManagement() {
     pageSize: 10,
     total: 0,
   });
+  const [data, setData] = useState<any>({});
 
   const handleDeleteClick = (app: any) => {
     Modal.confirm({
@@ -225,16 +204,15 @@ export default function TokenManagement() {
         } catch (error) {
           console.error("Delete error:", error);
           message.error("Failed to delete token.");
-        } finally {
         }
       },
     });
   };
 
-  const deleteToken = async (record: any) => {
-    setLoadingActionId(record.id);
+  const deleteToken = async (id: string) => {
+    setLoadingActionId(id);
     try {
-      const data = await DeleteApi(`/tokens`, { ...record });
+      const data = await DeleteApi(`/tokens`, { id });
       if (!data?.error) {
         toast.success("Token deleted successfully!");
         loadData(pagination.current, pagination.pageSize);
@@ -277,12 +255,19 @@ export default function TokenManagement() {
       .finally(() => setIsSubmitting(false));
   };
 
-  function loadData(page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) {
+  const loadData = (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) => {
     setLoading(true);
-    getApi(`/tokens?page=${page}&limit=${limit}&q=${searchQuery}&status=${statusFilter === 'all' ? "" : statusFilter}`)
+    getApi(`/tokens?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? "" : status}`)
       .then((data) => {
         if (!data.error) {
+          setData(data)
           setAppointments(data.data);
+          setPagination(prev => ({
+            ...prev,
+            current: page,
+            pageSize: limit,
+            total: data.total || data.data.length
+          }));
         } else {
           toast.error(data.error);
         }
@@ -294,30 +279,31 @@ export default function TokenManagement() {
       .finally(() => {
         setLoading(false);
       });
-  }
+  };
 
   useEffect(() => {
     loadData();
   }, []);
 
   useEffect(() => {
-    loadData(pagination.current, pagination.pageSize, searchTerm, statusFilter)
-  }, [statusFilter])
+    loadData(1, pagination.pageSize, searchTerm, statusFilter);
+  }, [statusFilter]);
 
-  function assignToDoctor(record: any) {
+  const assignToDoctor = (record: any) => {
     setLoadingActionId(record.id);
     const date = new Date(record.appointment_date);
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
 
-    delete record.updated_at;
-    delete record.created_at;
-    delete record.patient;
-    delete record.doctor;
+    const updatedRecord = { ...record };
+    delete updatedRecord.updated_at;
+    delete updatedRecord.created_at;
+    delete updatedRecord.patient;
+    delete updatedRecord.doctor;
 
     const formattedDate = `${yyyy}-${mm}-${dd}`;
-    PutApi("/tokens", { ...record, doctor_id: user?.id, appointment_date: formattedDate })
+    PutApi("/tokens", { ...updatedRecord, doctor_id: user?.id, appointment_date: formattedDate })
       .then((data) => {
         if (!data.error) {
           toast.success("Token assigned to you successfully!");
@@ -331,7 +317,7 @@ export default function TokenManagement() {
       .finally(() => {
         setLoadingActionId(null);
       });
-  }
+  };
 
   const handleUpdateStatus = (id: string, status: Appointment["status"]) => {
     setLoadingActionId(id);
@@ -367,16 +353,17 @@ export default function TokenManagement() {
     setEditModalOpen(true);
   };
 
-  const filteredAppointments = appointments.filter(app => {
-    const matchesSearch =
-      app.patient?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.doctor?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.token_number?.toString().includes(searchTerm);
+  const filteredAppointments = appointments
+  // .filter(app => {
+  //   const matchesSearch =
+  //     app.patient?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     app.doctor?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     app.token_number?.toString().includes(searchTerm);
 
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+  //   const matchesStatus = statusFilter === "all" || app.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+  //   return matchesSearch && matchesStatus;
+  // });
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -390,135 +377,157 @@ export default function TokenManagement() {
     switch (status) {
       case "Completed": return "text-green-600 bg-green-50 border-green-200";
       case "Alloted": return "text-blue-600 bg-blue-50 border-blue-200";
-      default: return "";
+      case "Pending": return "text-orange-600 bg-orange-50 border-orange-200";
+      case "Confirmed": return "text-purple-600 bg-purple-50 border-purple-200";
+      default: return "text-gray-600 bg-gray-50 border-gray-200";
     }
+  };
+
+  const handleTableChange = (newPagination: any) => {
+    loadData(newPagination.current, newPagination.pageSize);
+  };
+
+  const handleSearch = () => {
+    loadData(1, pagination.pageSize, searchTerm);
+  };
+
+  const stats = {
+    total: data?.total_records,
+    pending: data?.pending_records,
+    confirmed: data?.confirmed_records,
+    completed: data?.completed_records,
+    alloted: data?.alloted_records,
   };
 
   const columns = [
     {
       title: "Patient",
       dataIndex: ['patient', 'username'],
-      key: "",
-      width: 100
+      key: "patient",
+      width: 100,
+      render: (username: string) => (
+        <div className="flex items-center gap-2">
+          <User className="w-4 h-4 text-gray-400" />
+          {username || "N/A"}
+        </div>
+      )
     },
     {
       title: "Doctor",
       dataIndex: ['doctor', 'username'],
-      key: "",
-      width: 100
+      key: "doctor",
+      width: 100,
+      render: (username: string) => (
+        <div className="flex items-center gap-2">
+          <Stethoscope className="w-4 h-4 text-gray-400" />
+          {username ? `Dr. ${username}` : "Not Assigned"}
+        </div>
+      )
     },
     {
       title: "Date",
       dataIndex: "appointment_date",
-      key: "",
-      width: 100
+      key: "appointment_date",
+      width: 100,
+      render: (date: string) => date.split("T")[0]
     },
     {
       title: "Token",
       dataIndex: "token_number",
-      key: "",
-      width: 100
+      key: "token_number",
+      width: 100,
+      render: (token: number) => (
+        <Badge variant="outline" className="font-mono font-bold">
+          #{token}
+        </Badge>
+      )
     },
     {
       title: "Time",
       dataIndex: "appointment_start_time",
-      key: "",
+      key: "appointment_start_time",
       width: 100
     },
     {
       title: "Status",
       dataIndex: "status",
-      key: "",
+      key: "status",
       width: 100,
-      render: (_: any, record: any) => (
+      render: (status: string) => (
         <Badge
-          variant={getStatusVariant(record.status)}
-          className={`font-medium ${getStatusColor(record.status)}`}
+          variant={getStatusVariant(status)}
+          className={`font-medium ${getStatusColor(status)}`}
         >
-          {record.status}
+          {status}
         </Badge>
       )
     },
     {
       title: "Actions",
       key: "actions",
-      width: 150,
-      render: (_: any, record: any) => (
-        <Space size="small">
-          <TableCell className="text-right">
-            <div className="flex items-center justify-end gap-2">
-              {!record?.doctor_id && (
-                <Button
-                  onClick={() => assignToDoctor(record)}
-                  disabled={loadingActionId === record.id}
-                  size="sm"
-                >
-                  {loadingActionId === record.id ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                      Assigning...
-                    </>
-                  ) : (
-                    "Assign to me"
-                  )}
-                </Button>
+      width: 200,
+      render: (_: any, record: Appointment) => (
+        <div className="flex items-center justify-end gap-2">
+          {!record?.doctor_id && (
+            <Button
+              onClick={() => assignToDoctor(record)}
+              disabled={loadingActionId === record.id}
+              size="sm"
+            >
+              {loadingActionId === record.id ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                  Assigning...
+                </>
+              ) : (
+                "Assign to me"
               )}
+            </Button>
+          )}
 
-              <div className="flex gap-1 ml-2">
-                <ActionButton
-                  icon={<Eye className="w-4 h-4" />}
-                  label="View Details"
-                  onClick={() => handleView(record)}
-                  loading={loadingActionId === record.id}
-                />
+          <div className="flex gap-1 ml-2">
+            <ActionButton
+              icon={<Eye className="w-4 h-4" />}
+              label="View Details"
+              onClick={() => handleView(record)}
+            />
 
-                <ActionButton
-                  icon={<Edit className="w-4 h-4" />}
-                  label="Edit Token"
-                  onClick={() => handleEdit(record)}
-                  loading={loadingActionId === record.id}
-                />
+            <ActionButton
+              icon={<Edit className="w-4 h-4" />}
+              label="Edit Token"
+              onClick={() => handleEdit(record)}
+            />
 
-                <ActionButton
-                  icon={<Trash2 className="w-4 h-4 text-red-500" />} // 🔴 Red by default
-                  label="Delete Appointment"
-                  onClick={() => handleDeleteClick(record)}
-                  loading={loadingActionId === record.id}
-                />
+            <ActionButton
+              icon={<Trash2 className="w-4 h-4" />}
+              label="Delete Token"
+              danger
+              onClick={() => handleDeleteClick(record)}
+              loading={loadingActionId === record.id}
+            />
 
-                <Select
-                  value={record.status}
-                  onValueChange={(status: Appointment["status"]) =>
-                    handleUpdateStatus(record.id, status)
-                  }
-                  disabled={loadingActionId === record.id}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Alloted">Alloted</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </TableCell>
-        </Space>
+            <Select
+              value={record.status}
+              onValueChange={(status: Appointment["status"]) =>
+                handleUpdateStatus(record.id, status)
+              }
+              disabled={loadingActionId === record.id}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Alloted">Alloted</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Confirmed">Confirmed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       ),
     },
   ];
-
-  const handleTableChange = (newPagination: any) => {
-    loadData(newPagination.current, newPagination.pageSize);
-  };
-
-  const stats = {
-    total: appointments.length,
-    pending: appointments.filter(app => app.status === "Pending").length,
-    confirmed: appointments.filter(app => app.status === "Confirmed").length,
-    completed: appointments.filter(app => app.status === "Completed").length,
-  };
 
   return (
     <div className="p-6 space-y-6" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
@@ -552,7 +561,7 @@ export default function TokenManagement() {
       {loading ? (
         <StatsSkeleton />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -599,6 +608,20 @@ export default function TokenManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="text-sm font-medium text-gray-600">Alloted</p>
+                  <p className="text-2xl font-bold text-purple-600">{stats.alloted}</p>
+                </div>
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Stethoscope className="w-4 h-4 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-sm font-medium text-gray-600">Completed</p>
                   <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
                 </div>
@@ -624,12 +647,19 @@ export default function TokenManagement() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <AntInput.Search
-                  placeholder="Search patients, doctors, or dates..."
+                <AntInput
+                  placeholder="Search by patient, doctor, or token number..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onPressEnter={handleSearch}
                   className="pl-10 h-12"
-                  onSearch={() => { loadData(pagination.current, pagination.pageSize, searchTerm) }}
+                  suffix={
+                    <AntdButton
+                      type="text"
+                      icon={<SearchOutlined />}
+                      onClick={handleSearch}
+                    />
+                  }
                 />
               </div>
             </div>
@@ -640,6 +670,8 @@ export default function TokenManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Confirmed">Confirmed</SelectItem>
                   <SelectItem value="Alloted">Alloted</SelectItem>
                   <SelectItem value="Completed">Completed</SelectItem>
                 </SelectContent>
@@ -673,86 +705,20 @@ export default function TokenManagement() {
               <AntdTable
                 dataSource={filteredAppointments}
                 columns={columns}
-                rowKey={"id"}
-                pagination={
-                  {
-                    current: pagination.current,
-                    pageSize: pagination.pageSize,
-                    total: pagination.total,
-                    showSizeChanger: true,
-                    showQuickJumper: true,
-                    showTotal: (total, range) =>
-                      `${range[0]}-${range[1]} of ${total} RECEPTIONISTs`,
-                  }
-                }
+                rowKey="id"
+                pagination={{
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: pagination.total,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total} tokens`,
+                }}
                 onChange={handleTableChange}
                 scroll={{ x: 1000 }}
-                loading={false} // We handle loading ourselves with skeleton
+                loading={loading}
               />
-              // <Table>
-              //   <TableHeader>
-              //     <TableRow className="bg-gray-50 hover:bg-gray-50">
-              //       <TableHead className="font-semibold">Patient</TableHead>
-              //       <TableHead className="font-semibold">Doctor</TableHead>
-              //       <TableHead className="font-semibold">Date</TableHead>
-              //       <TableHead className="font-semibold">Token No.</TableHead>
-              //       <TableHead className="font-semibold">Time</TableHead>
-              //       <TableHead className="font-semibold">Status</TableHead>
-              //       <TableHead className="font-semibold text-right">Actions</TableHead>
-              //     </TableRow>
-              //   </TableHeader>
-              //   <TableBody>
-              //     {filteredAppointments.length === 0 ? (
-              //       <TableRow>
-              //         <TableCell colSpan={7} className="text-center py-8">
-              //           <div className="flex flex-col items-center justify-center">
-              //             <Calendar className="w-12 h-12 text-gray-300 mb-2" />
-              //             <p className="text-gray-500 text-lg">No tokens found</p>
-              //             <p className="text-gray-400 text-sm">
-              //               {searchTerm || statusFilter !== "all"
-              //                 ? "Try adjusting your search or filters"
-              //                 : "Create your first appointment token"
-              //               }
-              //             </p>
-              //           </div>
-              //         </TableCell>
-              //       </TableRow>
-              //     ) : (
-              //       filteredAppointments.map(app => (
-              //         <TableRow key={app.id} className="hover:bg-gray-50">
-              //           <TableCell className="font-medium">
-              //             <div className="flex items-center gap-2">
-              //               <User className="w-4 h-4 text-gray-400" />
-              //               {app?.patient?.username || "N/A"}
-              //             </div>
-              //           </TableCell>
-              //           <TableCell>
-              //             <div className="flex items-center gap-2">
-              //               <Stethoscope className="w-4 h-4 text-gray-400" />
-              //               {app?.doctor ? `Dr. ${app.doctor.username}` : "Not Assigned"}
-              //             </div>
-              //           </TableCell>
-              //           <TableCell>{app.}</TableCell>
-              //           <TableCell>
-              //             <Badge variant="outline" className="font-mono font-bold">
-              //               #{app.}
-              //             </Badge>
-              //           </TableCell>
-              //           <TableCell>{app.}</TableCell>
-              //           <TableCell>
-              //             <Badge
-              //               variant={getStatusVariant(app.status)}
-              //               className={`font-medium ${getStatusColor(app.status)}`}
-              //             >
-              //               {app.status}
-              //             </Badge>
-              //           </TableCell>
-              //           
-              //         </TableRow>
-              //       ))
-              //     )}
-              //   </TableBody>
-              // </Table>
             )}
           </div>
         </CardContent>
@@ -794,7 +760,7 @@ export default function TokenManagement() {
                   <Label className="font-semibold">Date</Label>
                   <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
                     <Calendar className="w-4 h-4 text-gray-500" />
-                    <span>{appointment.appointment_date}</span>
+                    <span>{appointment.appointment_date.split("T")[0]}</span>
                   </div>
                 </div>
 
@@ -887,6 +853,8 @@ export default function TokenManagement() {
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Confirmed">Confirmed</SelectItem>
                     <SelectItem value="Alloted">Alloted</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
                   </SelectContent>

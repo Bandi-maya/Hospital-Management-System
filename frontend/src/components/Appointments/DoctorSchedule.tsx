@@ -1,4 +1,4 @@
-import { Card, CardContent } from "../UI/Card";
+import { Card, CardContent } from "../ui/card";
 
 export default function DoctorSchedule() {
   const schedules = [

@@ -63,8 +63,8 @@ import {
 } from "@ant-design/icons";
 import { getApi } from "@/ApiService";
 import { toast } from "sonner";
-import { DepartmentInterface } from "./Departments";
 import dayjs from "dayjs";
+import { DepartmentInterface } from "./Departments";
 
 const { Title, Text } = Typography;
 const { Option } = Select;

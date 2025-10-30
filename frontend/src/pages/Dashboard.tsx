@@ -51,6 +51,8 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types/common';
+import { getApi } from '@/ApiService';
+import { useNavigate } from 'react-router-dom';
 
 const { useBreakpoint } = Grid;
 const { Option } = Select;
@@ -136,6 +138,7 @@ interface QuickAction {
   title: string;
   description: string;
   icon: React.ReactNode;
+  onClick: any;
   type?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
   role?: UserRole[];
 }
@@ -146,11 +149,23 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string>('today');
+  const [stats, setStats] = useState<any>([]);
+  const navigation = useNavigate()
 
   useEffect(() => {
     setLoading(false);
     setActivitiesLoading(false);
+    getStats()
   }, []);
+
+  function getStats() {
+    getApi('/stats')
+      .then((data) => {
+        if (!data.error) {
+          setStats(data.data.stats)
+        }
+      })
+  }
 
   // Get current date and time information
   const currentDate = new Date();
@@ -165,56 +180,56 @@ export const Dashboard: React.FC = () => {
     minute: '2-digit'
   });
 
-  const stats = [
-    {
-      title: 'Total Patients',
-      value: '2,847',
-      change: '+12.5%',
-      changeType: 'increase' as const,
-      icon: <TeamOutlined />,
-      description: 'Active registered patients'
-    },
-    {
-      title: 'Today\'s Appointments',
-      value: '58',
-      change: '+5.2%',
-      changeType: 'increase' as const,
-      icon: <CalendarOutlined />,
-      description: '12 pending, 46 scheduled'
-    },
-    {
-      title: 'Available Doctors',
-      value: '24',
-      change: '-2.1%',
-      changeType: 'decrease' as const,
-      icon: <CheckCircleOutlined />,
-      description: '3 on leave, 5 in surgery'
-    },
-    {
-      title: 'Bed Occupancy',
-      value: '87%',
-      change: '+3.8%',
-      changeType: 'increase' as const,
-      icon: <BankOutlined />,
-      description: '174 of 200 beds occupied'
-    },
-    {
-      title: 'Emergency Cases',
-      value: '12',
-      change: '-8.3%',
-      changeType: 'decrease' as const,
-      icon: <WarningOutlined />,
-      description: '3 critical, 9 moderate'
-    },
-    {
-      title: 'Monthly Revenue',
-      value: '$124,750',
-      change: '+15.3%',
-      changeType: 'increase' as const,
-      icon: <DollarOutlined />,
-      description: 'Current month earnings'
-    }
-  ];
+  // const stats = [
+  //   {
+  //     title: 'Total Patients',
+  //     value: '2,847',
+  //     change: '+12.5%',
+  //     changeType: 'increase' as const,
+  //     icon: < />,
+  //     description: 'Active registered patients'
+  //   },
+  //   {
+  //     title: 'Today\'s Appointments',
+  //     value: '58',
+  //     change: '+5.2%',
+  //     changeType: 'increase' as const,
+  //     icon: < />,
+  //     description: '12 pending, 46 scheduled'
+  //   },
+  //   {
+  //     title: 'Available Doctors',
+  //     value: '24',
+  //     change: '-2.1%',
+  //     changeType: 'decrease' as const,
+  //     icon: < />,
+  //     description: '3 on leave, 5 in surgery'
+  //   },
+  //   {
+  //     title: 'Bed Occupancy',
+  //     value: '87%',
+  //     change: '+3.8%',
+  //     changeType: 'increase' as const,
+  //     icon: < />,
+  //     description: '174 of 200 beds occupied'
+  //   },
+  //   {
+  //     title: 'Emergency Cases',
+  //     value: '12',
+  //     change: '-8.3%',
+  //     changeType: 'decrease' as const,
+  //     icon: < />,
+  //     description: '3 critical, 9 moderate'
+  //   },
+  //   {
+  //     title: 'Monthly Revenue',
+  //     value: '$124,750',
+  //     change: '+15.3%',
+  //     changeType: 'increase' as const,
+  //     icon: < />,
+  //     description: 'Current month earnings'
+  //   }
+  // ];
 
   const recentActivities: RecentActivity[] = [
     {
@@ -268,6 +283,7 @@ export const Dashboard: React.FC = () => {
     {
       id: '1',
       title: 'Register New Patient',
+      onClick: () => {navigation('/patients/add')},
       description: 'Add patient to system',
       icon: <UserOutlined />,
       type: 'primary'
@@ -275,35 +291,40 @@ export const Dashboard: React.FC = () => {
     {
       id: '2',
       title: 'Schedule Appointment',
+      onClick: () => {navigation('/appointments/book')},
       description: 'Book patient consultation',
       icon: <CalendarOutlined />,
       type: 'default'
     },
     {
       id: '3',
+      onClick: () => {navigation('/laboratory/results')},
       title: 'Lab Test Request',
       description: 'Order diagnostic tests',
       icon: <LineChartOutlined />,
       type: 'default'
     },
-    {
-      id: '4',
-      title: 'Emergency Admission',
-      description: 'Urgent patient admission',
-      icon: <CarOutlined />,
-      type: 'primary',
-      role: ['doctor', 'admin']
-    },
+    // {
+    //   id: '4',
+    //   title: 'Emergency Admission',
+    //   description: 'Urgent patient admission',
+    //   icon: <CarOutlined />,
+    //   onClick: () => {navigation('')},
+    //   type: 'primary',
+    //   role: ['doctor', 'admin']
+    // },
     {
       id: '5',
       title: 'Ward Management',
       description: 'Manage bed allocation',
       icon: <BellOutlined />,
+      onClick: () => {navigation('/wards/beds')},
       type: 'default'
     },
     {
       id: '6',
       title: 'Pharmacy Orders',
+      onClick: () => {navigation('/pharmacy/orders')},
       description: 'Manage medications',
       icon: <MedicineBoxOutlined />,
       type: 'default'
@@ -313,6 +334,7 @@ export const Dashboard: React.FC = () => {
       title: 'Medical Records',
       description: 'Access patient history',
       icon: <FileTextOutlined />,
+      onClick: () => {navigation('/pharmacy/medicines')},
       type: 'default'
     },
     {
@@ -320,6 +342,7 @@ export const Dashboard: React.FC = () => {
       title: 'System Settings',
       description: 'Configure hospital settings',
       icon: <SettingOutlined />,
+      onClick: () => {navigation('/admin/settings')},
       type: 'default',
       role: ['admin']
     }
@@ -460,7 +483,14 @@ export const Dashboard: React.FC = () => {
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
         {stats.map((stat, index) => (
           <Col xs={24} sm={12} lg={8} key={index}>
-            <StatsCard {...stat} loading={loading} />
+            <StatsCard {...stat} icon={
+              stat.icon === "TeamOutlined" ? <TeamOutlined /> :
+                stat.icon === "CalendarOutlined" ? <CalendarOutlined /> :
+                  stat.icon === "CheckCircleOutlined" ? <CheckCircleOutlined /> :
+                    stat.icon === "BankOutlined" ? <BankOutlined /> :
+                      stat.icon === "WarningOutlined" ? <WarningOutlined /> :
+                        stat.icon === "DollarOutlined" ? <DollarOutlined /> : <></>
+            } loading={loading} />
           </Col>
         ))}
       </Row>
@@ -542,7 +572,7 @@ export const Dashboard: React.FC = () => {
                   )}
                 />
                 <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                  <Button type="primary" icon={<RightOutlined />}>
+                  <Button onClick={() => {}} type="primary" icon={<RightOutlined />}>
                     View All Activities
                   </Button>
                 </div>
@@ -570,6 +600,7 @@ export const Dashboard: React.FC = () => {
                     key={action.id}
                     type={action.type}
                     icon={action.icon}
+                    onClick={action.onClick}
                     style={{
                       width: '100%',
                       height: 'auto',

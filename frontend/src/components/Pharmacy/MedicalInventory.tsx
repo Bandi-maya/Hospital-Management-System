@@ -164,6 +164,7 @@ const ActionButton = ({
 
 export default function MedicalInventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [data, setData] = useState<any>({});
   const [search, setSearch] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [form] = Form.useForm();
@@ -184,6 +185,7 @@ export default function MedicalInventory() {
     getApi(`/medicine-stock?page=${page}&limit=${limit}&q=${searchQuery}`)
       .then((data) => {
         if (!data?.error) {
+          setData(data);
           setInventory(data.data);
         } else {
           toast.error(data.error);
@@ -384,10 +386,11 @@ export default function MedicalInventory() {
     setSearch("");
   };
 
-  const filteredInventory = inventory.filter(item =>
-    item.medicine?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    item.medicine?.manufacturer?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredInventory = inventory
+  // .filter(item =>
+  // item.medicine?.name?.toLowerCase().includes(search.toLowerCase()) ||
+  // item.medicine?.manufacturer?.toLowerCase().includes(search.toLowerCase())
+  // );
 
   // Calculate statistics
   const stats = {
@@ -565,6 +568,7 @@ export default function MedicalInventory() {
   ];
 
   const handleTableChange = (newPagination: any) => {
+    setPagination(newPagination);
     loadData(newPagination.current, newPagination.pageSize);
   };
 
@@ -727,7 +731,9 @@ export default function MedicalInventory() {
             rowKey="id"
             onChange={handleTableChange}
             pagination={{
-              pageSize: 10,
+              pageSize: pagination.pageSize,
+              current: pagination.current,
+              total: data?.['total_records'] ?? filteredInventory.length,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>

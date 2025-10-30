@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import {
   Card,
@@ -17,7 +16,8 @@ import {
   Col,
   Tooltip,
   Skeleton,
-  Spin
+  Spin,
+  Statistic
 } from "antd";
 import {
   SearchOutlined,
@@ -30,14 +30,17 @@ import {
   EditOutlined,
   DeleteOutlined,
   TeamOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  DashboardOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { countries } from "@/Components/Patients/AddPatient";
 import { DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { DepartmentInterface } from "@/Components/Departments/Departments";
-import { Patient } from "@/types/patient";
+import { Patient, User } from "@/types/patient";
 import { useNavigate } from "react-router-dom";
 import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISelect } from "../ui/select";
 import { Download, Filter, Search } from "lucide-react";
@@ -47,17 +50,80 @@ import { Button as UIButton } from "@/components/ui/button";
 const { Option } = Select;
 const { Title, Text } = Typography;
 
+// Type definitions
+interface ExtraField {
+  field_name: string;
+  is_mandatory: boolean;
+  user_type: number;
+  user_type_data: {
+    type: string;
+  };
+}
+
+interface Receptionist extends User {
+  id?: number;
+  user_type_id?: number;
+  name?: string;
+  email?: string;
+  phone_no?: string;
+  date_of_birth?: string
+  department_id?: number;
+  gender?: string;
+  blood_type?: string;
+  is_active?: boolean;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip_code: string;
+    country: string;
+  };
+  extra_fields?: {
+    fields_data?: Record<string, any>;
+  };
+}
+
+interface Stats {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  recentJoined: number;
+}
+
+interface Pagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface LoadingStates {
+  departments: boolean;
+  extraFields: boolean;
+  table: boolean;
+}
+
+interface ActionButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  type?: "primary" | "default" | "dashed" | "link" | "text";
+  danger?: boolean;
+  onClick?: () => void;
+  loading?: boolean;
+  confirm?: boolean;
+  confirmAction?: () => void;
+}
+
 export default function ReceptionistList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [nurses, setNurses] = useState<Patient[]>([]);
+  const [receptionists, setReceptionists] = useState<Receptionist[]>([]);
   const [departments, setDepartments] = useState<DepartmentInterface[]>([]);
   const [form] = Form.useForm();
-  const [selectedNurse, setSelectedNurse] = useState<any>(null);
-  const [extraFields, setExtraFields] = useState<any>([]);
+  const [selectedReceptionist, setSelectedReceptionist] = useState<Receptionist | null>(null);
+  const [extraFields, setExtraFields] = useState<ExtraField[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
   const [tableLoading, setTableLoading] = useState(false);
-  const [loadingStates, setLoadingStates] = useState({
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
     departments: false,
     extraFields: false,
     table: false
@@ -65,11 +131,20 @@ export default function ReceptionistList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
+  
+  const [stats, setStats] = useState<Stats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0,
+    recentJoined: 0,
+  });
+  
+  const [statsLoading, setStatsLoading] = useState(true);
 
   const userTypeId = useMemo(() => {
     return extraFields?.[0]?.user_type;
@@ -77,15 +152,16 @@ export default function ReceptionistList() {
 
   const navigate = useNavigate();
 
-
-  async function exportReseptionist(format = 'csv') {
+  // Export function
+  const exportReceptionists = async (format = 'csv') => {
     try {
       await DownloadApi(`/export?type=users&user_type=receptionist&format=${format}`, format);
+      toast.success(`Receptionists exported successfully as ${format.toUpperCase()}`);
     } catch (err) {
       console.error('Export error:', err);
-      alert('Something went wrong while exporting.');
+      toast.error('Something went wrong while exporting.');
     }
-  }
+  };
 
   // Fetch data functions
   const getExtraFields = async () => {
@@ -93,7 +169,10 @@ export default function ReceptionistList() {
     try {
       const data = await getApi("/user-fields");
       if (!data?.error) {
-        setExtraFields(data.data.filter((field: any) => field.user_type_data.type.toUpperCase() === "RECEPTIONIST"));
+        const receptionistFields = data.data.filter((field: ExtraField) => 
+          field.user_type_data.type.toUpperCase() === "RECEPTIONIST"
+        );
+        setExtraFields(receptionistFields);
       } else {
         toast.error("Error fetching receptionist fields: " + data.error);
       }
@@ -105,10 +184,17 @@ export default function ReceptionistList() {
     }
   };
 
-  const loadNurses = async (page = 1, limit = 10, searchQuery = searchTerm, status = statusFilter) => {
+  const loadReceptionists = async (
+    page = pagination.current, 
+    limit = pagination.pageSize, 
+    searchQuery = searchTerm, 
+    status = statusFilter
+  ) => {
     setTableLoading(true);
     try {
-      const data = await getApi(`/users?user_type=RECEPTIONIST&page=${page}&limit=${limit}&q=${searchQuery}`);
+      const data = await getApi(
+        `/users?user_type=RECEPTIONIST&page=${page}&limit=${limit}&q=${searchQuery}`
+      );
       if (!data?.error) {
         setPagination(prev => ({
           ...prev,
@@ -116,7 +202,16 @@ export default function ReceptionistList() {
           pageSize: limit,
           total: data.total_records,
         }));
-        setNurses(data.data);
+        setReceptionists(data.data);
+        
+        // Update stats
+        setStats({
+          totalUsers: data.total_records || 0,
+          activeUsers: data.active_records || 0,
+          inactiveUsers: data.inactive_records || 0,
+          recentJoined: data.recently_added || 0,
+        });
+        setStatsLoading(false);
       } else {
         toast.error(data.error);
       }
@@ -146,7 +241,7 @@ export default function ReceptionistList() {
   };
 
   useEffect(() => {
-    loadNurses(pagination.current, pagination.pageSize);
+    loadReceptionists();
     loadDepartments();
     getExtraFields();
   }, []);
@@ -159,8 +254,8 @@ export default function ReceptionistList() {
       const formData = {
         ...values,
         name: `${values?.extra_fields?.first_name || ''} ${values?.extra_fields?.last_name || ''}`.trim(),
-        user_type_id: selectedNurse ? selectedNurse.user_type_id : 4,
-        id: selectedNurse?.id,
+        user_type_id: selectedReceptionist ? selectedReceptionist.user_type_id : 4,
+        id: selectedReceptionist?.id,
         address: {
           street: values.street,
           city: values.city,
@@ -172,34 +267,38 @@ export default function ReceptionistList() {
 
       const data = await PutApi(`/users`, formData);
       if (!data?.error) {
-        toast.success(selectedNurse ? "Receptionist updated successfully!" : "Receptionist added successfully!");
-        loadNurses(pagination.current, pagination.pageSize);
+        toast.success(
+          selectedReceptionist ? 
+          "Receptionist updated successfully!" : 
+          "Receptionist added successfully!"
+        );
+        loadReceptionists(pagination.current, pagination.pageSize);
         setIsModalOpen(false);
-        setSelectedNurse(null);
+        setSelectedReceptionist(null);
         form.resetFields();
       } else {
         toast.error(data.error);
       }
     } catch (error) {
-      toast.error(`Error ${selectedNurse ? 'updating' : 'adding'} receptionist`);
-      console.error(`Error ${selectedNurse ? 'updating' : 'adding'} receptionist:`, error);
+      toast.error(`Error ${selectedReceptionist ? 'updating' : 'adding'} receptionist`);
+      console.error(`Error ${selectedReceptionist ? 'updating' : 'adding'} receptionist:`, error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleTableChange = (newPagination: any) => {
-    loadNurses(newPagination.current, newPagination.pageSize);
+    loadReceptionists(newPagination.current, newPagination.pageSize);
   };
 
-  // Delete nurse handler
-  const deleteNurse = async (record: any) => {
+  // Delete receptionist handler
+  const deleteReceptionist = async (record: Receptionist) => {
     setLoadingActionId(record.id);
     try {
       const data = await PutApi(`/users`, { ...record, is_active: false });
       if (!data?.error) {
         toast.success("Receptionist deactivated successfully!");
-        loadNurses(pagination.current, pagination.pageSize);
+        loadReceptionists(pagination.current, pagination.pageSize);
       } else {
         toast.error(data.error);
       }
@@ -212,9 +311,9 @@ export default function ReceptionistList() {
   };
 
   // Open modal for editing
-  const handleEdit = (record: any) => {
-    setSelectedNurse(record);
-    form.setFieldsValue({
+  const handleEdit = (record: Receptionist) => {
+    setSelectedReceptionist(record);
+    const formValues = {
       extra_fields: { ...record.extra_fields?.fields_data ?? {} },
       department_id: record.department_id,
       date_of_birth: record.date_of_birth?.split("T")[0],
@@ -226,14 +325,16 @@ export default function ReceptionistList() {
       state: record.address?.state,
       zip_code: record.address?.zip_code,
       country: record.address?.country,
-    });
+    };
+    
+    form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };
 
   // Close modal
   const handleCancel = () => {
     setIsModalOpen(false);
-    setSelectedNurse(null);
+    setSelectedReceptionist(null);
     form.resetFields();
   };
 
@@ -247,20 +348,12 @@ export default function ReceptionistList() {
     loading = false,
     confirm = false,
     confirmAction
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    type?: "primary" | "default" | "dashed" | "link" | "text";
-    danger?: boolean;
-    onClick?: () => void;
-    loading?: boolean;
-    confirm?: boolean;
-    confirmAction?: () => void;
-  }) => {
+  }: ActionButtonProps) => {
     const button = (
       <motion.div
-        whileHover={{ scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 250 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
       >
         <Tooltip title={label} placement="top">
           <Button
@@ -271,17 +364,17 @@ export default function ReceptionistList() {
             onClick={onClick}
             className={`
               flex items-center justify-center 
-              transition-all duration-300 ease-in-out
-              ${!danger && !type.includes('primary') ?
+              transition-all duration-200 ease-in-out
+              ${!danger && type === "default" ?
                 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300' : ''
               }
               ${danger ?
                 'hover:text-red-600 hover:bg-red-50 border-gray-300 hover:border-red-300' : ''
               }
-              w-10 h-10 rounded-full
+              w-9 h-9 rounded-lg
             `}
             style={{
-              minWidth: '40px',
+              minWidth: '36px',
               border: '1px solid #d9d9d9'
             }}
           />
@@ -289,19 +382,27 @@ export default function ReceptionistList() {
       </motion.div>
     );
 
-    return confirm ? (
-      <Popconfirm
-        title="Are you sure?"
-        onConfirm={confirmAction}
-        okText="Yes"
-        cancelText="No"
-        placement="top"
-      >
-        {button}
-      </Popconfirm>
-    ) : (
-      button
-    );
+    if (confirm && confirmAction) {
+      return (
+        <Popconfirm
+          title="Are you sure you want to deactivate this receptionist?"
+          description="This action can be reversed by editing the receptionist."
+          onConfirm={confirmAction}
+          okText="Yes"
+          cancelText="No"
+          placement="top"
+        >
+          {button}
+        </Popconfirm>
+      );
+    }
+
+    return button;
+  };
+
+  // Search handler
+  const handleSearch = () => {
+    loadReceptionists(1, pagination.pageSize, searchTerm);
   };
 
   // Skeleton columns for loading state
@@ -310,8 +411,8 @@ export default function ReceptionistList() {
       title: "Receptionist ID",
       dataIndex: "id",
       key: "id",
-      width: 100,
-      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
+      width: 120,
+      render: () => <Skeleton.Input active size="small" style={{ width: 80 }} />,
     },
     {
       title: "Name",
@@ -329,14 +430,14 @@ export default function ReceptionistList() {
       dataIndex: "gender",
       key: "gender",
       width: 100,
-      render: () => <Skeleton.Input active size="small" style={{ width: 80 }} />,
+      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
     },
     {
       title: "Blood Type",
       dataIndex: "blood_type",
       key: "bloodType",
-      width: 120,
-      render: () => <Skeleton.Input active size="small" style={{ width: 70 }} />,
+      width: 100,
+      render: () => <Skeleton.Input active size="small" style={{ width: 60 }} />,
     },
     {
       title: "Phone",
@@ -345,7 +446,7 @@ export default function ReceptionistList() {
       render: () => (
         <Space>
           <Skeleton.Avatar active size="small" />
-          <Skeleton.Input active size="small" style={{ width: 100 }} />
+          <Skeleton.Input active size="small" style={{ width: 120 }} />
         </Space>
       ),
     },
@@ -353,7 +454,7 @@ export default function ReceptionistList() {
       title: "Department",
       dataIndex: "department_id",
       key: "department",
-      render: () => <Skeleton.Input active size="small" style={{ width: 110 }} />,
+      render: () => <Skeleton.Input active size="small" style={{ width: 100 }} />,
     },
     {
       title: "Status",
@@ -365,11 +466,11 @@ export default function ReceptionistList() {
     {
       title: "Actions",
       key: "actions",
-      width: 150,
+      width: 120,
       render: () => (
         <Space size="small">
-          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
-          <Skeleton.Button active size="small" style={{ width: 40, height: 40 }} />
+          <Skeleton.Button active size="small" style={{ width: 36, height: 36 }} />
+          <Skeleton.Button active size="small" style={{ width: 36, height: 36 }} />
         </Space>
       ),
     },
@@ -381,7 +482,8 @@ export default function ReceptionistList() {
       title: "Receptionist ID",
       dataIndex: "id",
       key: "id",
-      width: 100,
+      width: 120,
+      sorter: true,
     },
     {
       title: "Name",
@@ -399,12 +501,13 @@ export default function ReceptionistList() {
       dataIndex: "gender",
       key: "gender",
       width: 100,
+      render: (gender: string) => gender || "N/A",
     },
     {
       title: "Blood Type",
       dataIndex: "blood_type",
       key: "bloodType",
-      width: 120,
+      width: 100,
       render: (bloodType: string) => (
         <Tag color={bloodType ? "red" : "default"}>
           {bloodType || "N/A"}
@@ -418,7 +521,7 @@ export default function ReceptionistList() {
       render: (phone: string) => (
         <Space>
           <PhoneOutlined className="text-green-500" />
-          {phone}
+          {phone || "N/A"}
         </Space>
       ),
     },
@@ -445,53 +548,45 @@ export default function ReceptionistList() {
     {
       title: "Actions",
       key: "actions",
-      width: 150,
-      render: (_: any, record: any) => (
+      width: 120,
+      render: (_: any, record: Receptionist) => (
         <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
-            label="Edit"
+            label="Edit Receptionist"
             type="default"
-            loading={loadingActionId === record.id}
             onClick={() => handleEdit(record)}
           />
 
-          <ActionButton
-            icon={<DeleteOutlined />}
-            label="Delete"
-            danger
-            loading={loadingActionId === record.id}
-            confirm
-            confirmAction={() => deleteNurse(record)}
-          />
+          {record.is_active && (
+            <ActionButton
+              icon={<DeleteOutlined />}
+              label="Deactivate Receptionist"
+              danger
+              loading={loadingActionId === record.id}
+              confirm
+              confirmAction={() => deleteReceptionist(record)}
+            />
+          )}
         </Space>
       ),
     },
   ];
 
   // Generate skeleton data for loading state
-  const skeletonData = Array.from({ length: pagination.pageSize }, (_, index) => ({
+  const skeletonData: any = Array.from({ length: pagination.pageSize }, (_, index) => ({
     key: index,
-    id: index,
-    name: '',
-    gender: '',
-    blood_type: '',
-    phone_no: '',
-    department: '',
-    status: '',
-    actions: '',
+    id: `loading-${index}`,
   }));
 
-  console.log(form, selectedNurse)
-
   return (
-    <div className="p-6 space-y-6 rounded-lg" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <Title level={2} className="m-0">Receptionist Management</Title>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <Title level={2} className="m-0 text-gray-800">Receptionist Management</Title>
         <Space>
           <Button
-            onClick={() => loadNurses()}
+            onClick={() => loadReceptionists()}
             icon={<ReloadOutlined />}
             loading={tableLoading}
             className="flex items-center"
@@ -502,17 +597,73 @@ export default function ReceptionistList() {
             type="primary"
             onClick={() => navigate("/receptionist/add")}
             icon={<PlusOutlined />}
-            loading={tableLoading}
-            className="flex items-center"
+            className="flex items-center bg-blue-600 hover:bg-blue-700"
           >
             Add Receptionist
           </Button>
         </Space>
       </div>
 
+      {/* Statistics Cards */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm">
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><TeamOutlined className="text-blue-500" /> Total Receptionists</Space>}
+                value={stats.totalUsers}
+                valueStyle={{ color: '#667eea' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm">
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><CheckCircleOutlined className="text-green-500" /> Active</Space>}
+                value={stats.activeUsers}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm">
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><ClockCircleOutlined className="text-orange-500" /> Recent Joined</Space>}
+                value={stats.recentJoined}
+                valueStyle={{ color: '#fa8c16' }}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm">
+            {statsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Statistic
+                title={<Space><DashboardOutlined className="text-cyan-500" /> Utilization</Space>}
+                value={Math.round((stats.activeUsers / (stats.totalUsers || 1)) * 100)}
+                suffix="%"
+                valueStyle={{ color: '#36cfc9' }}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
 
-      <Card className="border-0 shadow-sm mb-15">
-        <CardHeader>
+      {/* Filters & Search Card */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
@@ -523,30 +674,29 @@ export default function ReceptionistList() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <Input.Search
-                  placeholder="Search patients, doctors, or dates..."
+                <Input
+                  placeholder="Search receptionists by name, email, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onPressEnter={handleSearch}
                   className="pl-10 h-12"
-                  onSearch={() => { loadNurses(pagination.current, pagination.pageSize, searchTerm) }}
+                  suffix={
+                    <Button 
+                      type="text" 
+                      icon={<SearchOutlined />} 
+                      onClick={handleSearch}
+                      loading={tableLoading}
+                    />
+                  }
                 />
               </div>
             </div>
 
-            {/* <div className="w-full md:w-48">
-              <UISelect value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </UISelect>
-            </div> */}
-            <UIButton onClick={() => exportReseptionist()} variant="outline" className="h-12 px-6">
+            <UIButton 
+              onClick={() => exportReceptionists()} 
+              variant="outline" 
+              className="h-12 px-6 border-gray-300"
+            >
               <Download className="w-4 h-4 mr-2" />
               Export
             </UIButton>
@@ -554,13 +704,10 @@ export default function ReceptionistList() {
         </CardContent>
       </Card>
 
-      {/* Nurses Table with Skeleton Loading */}
-      <Card
-        bodyStyle={{ padding: 0 }}
-        className="overflow-hidden"
-      >
+      {/* Receptionists Table */}
+      <Card className="shadow-sm">
         <Table
-          dataSource={tableLoading ? skeletonData : nurses}
+          dataSource={tableLoading ? skeletonData : receptionists}
           columns={tableLoading ? skeletonColumns : columns}
           rowKey={tableLoading ? "key" : "id"}
           pagination={
@@ -571,28 +718,31 @@ export default function ReceptionistList() {
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} RECEPTIONISTs`,
+                `${range[0]}-${range[1]} of ${total} receptionists`,
+              pageSizeOptions: ['10', '20', '50', '100'],
             }
           }
           onChange={handleTableChange}
+          loading={tableLoading}
           scroll={{ x: 1000 }}
-          loading={false} // We handle loading ourselves with skeleton
         />
       </Card>
 
-      {/* Add/Edit Nurse Modal */}
+      {/* Add/Edit Receptionist Modal */}
       <Modal
         title={
           <Space>
             <TeamOutlined className="text-blue-600" />
-            <span>{selectedNurse ? "Edit Receptionist" : "Add New Receptionist"}</span>
+            <span className="text-lg font-semibold">
+              {selectedReceptionist ? "Edit Receptionist" : "Add New Receptionist"}
+            </span>
           </Space>
         }
         open={isModalOpen}
         onCancel={handleCancel}
         footer={null}
         width={800}
-        style={{ top: 20 }}
+        destroyOnClose
       >
         <Spin spinning={loadingStates.departments || loadingStates.extraFields}>
           <Form
@@ -604,10 +754,10 @@ export default function ReceptionistList() {
             <Row gutter={[16, 16]}>
               {/* Personal Information */}
               <Col span={24}>
-                <Title level={4} className="!mb-4">Personal Information</Title>
+                <Title level={4} className="!mb-4 text-gray-800">Personal Information</Title>
               </Col>
 
-              {extraFields.map((field: any) => (
+              {extraFields.map((field: ExtraField) => (
                 <Col span={12} key={field.field_name}>
                   <Form.Item
                     label={field.field_name}
@@ -622,7 +772,7 @@ export default function ReceptionistList() {
                     <Input
                       placeholder={`Enter ${field.field_name}`}
                       size="large"
-                      prefix={<UserOutlined />}
+                      prefix={<UserOutlined className="text-gray-400" />}
                     />
                   </Form.Item>
                 </Col>
@@ -637,7 +787,7 @@ export default function ReceptionistList() {
                   <Input
                     type="date"
                     size="large"
-                    prefix={<CalendarOutlined />}
+                    prefix={<CalendarOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
               </Col>
@@ -662,7 +812,7 @@ export default function ReceptionistList() {
 
               {/* Contact Information */}
               <Col span={24}>
-                <Title level={4} className="!mb-4">Contact Information</Title>
+                <Title level={4} className="!mb-4 text-gray-800">Contact Information</Title>
               </Col>
 
               <Col span={12}>
@@ -678,7 +828,7 @@ export default function ReceptionistList() {
                     type="email"
                     placeholder="Email address"
                     size="large"
-                    prefix={<MailOutlined />}
+                    prefix={<MailOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
               </Col>
@@ -692,14 +842,14 @@ export default function ReceptionistList() {
                   <Input
                     placeholder="Phone number"
                     size="large"
-                    prefix={<PhoneOutlined />}
+                    prefix={<PhoneOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
               </Col>
 
               {/* Address Information */}
               <Col span={24}>
-                <Title level={4} className="!mb-4">Address Information</Title>
+                <Title level={4} className="!mb-4 text-gray-800">Address Information</Title>
               </Col>
 
               <Col span={24}>
@@ -711,7 +861,7 @@ export default function ReceptionistList() {
                   <Input
                     placeholder="Street address"
                     size="large"
-                    prefix={<EnvironmentOutlined />}
+                    prefix={<EnvironmentOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
               </Col>
@@ -773,7 +923,7 @@ export default function ReceptionistList() {
 
               {/* Professional Information */}
               <Col span={24}>
-                <Title level={4} className="!mb-4">Professional Information</Title>
+                <Title level={4} className="!mb-4 text-gray-800">Professional Information</Title>
               </Col>
 
               <Col span={24}>
@@ -785,6 +935,7 @@ export default function ReceptionistList() {
                   <Select
                     placeholder="Select department"
                     size="large"
+                    loading={loadingStates.departments}
                     options={departments.map((d) => ({
                       value: d.id,
                       label: d.name
@@ -801,6 +952,7 @@ export default function ReceptionistList() {
               <Button
                 onClick={handleCancel}
                 size="large"
+                disabled={isLoading}
               >
                 Cancel
               </Button>
@@ -811,7 +963,7 @@ export default function ReceptionistList() {
                 size="large"
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {selectedNurse ? "Update Receptionist" : "Add Receptionist"}
+                {selectedReceptionist ? "Update Receptionist" : "Add Receptionist"}
               </Button>
             </div>
           </Form>
