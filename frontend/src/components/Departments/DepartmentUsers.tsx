@@ -65,6 +65,7 @@ import { getApi } from "@/ApiService";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import { DepartmentInterface } from "./Departments";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -108,6 +109,7 @@ export default function DepartmentUsers() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const {hasPermission} = useAuth()
   const [selectedRole, setSelectedRole] = useState("all");
   // const [pagination, setPagination] = useState({
   //   current: 1,
@@ -315,11 +317,11 @@ export default function DepartmentUsers() {
                 onChange={setAutoRefresh}
               />
             </Tooltip>
-            <Dropdown overlay={moreActionsMenu} placement="bottomRight">
+            {/* <Dropdown overlay={moreActionsMenu} placement="bottomRight">
               <Button icon={<SettingOutlined />} style={{ color: "black" }} size="large" ghost>
                 Settings
               </Button>
-            </Dropdown>
+            </Dropdown> */}
             <Button
               type="primary"
               icon={<ReloadOutlined />}
@@ -501,7 +503,7 @@ export default function DepartmentUsers() {
               >
                 Reset
               </Button>
-              <Button
+              {/* <Button
                 icon={<ExportOutlined />}
                 onClick={() => setDrawerVisible(true)}
               >
@@ -513,7 +515,7 @@ export default function DepartmentUsers() {
                 ghost
               >
                 Quick Actions
-              </Button>
+              </Button> */}
             </Space>
           </Flex>
         </Card>
@@ -553,33 +555,33 @@ export default function DepartmentUsers() {
                   renderItem={(user) => (
                     <List.Item
                       actions={[
-                        <Tooltip title="View Details">
-                          <Button
-                            icon={<EyeOutlined />}
-                            type="primary"
-                            ghost
-                            shape="circle"
-                          />
-                        </Tooltip>,
-                        <Tooltip title="Edit User">
-                          <Button
-                            icon={<EditOutlined />}
-                            shape="circle"
-                          />
-                        </Tooltip>,
-                        <Tooltip title="Delete User">
-                          <Button
-                            icon={<DeleteOutlined />}
-                            danger
-                            shape="circle"
-                          />
-                        </Tooltip>,
-                        <Dropdown overlay={moreActionsMenu} trigger={['click']}>
-                          <Button
-                            icon={<MoreOutlined />}
-                            shape="circle"
-                          />
-                        </Dropdown>
+                        // <Tooltip title="View Details">
+                        //   <Button
+                        //     icon={<EyeOutlined />}
+                        //     type="primary"
+                        //     ghost
+                        //     shape="circle"
+                        //   />
+                        // </Tooltip>,
+                        // <Tooltip title="Edit User">
+                        //   <Button
+                        //     icon={<EditOutlined />}
+                        //     shape="circle"
+                        //   />
+                        // </Tooltip>,
+                        // <Tooltip title="Delete User">
+                        //   <Button
+                        //     icon={<DeleteOutlined />}
+                        //     danger
+                        //     shape="circle"
+                        //   />
+                        // </Tooltip>,
+                        // <Dropdown overlay={moreActionsMenu} trigger={['click']}>
+                        //   <Button
+                        //     icon={<MoreOutlined />}
+                        //     shape="circle"
+                        //   />
+                        // </Dropdown>
                       ]}
                     >
                       <List.Item.Meta

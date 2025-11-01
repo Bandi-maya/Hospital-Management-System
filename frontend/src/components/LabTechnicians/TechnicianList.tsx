@@ -47,6 +47,7 @@ import { DepartmentInterface } from "../Departments/Departments";
 import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { countries } from "../Patients/AddPatient";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -164,6 +165,7 @@ export default function TechnicianList() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   const [stats, setStats] = useState<TechnicianStats>({});
   const [statsLoading, setStatsLoading] = useState<boolean>(true);
@@ -210,7 +212,7 @@ export default function TechnicianList() {
     try {
       const data: ApiResponse = await getApi("/user-fields");
       if (!data?.error) {
-        const technicianFields = data.data.filter((field: ExtraField) => 
+        const technicianFields = data.data.filter((field: ExtraField) =>
           field.user_type_data?.type?.toUpperCase() === "LABTECHNICIAN"
         );
         setExtraFields(technicianFields);
@@ -226,19 +228,19 @@ export default function TechnicianList() {
   };
 
   const loadTechnicians = async (
-    page: number = pagination.current, 
-    limit: number = pagination.pageSize, 
-    searchQuery: string = searchTerm, 
+    page: number = pagination.current,
+    limit: number = pagination.pageSize,
+    searchQuery: string = searchTerm,
     status: string = statusFilter
   ): Promise<void> => {
     setTableLoading(true);
     try {
       let url = `/users?user_type=LABTECHNICIAN&page=${page}&limit=${limit}`;
-      
+
       if (searchQuery) {
         url += `&q=${encodeURIComponent(searchQuery)}`;
       }
-      
+
       if (status !== "all") {
         url += `&status=${status}`;
       }
@@ -345,13 +347,13 @@ export default function TechnicianList() {
   // Delete technician handler
   const deleteTechnician = async (record: Technician): Promise<void> => {
     if (!record.id) return;
-    
+
     setLoadingActionId(record.id);
     try {
-      const data: ApiResponse = await PutApi(`/users`, { 
-        ...record, 
+      const data: ApiResponse = await PutApi(`/users`, {
+        ...record,
         is_active: false,
-        id: record.id 
+        id: record.id
       });
       if (!data?.error) {
         toast.success("Technician deactivated successfully!");
@@ -371,7 +373,7 @@ export default function TechnicianList() {
   // Open modal for editing
   const handleEdit = (record: Technician): void => {
     setSelectedTechnician(record);
-    
+
     const formValues: FormValues = {
       extra_fields: { ...record.extra_fields?.fields_data ?? {} },
       department_id: record.department_id,
@@ -605,7 +607,7 @@ export default function TechnicianList() {
       key: "actions",
       width: 150,
       render: (_: any, record: Technician) => (
-        <Space size="small">
+        hasPermission(['lab-technician:edit']) && <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
             label="Edit"
@@ -659,14 +661,17 @@ export default function TechnicianList() {
           >
             Refresh
           </Button>
-          <Button
-            type="primary"
-            onClick={() => setIsModalOpen(true)}
-            icon={<PlusOutlined />}
-            className="flex items-center"
-          >
-            Add Technician
-          </Button>
+          {
+            hasPermission(['lab-technician:add']) &&
+            <Button
+              type="primary"
+              onClick={() => setIsModalOpen(true)}
+              icon={<PlusOutlined />}
+              className="flex items-center"
+            >
+              Add Technician
+            </Button>
+          }
         </Space>
       </div>
 
@@ -747,9 +752,9 @@ export default function TechnicianList() {
                   onPressEnter={handleSearch}
                   className="pl-10 h-12"
                   suffix={
-                    <Button 
-                      type="text" 
-                      icon={<SearchOutlined />} 
+                    <Button
+                      type="text"
+                      icon={<SearchOutlined />}
                       onClick={handleSearch}
                       loading={tableLoading}
                     />
@@ -769,9 +774,9 @@ export default function TechnicianList() {
                 <Option value="inactive">Inactive</Option>
               </Select>
             </div> */}
-            <UIButton 
-              onClick={() => exportTechnicians()} 
-              variant="outline" 
+            <UIButton
+              onClick={() => exportTechnicians()}
+              variant="outline"
               className="h-12 px-6"
               disabled={tableLoading}
             >

@@ -18,6 +18,7 @@ import {
   Statistic,
   Tag,
   Tooltip,
+  QRCode,
 } from "antd";
 import {
   EditOutlined,
@@ -37,10 +38,11 @@ import { DeleteApi, DownloadApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { useNavigate } from "react-router-dom";
 import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button as UIButton } from "@/components/ui/button";
-import { Download, Filter, Search } from "lucide-react";
+import { Download, EyeIcon, Filter, Search } from "lucide-react";
 import { countries } from "./AddPatient";
 import type { DepartmentInterface } from "../Departments/Departments";
 import type { Patient } from "@/types/patient";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -60,7 +62,15 @@ export default function PatientList() {
   const [form] = Form.useForm();
   const [medicalRecordForm] = Form.useForm();
   const [data, setData] = useState<any>({});
+  const { hasPermission } = useAuth()
   const [statsLoading, setStatsLoading] = useState(true);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrUrl, setQrUrl] = useState("");
+
+  const handleViewQR = (patientId: number) => {
+    setQrUrl(`${window.location.origin}/patients/${patientId}`);
+    setQrModalOpen(true);
+  };
 
   const navigate = useNavigate();
 
@@ -264,26 +274,40 @@ export default function PatientList() {
       key: "actions",
       render: (_: any, record: any) => (
         <Space>
+          {hasPermission(['patients:edit']) && (
+            <>
+              <ActionButton
+                icon={<EyeIcon />}
+                label="View"
+                onClick={() => navigate(`/patients/${record.id}`)}
+              />
+              <ActionButton
+                icon={<EditOutlined />}
+                label="Edit"
+                onClick={() => handleEditPatient(record)}
+              />
+              <ActionButton
+                icon={<DeleteOutlined />}
+                label="Delete"
+                danger
+                confirm
+                confirmAction={() => deletePatient(record)}
+              />
+              <ActionButton
+                icon={<FileTextOutlined />}
+                label="Add Record"
+                onClick={() => handleAddMedicalRecord(record)}
+              />
+            </>
+          )}
           <ActionButton
-            icon={<EditOutlined />}
-            label="Edit"
-            onClick={() => handleEditPatient(record)}
-          />
-          <ActionButton
-            icon={<DeleteOutlined />}
-            label="Delete"
-            danger
-            confirm
-            confirmAction={() => deletePatient(record)}
-          />
-          <ActionButton
-            icon={<FileTextOutlined />}
-            label="Add Record"
-            onClick={() => handleAddMedicalRecord(record)}
+            icon={<DashboardOutlined />}
+            label="View QR"
+            onClick={() => handleViewQR(record.id)}
           />
         </Space>
       ),
-    },
+    }
   ];
 
   const handleTableChange = (p: any) => {
@@ -346,15 +370,33 @@ export default function PatientList() {
           >
             Refresh
           </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate("/patients/add")}
-          >
-            Add Patient
-          </Button>
+
+          {
+            hasPermission(['patients:add']) &&
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => navigate("/patients/add")}
+            >
+              Add Patient
+            </Button>
+          }
         </Space>
       </div>
+
+      <Modal
+        title="Patient QR Code"
+        open={qrModalOpen}
+        onCancel={() => setQrModalOpen(false)}
+        footer={null}
+      >
+        {qrUrl && (
+          <div style={{ textAlign: "center", padding: "20px" }}>
+            <QRCode value={qrUrl} size={200} />
+            <p className="mt-4">{qrUrl}</p>
+          </div>
+        )}
+      </Modal>
 
       {/* Stats */}
       <Row gutter={[16, 16]}>

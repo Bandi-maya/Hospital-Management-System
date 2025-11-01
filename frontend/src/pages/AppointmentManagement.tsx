@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Input as AntInput, Button as AntdButton, Table as AntdTable } from "antd";
 import { toast } from "sonner";
-import { getApi, PutApi, DeleteApi } from "@/ApiService";
+import { getApi, PutApi, DeleteApi, DownloadApi } from "@/ApiService";
 import {
   Search,
   PlusCircle,
@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/tooltip";
 import { SearchOutlined } from "@ant-design/icons";
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import { useAuth } from "@/hooks/useAuth";
 
 interface Patient {
   username?: string;
@@ -225,6 +226,7 @@ export default function AppointmentManagement() {
     appointment_start_time: "",
     status: "",
   });
+  const { hasPermission } = useAuth()
   const [data, setData] = useState<ApiResponse>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [viewModalOpen, setViewModalOpen] = useState<boolean>(false);
@@ -240,6 +242,17 @@ export default function AppointmentManagement() {
   const handleChange = (key: keyof FormData, value: string): void => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+    // Export function
+    const exportAppointments = async (format: string = 'csv'): Promise<void> => {
+      try {
+        await DownloadApi(`/export?type=appointments&format=${format}`, format, 'appointments');
+        toast.success(`Appointments exported successfully as ${format.toUpperCase()}`);
+      } catch (err) {
+        console.error('Export error:', err);
+        toast.error('Something went wrong while exporting.');
+      }
+    };
 
   useEffect(() => {
     loadData(pagination.current, pagination.pageSize, searchTerm, statusFilter);
@@ -274,7 +287,7 @@ export default function AppointmentManagement() {
     if (!selectedAppointment) return;
 
     setLoadingActionId(selectedAppointment.id);
-    DeleteApi(`/appointment`, {id: selectedAppointment.id})
+    DeleteApi(`/appointment`, { id: selectedAppointment.id })
       .then((res: ApiResponse) => {
         if (!res?.error) {
           toast.success("Appointment deleted successfully!");
@@ -290,9 +303,9 @@ export default function AppointmentManagement() {
   };
 
   const loadData = (
-    page: number = 1, 
-    limit: number = 10, 
-    searchQuery: string = searchTerm, 
+    page: number = 1,
+    limit: number = 10,
+    searchQuery: string = searchTerm,
     status: string = statusFilter
   ): void => {
     setLoading(true);
@@ -353,7 +366,7 @@ export default function AppointmentManagement() {
       patient_id: appointment.patient_id,
       doctor_id: appointment.doctor_id,
       appointment_date: appointment.appointment_date.split("T")[0],
-      appointment_start_time: appointment.appointment_start_time.slice(0,5),
+      appointment_start_time: appointment.appointment_start_time.slice(0, 5),
       status: appointment.status,
     });
     setEditModalOpen(true);
@@ -447,7 +460,7 @@ export default function AppointmentManagement() {
       key: "actions",
       width: 150,
       render: (_: any, record: Appointment) => (
-        <div className="flex items-center justify-end gap-2">
+        hasPermission(['appointments:edit']) && <div className="flex items-center justify-end gap-2">
           {record.status !== "SCHEDULED" && (
             <Select
               value={record.status}
@@ -531,13 +544,16 @@ export default function AppointmentManagement() {
                 <Calendar className="w-4 h-4 mr-2" />
                 Calendar View
               </Button>
-              <Button
-                onClick={() => navigate("/appointments/book")}
-                className="h-12 px-6 text-base font-medium"
-              >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                New Appointment
-              </Button>
+              {
+                hasPermission(['appointments:add']) &&
+                <Button
+                  onClick={() => navigate("/appointments/book")}
+                  className="h-12 px-6 text-base font-medium"
+                >
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  New Appointment
+                </Button>
+              }
             </div>
           </div>
         </CardHeader>
@@ -648,7 +664,7 @@ export default function AppointmentManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" className="h-12 px-6">
+            <Button onClick={() => exportAppointments()} variant="outline" className="h-12 px-6">
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>

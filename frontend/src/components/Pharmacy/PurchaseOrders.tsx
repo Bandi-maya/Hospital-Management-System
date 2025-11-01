@@ -48,6 +48,7 @@ import { toast } from "sonner";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 
@@ -177,7 +178,7 @@ const ActionButton = ({
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
-  const [data, setData]=  useState<any>({})
+  const [data, setData] = useState<any>({})
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -195,6 +196,7 @@ export default function PurchaseOrders() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   useEffect(() => {
     fetchOrders();
@@ -205,7 +207,7 @@ export default function PurchaseOrders() {
   // Auto refresh notifier
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (autoRefresh) {
       interval = setInterval(() => {
         message.info({
@@ -216,7 +218,7 @@ export default function PurchaseOrders() {
         fetchOrders();
       }, 30000); // 30 seconds
     }
-    
+
     return () => {
       if (interval) {
         clearInterval(interval);
@@ -467,7 +469,7 @@ export default function PurchaseOrders() {
       render: (_, record: PurchaseOrder) => {
         const items = record.medicines || record.items || [];
         const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        
+
         return (
           <Space direction="vertical" size={0}>
             <Tag color="blue" className="font-bold text-lg">
@@ -492,7 +494,7 @@ export default function PurchaseOrders() {
       ),
       key: "actions",
       render: (_, record: PurchaseOrder) => (
-        <Space size="small">
+        hasPermission(['medicine-orders:edit']) && <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
             label="View Details"
@@ -507,13 +509,13 @@ export default function PurchaseOrders() {
             loading={actionLoading === record.id.toString()}
           />
 
-          <ActionButton
+          {/* <ActionButton
             icon={<DeleteOutlined />}
             label="Delete Order"
             onClick={() => handleDeleteOrder(record)}
             danger
             loading={actionLoading === record.id.toString()}
-          />
+          /> */}
         </Space>
       ),
     },
@@ -566,27 +568,30 @@ export default function PurchaseOrders() {
                 </Button>
               </Tooltip>
 
-              <Tooltip title="Create New Order">
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => {
-                      setEditingOrder(null);
-                      form.resetFields();
-                      setIsModalOpen(true);
-                    }}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-md"
-                    size="large"
-                    disabled={loading}
+              {
+                hasPermission(['medicine-orders:add']) &&
+                <Tooltip title="Create New Order">
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <RocketOutlined /> New Purchase Order
-                  </Button>
-                </motion.div>
-              </Tooltip>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={() => {
+                        setEditingOrder(null);
+                        form.resetFields();
+                        setIsModalOpen(true);
+                      }}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-md"
+                      size="large"
+                      disabled={loading}
+                    >
+                      <RocketOutlined /> New Purchase Order
+                    </Button>
+                  </motion.div>
+                </Tooltip>
+              }
             </div>
           </div>
         </Card>

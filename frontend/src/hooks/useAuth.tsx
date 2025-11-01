@@ -10,7 +10,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   hasRole: (role: UserRole) => boolean;
-  hasPermission: (permission: string) => boolean;
+  hasPermission: (permission: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -112,47 +112,146 @@ export const useAuthProvider = () => {
     return user?.user_type?.type?.toLowerCase() === role;
   };
 
-  const hasPermission = (permission: string): boolean => {
-    console.log(permission)
+  const hasPermission = (permission: string[]): boolean => {
     if (!user) return false;
 
     // Define role-based permissions
     const permissions: Record<UserRole, string[]> = {
-      admin: ['*'],
+      admin: [
+        'admin:access',
+        'patients:read', 'patients:add', 'patients:edit',
+        'nurse:read', 'nurse:add', 'nurse:edit',
+        'doctor:read', 'doctor:add', 'doctor:edit',
+        'lab-technician:read', 'lab-technician:add', 'doctor:edit',
+        'pharmacist:read', 'pharmacist:add', 'doctor:edit',
+        "receptionist:read", 'receptionist:edit', 'receptionist:add',
+        'appointments:read', 'appointments:add', 'appointments:edit',
+        'tokens:read', 'tokens:add', 'tokens:edit',
+        'medicines:read', 'medicines:add', 'medicines:edit',
+        'medicine-orders:read', 'medicine-orders:add', 'medicine-orders:edit',
+        'labs:read', 'labs:edit', 'labs:add',
+        'lab-orders:read', 'lab-orders:edit', 'lab-orders:add',
+        'surgery:read', 'surgery:add', 'surgery:edit',
+        'surgery-types:read', 'surgery-types:add', 'surgery-types:edit',
+        'operation-theatres:read', 'operation-theatres:add', 'operation-theatres:edit',
+        'prescriptions:read', 'prescriptions:edit', 'prescriptions:add',
+        'billing:read', 'billing:add', 'billing:edit',
+        'payments:read',
+        'wards:read', 'wards:add', 'wards:edit',
+        'ward-beds:read', 'ward-beds:edit',
+        'departments:read', 'departments:add', 'departments:edit',
+        'department-users:read',
+        'audit-logs:read',
+        'user-fields:read', 'user-fields:add', 'user-fields:edit',
+        'admin-settings:read', 'admin-settings:edit', 'admin-settings:add'
+      ],
       doctor: [
-        'patients:read', 'patients:add', 'patients:write', 'nurse:read', "nurse:add", "nurse:read", "receptionist:add", "receptionist:read", "pharmacist:add", "pharmacist:read", "lab-technician:add",
-        'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write',
-        // Added permissions based on menu children
-        'patients:read', 'patients:add', 'patients:write', 'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'tokens:read', 'tokens:write'
+        'patients:read', 'patients:add', 'patients:edit',
+        'nurse:read',
+        "receptionist:read",
+        'appointments:read', 'appointments:add', 'appointments:edit',
+        'tokens:read', 'tokens:add', 'tokens:edit',
+        'surgery:read', 'surgery:add', 'surgery:edit',
+        'surgery-types:read', 'surgery-types:add', 'surgery-types:edit',
+        'operation-theatres:read', 'operation-theatres:add', 'operation-theatres:edit',
+        'prescriptions:read', 'prescriptions:edit', 'prescriptions:add',
+        'billing:read',
+        'payments:read',
+        'wards:read',
+        'ward-beds:read', 'ward-beds:edit',
+        'departments:read',
+        'department-users:read',
+        'audit-logs:read',
+        'admin-settings:read'
       ],
       nurse: [
-        'patients:read', 'patients:add', 'patients:write', 'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write',
-        // Added permissions based on menu children
-        'patients:read', 'patients:add', 'patients:write', 'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'tokens:read', 'tokens:write'
+        'patients:read', 'patients:add', 'patients:edit',
+        'doctor:read',
+        'appointments:read', 'appointments:add', 'appointments:edit',
+        'tokens:read', 'tokens:add', 'tokens:edit',
+        'surgery:read',
+        'surgery-types:read',
+        'operation-theatres:read',
+        'prescriptions:read',
+        'billing:read',
+        'payments:read',
+        'wards:read',
+        'ward-beds:read',
+        'departments:read',
+        'department-users:read',
+        'audit-logs:read',
+        'admin-settings:read'
       ],
       patient: [
-        'patients:read',
-        // Patient does not require any other permissions in the baseItems
+
       ],
       receptionist: [
-        'patients:read', 'patients:add', 'patients:write', 'nurse:read', 'doctor:read', 'lab-technician:read', 'appointments:add', 'pharmacist:read', 'appointments:read', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'prescriptions:write', 'tokens:read', 'tokens:write',
-        // Added permissions based on menu children
-        'patients:read', 'patients:add', 'patients:write', 'appointments:read', 'appointments:add', 'appointments:write', 'medicines:read', 'lab_tests:read', 'surgery:read', 'billing:read', 'wards:read', 'tokens:read', 'tokens:write'
+        'patients:read', 'patients:add', 'patients:edit',
+        'receptionist:read',
+        'doctor:read',
+        'nurse:read',
+        'lab-technician:read',
+        'pharmacist:read',
+        'appointments:read', 'appointments:add', 'appointments:edit',
+        'tokens:read', 'tokens:add', 'tokens:edit',
+        'surgery:read',
+        'surgery-types:read',
+        'operation-theatres:read',
+        'prescriptions:read',
+        'billing:read',
+        'payments:read',
+        'wards:read',
+        'ward-beds:read',
+        'departments:read',
+        'department-users:read',
+        'audit-logs:read',
+        'admin-settings:read'
       ],
       pharmacist: [
-        'medicines:read',
-        // Added permissions based on menu children
-        'medicines:read', 'pharmacy/medicines', 'pharmacy/prescriptions', 'pharmacy/orders'
+        'patients:read', 'patients:add', 'patients:edit',
+        'pharmacist:read',
+        'appointments:read', 'appointments:add', 'appointments:edit',
+        'tokens:read', 'tokens:add', 'tokens:edit',
+        'medicines:read', 'medicines:add', 'medicines:edit',
+        'medicine-orders:read', 'medicine-orders:add', 'medicine-orders:edit',
+        'surgery:read',
+        'operation-theatres:read',
+        'prescriptions:read',
+        'billing:read', 'billing:add', 'billing:edit',
+        'payments:read',
+        'wards:read',
+        'ward-beds:read',
+        'departments:read',
+        'department-users:read',
+        'audit-logs:read',
+        'admin-settings:read'
       ],
       lab_technician: [
-        'lab_tests:read',
-        // Added permissions based on menu children
-        'lab_tests:read', 'laboratory/tests', 'laboratory/results', 'laboratory/reports'
+        'patients:read', 'patients:add', 'patients:edit',
+        'lab-technician:read',
+        'appointments:read', 'appointments:add', 'appointments:edit',
+        'tokens:read', 'tokens:add', 'tokens:edit',
+        'labs:read', 'labs:edit', 'labs:add',
+        'lab-orders:read', 'lab-orders:edit', 'lab-orders:add',
+        'surgery:read',
+        'operation-theatres:read',
+        'prescriptions:read',
+        'billing:read', 'billing:add', 'billing:edit',
+        'payments:read',
+        'wards:read',
+        'ward-beds:read',
+        'departments:read',
+        'department-users:read',
+        'audit-logs:read',
+        'admin-settings:read'
       ]
     };
 
     const userPermissions = permissions[user.user_type.type?.toLowerCase()] || [];
-    return userPermissions.includes('*') || userPermissions.includes(permission);
+    return userPermissions.includes('*') ||
+      (Array.isArray(permission)
+        ? permission.some(p => userPermissions.includes(p)) // check if user has any of the permissions
+        : userPermissions.includes(permission));
   };
 
   // Helper function to get redirect path based on user role

@@ -41,6 +41,7 @@ import {
 import { toast } from "sonner";
 import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 
@@ -199,6 +200,7 @@ export default function MedicalInventory() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   const loadData = async (page: number = 1, limit: number = 10, searchQuery: string = search): Promise<void> => {
     setLoading(true);
@@ -551,7 +553,7 @@ export default function MedicalInventory() {
       ),
       key: "actions",
       render: (_, record: Medicine) => (
-        <Space size="small">
+        hasPermission(['medicines:edit']) && <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
             label="View Details"
@@ -638,26 +640,29 @@ export default function MedicalInventory() {
                 </Button>
               </Tooltip>
 
-              <Tooltip title="Add New Medicine">
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => {
-                      setEditingItem(null);
-                      form.resetFields();
-                      setIsModalOpen(true);
-                    }}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-md"
-                    size="large"
+              {
+                hasPermission(['medicines:add']) &&
+                <Tooltip title="Add New Medicine">
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <RocketOutlined /> Add New Medicine
-                  </Button>
-                </motion.div>
-              </Tooltip>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={() => {
+                        setEditingItem(null);
+                        form.resetFields();
+                        setIsModalOpen(true);
+                      }}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 shadow-md"
+                      size="large"
+                    >
+                      <RocketOutlined /> Add New Medicine
+                    </Button>
+                  </motion.div>
+                </Tooltip>
+              }
             </div>
           </div>
         </Card>

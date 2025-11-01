@@ -162,7 +162,7 @@ export const Dashboard: React.FC = () => {
     getApi('/stats')
       .then((data) => {
         if (!data.error) {
-          setStats(data.data.stats)
+          setStats(data.data)
         }
       })
   }
@@ -283,7 +283,7 @@ export const Dashboard: React.FC = () => {
     {
       id: '1',
       title: 'Register New Patient',
-      onClick: () => {navigation('/patients/add')},
+      onClick: () => { navigation('/patients/add') },
       description: 'Add patient to system',
       icon: <UserOutlined />,
       type: 'primary'
@@ -291,14 +291,14 @@ export const Dashboard: React.FC = () => {
     {
       id: '2',
       title: 'Schedule Appointment',
-      onClick: () => {navigation('/appointments/book')},
+      onClick: () => { navigation('/appointments/book') },
       description: 'Book patient consultation',
       icon: <CalendarOutlined />,
       type: 'default'
     },
     {
       id: '3',
-      onClick: () => {navigation('/laboratory/results')},
+      onClick: () => { navigation('/laboratory/results') },
       title: 'Lab Test Request',
       description: 'Order diagnostic tests',
       icon: <LineChartOutlined />,
@@ -318,13 +318,13 @@ export const Dashboard: React.FC = () => {
       title: 'Ward Management',
       description: 'Manage bed allocation',
       icon: <BellOutlined />,
-      onClick: () => {navigation('/wards/beds')},
+      onClick: () => { navigation('/wards/beds') },
       type: 'default'
     },
     {
       id: '6',
       title: 'Pharmacy Orders',
-      onClick: () => {navigation('/pharmacy/orders')},
+      onClick: () => { navigation('/pharmacy/orders') },
       description: 'Manage medications',
       icon: <MedicineBoxOutlined />,
       type: 'default'
@@ -334,7 +334,7 @@ export const Dashboard: React.FC = () => {
       title: 'Medical Records',
       description: 'Access patient history',
       icon: <FileTextOutlined />,
-      onClick: () => {navigation('/pharmacy/medicines')},
+      onClick: () => { navigation('/pharmacy/medicines') },
       type: 'default'
     },
     {
@@ -342,7 +342,7 @@ export const Dashboard: React.FC = () => {
       title: 'System Settings',
       description: 'Configure hospital settings',
       icon: <SettingOutlined />,
-      onClick: () => {navigation('/admin/settings')},
+      onClick: () => { navigation('/admin/settings') },
       type: 'default',
       role: ['admin']
     }
@@ -392,44 +392,19 @@ export const Dashboard: React.FC = () => {
   ];
 
   // Timeline data for today's events
-  const timelineData = [
-    {
-      color: 'green',
-      children: (
-        <div>
-          <Text strong>Morning Rounds</Text>
-          <div style={{ fontSize: '12px', color: '#666' }}>8:00 AM - General Ward</div>
+  const timelineData = (stats?.schedule?.items ?? []).map((item, index) => ({
+    color: index % 2 === 0 ? 'green' : 'blue', // just alternate colors
+    children: (
+      <div>
+        <Text strong>{item.title || 'Task'}</Text>
+        <div style={{ fontSize: '12px', color: '#666' }}>
+          {item.start_time} - {item.end_time} {item.location ? `- ${item.location}` : ''}
         </div>
-      ),
-    },
-    {
-      color: 'blue',
-      children: (
-        <div>
-          <Text strong>Surgery - Room 3</Text>
-          <div style={{ fontSize: '12px', color: '#666' }}>10:30 AM - Appendectomy</div>
-        </div>
-      ),
-    },
-    {
-      color: 'orange',
-      children: (
-        <div>
-          <Text strong>Lunch Break</Text>
-          <div style={{ fontSize: '12px', color: '#666' }}>12:30 PM - 1:30 PM</div>
-        </div>
-      ),
-    },
-    {
-      color: 'purple',
-      children: (
-        <div>
-          <Text strong>Patient Consultations</Text>
-          <div style={{ fontSize: '12px', color: '#666' }}>2:00 PM - Follow-up checks</div>
-        </div>
-      ),
-    },
-  ];
+      </div>
+    ),
+  }));
+
+  console.log(timelineData, stats?.schedule?.items, stats)
 
   return (
     <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
@@ -481,7 +456,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Stats Grid */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        {stats.map((stat, index) => (
+        {(stats?.stats ?? []).map((stat, index) => (
           <Col xs={24} sm={12} lg={8} key={index}>
             <StatsCard {...stat} icon={
               stat.icon === "TeamOutlined" ? <TeamOutlined /> :
@@ -572,7 +547,7 @@ export const Dashboard: React.FC = () => {
                   )}
                 />
                 <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                  <Button onClick={() => {}} type="primary" icon={<RightOutlined />}>
+                  <Button onClick={() => { }} type="primary" icon={<RightOutlined />}>
                     View All Activities
                   </Button>
                 </div>
@@ -672,9 +647,9 @@ export const Dashboard: React.FC = () => {
       </Row>
 
       {/* Additional Features Row */}
-      <Row gutter={[16, 16]} style={{ marginTop: '24px' }}>
+      {/* <Row gutter={[16, 16]} style={{ marginTop: '24px' }}> */}
         {/* Hospital Metrics */}
-        <Col xs={24} md={12}>
+        {/* <Col xs={24} md={12}>
           <Card
             title={
               <Space>
@@ -722,10 +697,10 @@ export const Dashboard: React.FC = () => {
               </Col>
             </Row>
           </Card>
-        </Col>
+        </Col> */}
 
         {/* Emergency Contacts */}
-        <Col xs={24} md={12}>
+        {/* <Col xs={24} md={12}>
           <Card
             title={
               <Space>
@@ -775,10 +750,10 @@ export const Dashboard: React.FC = () => {
             </Space>
           </Card>
         </Col>
-      </Row>
+      </Row> */}
 
       {/* Role-specific sections */}
-      {hasRole('doctor') && (
+      {/* {hasRole('doctor') && (
         <Card
           style={{ marginTop: '24px', borderRadius: '12px' }}
           title={
@@ -855,7 +830,7 @@ export const Dashboard: React.FC = () => {
             />
           )}
         </Card>
-      )}
+      )} */}
     </div>
   );
 };

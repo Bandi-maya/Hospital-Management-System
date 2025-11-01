@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './Sidebar';
 import { Header } from './Header';
@@ -7,6 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Grid } from 'antd';
 import { toast } from 'sonner';
 import { getApi } from '@/ApiService';
+import { AccountInfoContext } from '@/hooks/AccountInfoContext';
+import { useNavigate } from 'react-router-dom';
 
 const { useBreakpoint } = Grid;
 
@@ -18,16 +20,69 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const screens = useBreakpoint();
+  const navigate = useNavigate()
 
   const isMobile = !screens.md;
 
   console.log(user);
-  const [accountInfo, setAccountInfo] = useState<any>({})
 
   useEffect(() => {
-    getApi('/account-info')
+    if (user?.user_type?.type === 'Patient' && (window.location.pathname.split('/').length !== 3 || window.location.pathname.split('/')?.[1] !== 'patients')) {
+      navigate(`/patients/${user?.id}`)
+    }
+  }, [user])
+  const [accountInfo, setAccountInfo] = useContext(AccountInfoContext)
+
+  const checkIfNext = async () => {
+    try {
+      console.log(navigator.vibrate([500, 200, 500]))
+      const res = await getApi("/tokens/next");
+      if (res?.is_next) {
+        toast.success("🎉 You're next!");
+        if ("vibrate" in navigator) {
+          navigator.vibrate([500, 200, 500]);
+        }
+        if ("Notification" in window) {
+          if (Notification.permission === "granted") {
+            new Notification("You're next!", {
+              body: "Please proceed to your appointment.",
+              icon: "/favicon.ico", // optional icon
+            });
+          } else if (Notification.permission !== "denied") {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+              new Notification("You're next!", {
+                body: "Please proceed to your appointment.",
+                icon: "/favicon.ico",
+              });
+            }
+          }
+        }
+      } else {
+        console.log("Your position in queue:", res.position_in_queue);
+      }
+    } catch (err) {
+      console.error("Error checking next token:", err);
+    }
+  };
+
+  useEffect(() => {
+    // Call immediately once on mount
+    checkIfNext();
+
+    // Then repeat every 30 seconds
+    const interval = setInterval(() => {
+      checkIfNext();
+    }, 30000);
+
+    // Cleanup when component unmounts
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    getApi('/account-info?id=7', {}, true)
       .then((data) => {
         if (data) {
           setAccountInfo(data)
@@ -94,6 +149,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="flex min-h-screen w-full">
         {/* Sidebar - Only show on desktop */}
         {!isMobile && (
+          user?.user_type?.type !== 'Patient' &&
           <AppSidebar
             collapsed={sidebarCollapsed}
             onToggle={handleToggleSidebar}
@@ -101,12 +157,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         )}
 
         {/* Mobile Sidebar handled by AppSidebar component */}
-        <AppSidebar
-          collapsed={sidebarCollapsed}
-          onToggle={handleToggleSidebar}
-          mobileOpen={mobileSidebarOpen}
-          onMobileClose={() => setMobileSidebarOpen(false)}
-        />
+        {
+          user?.user_type?.type !== 'Patient' &&
+          <AppSidebar
+            collapsed={sidebarCollapsed}
+            onToggle={handleToggleSidebar}
+            mobileOpen={mobileSidebarOpen}
+            onMobileClose={() => setMobileSidebarOpen(false)}
+          />
+        }
 
         {/* Main Layout */}
         <div className="flex-1 flex flex-col">

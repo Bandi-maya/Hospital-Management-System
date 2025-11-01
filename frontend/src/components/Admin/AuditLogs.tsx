@@ -631,9 +631,9 @@ export default function HMSAuditLogs() {
               <Card>
                 <Flex justify="space-between" align="center">
                   <Space>
-                    <Text strong>Quick Actions:</Text>
-                    <Button icon={<ReloadOutlined />} onClick={handleRefresh}>Refresh</Button>
-                    {currentRole.canDelete && (
+                    {/* <Text strong>Quick Actions:</Text>
+                    <Button icon={<ReloadOutlined />} onClick={handleRefresh}>Refresh</Button> */}
+                    {/* {currentRole.canDelete && (
                       <Button 
                         danger 
                         icon={<DeleteOutlined />} 
@@ -642,13 +642,13 @@ export default function HMSAuditLogs() {
                       >
                         Delete ({selectedRows.length})
                       </Button>
-                    )}
-                    <Button 
+                    )} */}
+                    {/* <Button 
                       icon={<CloudDownloadOutlined />}
                       onClick={() => setDrawerVisible(true)}
                     >
                       Export Data
-                    </Button>
+                    </Button> */}
                   </Space>
                   <Text type="secondary">
                     {selectedRows.length > 0 ? `${selectedRows.length} logs selected` : 'No logs selected'}

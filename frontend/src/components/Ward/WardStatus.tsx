@@ -211,6 +211,7 @@ import { v4 as uuidv4 } from "uuid";
 import { DefaultOptionType } from "antd/es/select";
 import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { Search } = Input;
@@ -266,6 +267,7 @@ export default function WardStatus() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   const handleTableChange = (newPagination: any) => {
     getWards(newPagination.current, newPagination.pageSize);
@@ -505,11 +507,11 @@ export default function WardStatus() {
           icon: <ImportOutlined />,
           label: 'Import Wards',
         },
-        {
-          key: 'export',
-          icon: <ExportOutlined />,
-          label: 'Export All Data',
-        },
+        // {
+        //   key: 'export',
+        //   icon: <ExportOutlined />,
+        //   label: 'Export All Data',
+        // },
         {
           key: 'settings',
           icon: <SettingOutlined />,
@@ -617,7 +619,7 @@ export default function WardStatus() {
       ),
       key: "actions",
       render: (record: Ward) => (
-        <Space>
+        hasPermission(['wards:edit']) && <Space>
           {/* <Tooltip title="View Details">
             <Button
               icon={<EyeOutlined />}
@@ -642,7 +644,7 @@ export default function WardStatus() {
               }}
             />
           </Tooltip>
-          <Tooltip title="Delete Ward">
+          {/* <Tooltip title="Delete Ward">
             <Popconfirm
               title="Are you sure to delete this ward?"
               onConfirm={() => handleDelete(record.id)}
@@ -652,7 +654,7 @@ export default function WardStatus() {
             >
               <Button icon={<DeleteOutlined />} shape="circle" danger />
             </Popconfirm>
-          </Tooltip>
+          </Tooltip> */}
           {/* <Dropdown overlay={moreActionsMenu} trigger={['click']}>
             <Button icon={<MoreOutlined />} shape="circle" />
           </Dropdown> */}
@@ -724,19 +726,22 @@ export default function WardStatus() {
                   Settings
                 </Button>
               </Dropdown>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setEditingWard(null);
-                  form.resetFields();
-                  setModalVisible(true);
-                }}
-                size="large"
-                style={{ background: '#52c41a', borderColor: '#52c41a' }}
-              >
-                <RocketOutlined /> Add New Ward
-              </Button>
+              {
+                hasPermission(['wards:add']) &&
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    setEditingWard(null);
+                    form.resetFields();
+                    setModalVisible(true);
+                  }}
+                  size="large"
+                  style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                >
+                  <RocketOutlined /> Add New Ward
+                </Button>
+              }
             </Space>
           </div>
         </Card>
@@ -932,9 +937,9 @@ export default function WardStatus() {
                         <Button icon={<ReloadOutlined />} onClick={handleResetData}>
                           Reset Data
                         </Button>
-                        <Button icon={<ExportOutlined />} onClick={handleExportData}>
+                        {/* <Button icon={<ExportOutlined />} onClick={handleExportData}>
                           Export
-                        </Button>
+                        </Button> */}
                         {/* <Button
                           icon={<CloudDownloadOutlined />}
                           type="primary"
@@ -995,50 +1000,50 @@ export default function WardStatus() {
                 </div>
               ),
             },
-            {
-              key: "activities",
-              label: (
-                <Space>
-                  <BellOutlined />
-                  Activities
-                  <Badge count={activities.length} overflowCount={99} />
-                </Space>
-              ),
-              children: (
-                <Card>
-                  {activities.length > 0 ? (
-                    <Timeline>
-                      {activities.map(activity => (
-                        <Timeline.Item
-                          key={activity.id}
-                          dot={getStatusIcon(activity.action === 'CREATE' ? 'available' : activity.action === 'DELETE' ? 'full' : 'critical')}
-                          color={
-                            activity.action === 'CREATE' ? 'green' :
-                              activity.action === 'DELETE' ? 'red' : 'blue'
-                          }
-                        >
-                          <Space direction="vertical" size={0}>
-                            <div style={{ fontWeight: 'bold' }}>
-                              {activity.action} - {activity.details}
-                            </div>
-                            <div style={{ color: '#666', fontSize: '12px' }}>
-                              <ClockCircleOutlined /> {new Date(activity.timestamp).toLocaleString()} •
-                              By: {activity.user}
-                            </div>
-                          </Space>
-                        </Timeline.Item>
-                      ))}
-                    </Timeline>
-                  ) : (
-                    <Empty description="No activities recorded">
-                      <Button icon={<SyncOutlined />} onClick={() => getWards()}>
-                        Refresh Data
-                      </Button>
-                    </Empty>
-                  )}
-                </Card>
-              ),
-            },
+            // {
+            //   key: "activities",
+            //   label: (
+            //     <Space>
+            //       <BellOutlined />
+            //       Activities
+            //       <Badge count={activities.length} overflowCount={99} />
+            //     </Space>
+            //   ),
+            //   children: (
+            //     <Card>
+            //       {activities.length > 0 ? (
+            //         <Timeline>
+            //           {activities.map(activity => (
+            //             <Timeline.Item
+            //               key={activity.id}
+            //               dot={getStatusIcon(activity.action === 'CREATE' ? 'available' : activity.action === 'DELETE' ? 'full' : 'critical')}
+            //               color={
+            //                 activity.action === 'CREATE' ? 'green' :
+            //                   activity.action === 'DELETE' ? 'red' : 'blue'
+            //               }
+            //             >
+            //               <Space direction="vertical" size={0}>
+            //                 <div style={{ fontWeight: 'bold' }}>
+            //                   {activity.action} - {activity.details}
+            //                 </div>
+            //                 <div style={{ color: '#666', fontSize: '12px' }}>
+            //                   <ClockCircleOutlined /> {new Date(activity.timestamp).toLocaleString()} •
+            //                   By: {activity.user}
+            //                 </div>
+            //               </Space>
+            //             </Timeline.Item>
+            //           ))}
+            //         </Timeline>
+            //       ) : (
+            //         <Empty description="No activities recorded">
+            //           <Button icon={<SyncOutlined />} onClick={() => getWards()}>
+            //             Refresh Data
+            //           </Button>
+            //         </Empty>
+            //       )}
+            //     </Card>
+            //   ),
+            // },
           ]}
         />
 
@@ -1427,7 +1432,7 @@ export default function WardStatus() {
           <FloatButton
             icon={<SyncOutlined />}
             tooltip="Refresh"
-            onClick={() =>getWards()}
+            onClick={() => getWards()}
           />
           <FloatButton
             icon={<SettingOutlined />}

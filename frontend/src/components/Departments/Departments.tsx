@@ -211,6 +211,7 @@ import type { ColumnsType } from "antd/es/table";
 import { toast } from "sonner";
 import { DeleteApi, getApi, PostApi, PutApi, DownloadApi } from "@/ApiService";
 import dayjs from "dayjs";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -256,6 +257,7 @@ export default function Department() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   const handleTableChange = (newPagination: any) => {
     setPagination(newPagination);
@@ -401,11 +403,11 @@ export default function Department() {
   const moreActionsMenu = (
     <Menu
       items={[
-        {
-          key: 'export',
-          icon: <ExportOutlined />,
-          label: 'Export Departments',
-        },
+        // {
+        //   key: 'export',
+        //   icon: <ExportOutlined />,
+        //   label: 'Export Departments',
+        // },
         {
           key: 'import',
           icon: <ImportOutlined />,
@@ -496,7 +498,7 @@ export default function Department() {
       title: <Space><ThunderboltOutlined /> Actions</Space>,
       key: 'actions',
       render: (_, record) => (
-        <Space>
+        hasPermission(['departments:edit']) && <Space>
           {/* <Tooltip title="View Details">
             <Button
               icon={<EyeOutlined />}
@@ -586,15 +588,18 @@ export default function Department() {
                 Settings
               </Button>
             </Dropdown> */}
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => handleOpenModal()}
-              size="large"
-              style={{ background: '#fff', color: '#ff6b6b', border: 'none', fontWeight: 'bold' }}
-            >
-              <RocketOutlined /> Add Department
-            </Button>
+            {
+              hasPermission(['departments:add']) &&
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => handleOpenModal()}
+                size="large"
+                style={{ background: '#fff', color: '#ff6b6b', border: 'none', fontWeight: 'bold' }}
+              >
+                <RocketOutlined /> Add Department
+              </Button>
+            }
           </Space>
         </Flex>
       </Card>
@@ -666,7 +671,7 @@ export default function Department() {
             )}
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={8} lg={4}>
+        {/* <Col xs={24} sm={12} md={8} lg={4}>
           <Card>
             {statsLoading ? (
               <Skeleton active paragraph={{ rows: 1 }} />
@@ -679,7 +684,7 @@ export default function Department() {
               />
             )}
           </Card>
-        </Col>
+        </Col> */}
       </Row>
 
       {/* Tabs for Different Views */}
@@ -725,13 +730,13 @@ export default function Department() {
                   >
                     Reset
                   </Button>
-                  <Button
+                  {/* <Button
                     icon={<ExportOutlined />}
                     onClick={() => exportDepartments()}
                   // onClick={() => setDrawerVisible(true)}
                   >
                     Export
-                  </Button>
+                  </Button> */}
                   {/* <Button
                     icon={<CloudDownloadOutlined />}
                     type="primary"

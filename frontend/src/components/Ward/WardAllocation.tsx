@@ -218,6 +218,7 @@ import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
 import { Ward } from "./WardStatus";
 import dayjs from "dayjs";
 import type { ColumnsType } from "antd/es/table";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -329,6 +330,7 @@ export default function WardAllocations() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   const handleTableChange = (newPagination: any) => {
     loadAllocations(newPagination.current, newPagination.pageSize);
@@ -652,7 +654,7 @@ export default function WardAllocations() {
       ),
       key: "actions",
       render: (_: any, rec: WardAllocation) => (
-        <Space>
+        hasPermission(['ward-beds:edit']) && <Space>
           <Tooltip title="View Details">
             <Button
               icon={<EyeOutlined />}
@@ -668,7 +670,7 @@ export default function WardAllocations() {
               onClick={() => showEditModal(rec)}
             />
           </Tooltip>
-          <Tooltip title="Delete Allocation">
+          {/* <Tooltip title="Delete Allocation">
             <Popconfirm
               title="Delete this allocation?"
               description="Are you sure you want to delete this bed allocation? This action cannot be undone."
@@ -683,7 +685,7 @@ export default function WardAllocations() {
           </Tooltip>
           <Dropdown overlay={moreActionsMenu} trigger={['click']}>
             <Button icon={<MoreOutlined />} shape="circle" />
-          </Dropdown>
+          </Dropdown> */}
         </Space>
       ),
     },
@@ -755,15 +757,18 @@ export default function WardAllocations() {
                 Settings
               </Button>
             </Dropdown>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={showAddModal}
-              size="large"
-              style={{ background: '#52c41a', borderColor: '#52c41a' }}
-            >
-              <RocketOutlined /> Allocate Bed
-            </Button>
+            {
+              hasPermission(['ward-beds:edit']) &&
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={showAddModal}
+                size="large"
+                style={{ background: '#52c41a', borderColor: '#52c41a' }}
+              >
+                <RocketOutlined /> Allocate Bed
+              </Button>
+            }
           </Space>
         </div>
       </Card>
@@ -798,7 +803,7 @@ export default function WardAllocations() {
             )}
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        {/* <Col xs={24} sm={12} md={6}>
           <Card>
             {statsLoading ? (
               <Skeleton active paragraph={{ rows: 1 }} />
@@ -813,7 +818,7 @@ export default function WardAllocations() {
               />
             )}
           </Card>
-        </Col>
+        </Col> */}
         <Col xs={24} sm={12} md={6}>
           <Card>
             {statsLoading ? (
@@ -894,14 +899,14 @@ export default function WardAllocations() {
             >
               Refresh
             </Button>
-            <Button
+            {/* <Button
               icon={<CloudDownloadOutlined />}
               type="primary"
               ghost
               onClick={() => setDrawerVisible(true)}
             >
               Quick Actions
-            </Button>
+            </Button> */}
           </Space>
         </div>
       </Card>
@@ -915,11 +920,11 @@ export default function WardAllocations() {
             <Badge count={filteredData.length} showZero color="#1890ff" />
           </Space>
         }
-        extra={
-          <Tag color={stats.occupancyRate > 80 ? "red" : stats.occupancyRate > 60 ? "orange" : "green"}>
-            {Math.round(stats.occupancyRate)}% Occupied
-          </Tag>
-        }
+        // extra={
+        //   <Tag color={stats.occupancyRate > 80 ? "red" : stats.occupancyRate > 60 ? "orange" : "green"}>
+        //     {Math.round(stats.occupancyRate)}% Occupied
+        //   </Tag>
+        // }
       >
         {tableLoading ? (
           <TableSkeleton />

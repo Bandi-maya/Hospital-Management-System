@@ -46,6 +46,7 @@ import { SelectContent, SelectItem, SelectTrigger, SelectValue, Select as UISele
 import { Download, Filter, Search } from "lucide-react";
 import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button as UIButton } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -128,6 +129,7 @@ export default function ReceptionistList() {
     extraFields: false,
     table: false
   });
+  const { hasPermission } = useAuth()
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -136,14 +138,14 @@ export default function ReceptionistList() {
     pageSize: 10,
     total: 0,
   });
-  
+
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     activeUsers: 0,
     inactiveUsers: 0,
     recentJoined: 0,
   });
-  
+
   const [statsLoading, setStatsLoading] = useState(true);
 
   const userTypeId = useMemo(() => {
@@ -169,7 +171,7 @@ export default function ReceptionistList() {
     try {
       const data = await getApi("/user-fields");
       if (!data?.error) {
-        const receptionistFields = data.data.filter((field: ExtraField) => 
+        const receptionistFields = data.data.filter((field: ExtraField) =>
           field.user_type_data.type.toUpperCase() === "RECEPTIONIST"
         );
         setExtraFields(receptionistFields);
@@ -185,9 +187,9 @@ export default function ReceptionistList() {
   };
 
   const loadReceptionists = async (
-    page = pagination.current, 
-    limit = pagination.pageSize, 
-    searchQuery = searchTerm, 
+    page = pagination.current,
+    limit = pagination.pageSize,
+    searchQuery = searchTerm,
     status = statusFilter
   ) => {
     setTableLoading(true);
@@ -203,7 +205,7 @@ export default function ReceptionistList() {
           total: data.total_records,
         }));
         setReceptionists(data.data);
-        
+
         // Update stats
         setStats({
           totalUsers: data.total_records || 0,
@@ -268,9 +270,9 @@ export default function ReceptionistList() {
       const data = await PutApi(`/users`, formData);
       if (!data?.error) {
         toast.success(
-          selectedReceptionist ? 
-          "Receptionist updated successfully!" : 
-          "Receptionist added successfully!"
+          selectedReceptionist ?
+            "Receptionist updated successfully!" :
+            "Receptionist added successfully!"
         );
         loadReceptionists(pagination.current, pagination.pageSize);
         setIsModalOpen(false);
@@ -326,7 +328,7 @@ export default function ReceptionistList() {
       zip_code: record.address?.zip_code,
       country: record.address?.country,
     };
-    
+
     form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };
@@ -550,7 +552,7 @@ export default function ReceptionistList() {
       key: "actions",
       width: 120,
       render: (_: any, record: Receptionist) => (
-        <Space size="small">
+        hasPermission(['receptionist:edit']) && <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
             label="Edit Receptionist"
@@ -593,14 +595,17 @@ export default function ReceptionistList() {
           >
             Refresh
           </Button>
-          <Button
-            type="primary"
-            onClick={() => navigate("/receptionist/add")}
-            icon={<PlusOutlined />}
-            className="flex items-center bg-blue-600 hover:bg-blue-700"
-          >
-            Add Receptionist
-          </Button>
+          {
+            hasPermission(['receptionist:add']) &&
+            <Button
+              type="primary"
+              onClick={() => navigate("/receptionist/add")}
+              icon={<PlusOutlined />}
+              className="flex items-center bg-blue-600 hover:bg-blue-700"
+            >
+              Add Receptionist
+            </Button>
+          }
         </Space>
       </div>
 
@@ -681,9 +686,9 @@ export default function ReceptionistList() {
                   onPressEnter={handleSearch}
                   className="pl-10 h-12"
                   suffix={
-                    <Button 
-                      type="text" 
-                      icon={<SearchOutlined />} 
+                    <Button
+                      type="text"
+                      icon={<SearchOutlined />}
                       onClick={handleSearch}
                       loading={tableLoading}
                     />
@@ -692,9 +697,9 @@ export default function ReceptionistList() {
               </div>
             </div>
 
-            <UIButton 
-              onClick={() => exportReceptionists()} 
-              variant="outline" 
+            <UIButton
+              onClick={() => exportReceptionists()}
+              variant="outline"
               className="h-12 px-6 border-gray-300"
             >
               <Download className="w-4 h-4 mr-2" />

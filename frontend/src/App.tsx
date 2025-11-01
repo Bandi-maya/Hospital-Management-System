@@ -56,6 +56,9 @@ import AddDoctor from "./components/Doctor/AddDoctor";
 import BookAppointment from "./components/Appointments/BookAppointment";
 import WardStatus from "./Components/Ward/WardStatus";
 import TestRequests from "./Components/Laboratory/LabRequests";
+import { AccountInfoProvider } from "./hooks/AccountInfoContext";
+import Settings from "./pages/Settings";
+import PatientDetails from "./Components/Patients/PatientDetails";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -72,12 +75,14 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-            {/* <PatientProvider> */}
+    <AccountInfoProvider>
+
+      <AuthProvider>
+        <TooltipProvider>
+          <Sonner />
+          <BrowserRouter>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+              {/* <PatientProvider> */}
               <Routes>
                 {/* Public Routes */}
                 <Route path="/auth/login" element={<Login />} />
@@ -101,6 +106,14 @@ const App = () => (
                         <PatientManagement />
                       </Layout>
                     </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/patients/:patientId"
+                  element={
+                    <Layout>
+                      <PatientDetails />
+                    </Layout>
                   }
                 />
                 <Route
@@ -479,6 +492,17 @@ const App = () => (
                   }
                 />
 
+                <Route
+                  path="/settings"
+                  element={
+                    <AuthGuard>
+                      <Layout>
+                        <Settings />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+
                 {/* Protected Routes */}
 
 
@@ -614,16 +638,7 @@ const App = () => (
                   }
                 />
 
-                <Route
-                  path="/settings"
-                  element={
-                    <AuthGuard>
-                      <Layout>
-                        <Settings />
-                      </Layout>
-                    </AuthGuard>
-                  }
-                /> */}
+                */}
 
                 {/* Root redirect */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -648,11 +663,12 @@ const App = () => (
                 {/* Fallback */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            {/* </PatientProvider> */}
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+              {/* </PatientProvider> */}
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </AccountInfoProvider>
   </QueryClientProvider>
 );
 

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { DeleteApi, getApi, PutApi } from "@/ApiService";
+import { DeleteApi, DownloadApi, getApi, PutApi } from "@/ApiService";
 import { Search, PlusCircle, Calendar, User, Stethoscope, Clock, Filter, Download, Edit, Eye, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Label } from "@/components/ui/label";
@@ -179,6 +179,7 @@ export default function TokenManagement() {
     appointment_date: "",
     status: "",
   });
+  const { hasPermission } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -189,6 +190,17 @@ export default function TokenManagement() {
     total: 0,
   });
   const [data, setData] = useState<any>({});
+
+  // Export function
+  const exportTokens = async (format: string = 'csv'): Promise<void> => {
+    try {
+      await DownloadApi(`/export?type=tokens&format=${format}`, format, 'tokens');
+      toast.success(`Tokens exported successfully as ${format.toUpperCase()}`);
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.error('Something went wrong while exporting.');
+    }
+  };
 
   const handleDeleteClick = (app: any) => {
     Modal.confirm({
@@ -383,6 +395,8 @@ export default function TokenManagement() {
     }
   };
 
+  console.log(user)
+
   const handleTableChange = (newPagination: any) => {
     loadData(newPagination.current, newPagination.pageSize);
   };
@@ -461,8 +475,8 @@ export default function TokenManagement() {
       key: "actions",
       width: 200,
       render: (_: any, record: Appointment) => (
-        <div className="flex items-center justify-end gap-2">
-          {!record?.doctor_id && (
+        hasPermission(['tokens:edit']) && <div className="flex items-center justify-end gap-2">
+          {!record?.doctor_id && record?.['department_id'] == user?.['department_id'] && (
             <Button
               onClick={() => assignToDoctor(record)}
               disabled={loadingActionId === record.id}
@@ -540,13 +554,17 @@ export default function TokenManagement() {
                 Manage and track all appointment tokens
               </CardDescription>
             </div>
-            <Button
-              onClick={() => navigate("/tokens/create")}
-              className="h-12 px-6 text-base font-medium"
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Create Token
-            </Button>
+
+            {
+              hasPermission(['tokens:add']) &&
+              <Button
+                onClick={() => navigate("/tokens/create")}
+                className="h-12 px-6 text-base font-medium"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Create Token
+              </Button>
+            }
           </div>
         </CardHeader>
       </Card>
@@ -671,7 +689,7 @@ export default function TokenManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" className="h-12 px-6">
+            <Button onClick={() => exportTokens()} variant="outline" className="h-12 px-6">
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>

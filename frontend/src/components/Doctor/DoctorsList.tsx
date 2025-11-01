@@ -46,6 +46,7 @@ import { DepartmentInterface } from "../Departments/Departments";
 import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { countries } from "../Patients/AddPatient";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Title, Text } = Typography;
 
@@ -169,6 +170,7 @@ export default function DoctorList() {
     extraFields: false,
     table: false
   });
+  const { hasPermission } = useAuth()
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -635,7 +637,7 @@ export default function DoctorList() {
       key: "actions",
       width: 200,
       render: (_: any, record: Doctor) => (
-        <Space size="small">
+        hasPermission(['doctor:edit']) && <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
             label="Edit"
@@ -703,15 +705,18 @@ export default function DoctorList() {
           >
             Refresh
           </Button>
-          <Button
-            type="primary"
-            onClick={() => navigate("/doctor/add")}
-            icon={<PlusOutlined />}
-            loading={tableLoading}
-            className="flex items-center"
-          >
-            Add Doctor
-          </Button>
+          {
+            hasPermission(['doctor:add']) &&
+            <Button
+              type="primary"
+              onClick={() => navigate("/doctor/add")}
+              icon={<PlusOutlined />}
+              loading={tableLoading}
+              className="flex items-center"
+            >
+              Add Doctor
+            </Button>
+          }
         </Space>
       </div>
 

@@ -270,22 +270,22 @@ export const Header: React.FC<HeaderProps> = ({
               </Button>
             )}
 
-            <span className="text-lg font-bold text-blue-600">{accountInfo?.['logo_url'] ? <img src={accountInfo?.['logo_url']} /> : accountInfo?.['name'] ?? 'HMS'}</span>
+            <span className="text-lg font-bold text-blue-600">{accountInfo?.['logo_url'] ? <img style={{ width: 100, height: 50 }} src={accountInfo?.['logo_url']} /> : accountInfo?.['name'] ?? 'HMS'}</span>
           </div>
 
           {/* Center: Desktop Search */}
           <div className="hidden md:block w-full max-w-lg relative">
             <form onSubmit={handleSearch}>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
+                {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
+                {/* <Input
                   type="search"
                   placeholder="Search patients, doctors, appointments..."
                   className="pl-10 pr-8 w-full border-gray-300 focus:border-blue-500 transition-all"
                   value={searchQuery}
                   onChange={handleSearchChange}
                   onFocus={() => setShowResults(true)}
-                />
+                /> */}
                 {searchQuery && (
                   <Button
                     type="button"

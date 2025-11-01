@@ -44,6 +44,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
 import type { ColumnsType } from "antd/es/table";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -201,6 +202,7 @@ export default function SurgeryType() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   // Form state
   const [formData, setFormData] = useState<FormData>({
@@ -283,15 +285,15 @@ export default function SurgeryType() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      
+
       if (selectedSurgeryType) {
         setLoadingActionId(selectedSurgeryType.id);
-        const response = await PutApi(`/surgery-type`, { 
-          ...values, 
+        const response = await PutApi(`/surgery-type`, {
+          ...values,
           id: selectedSurgeryType.id,
           department_id: parseInt(values.department_id)
         });
-        
+
         if (!response?.error) {
           message.success("Surgery type updated successfully!");
           loadData(pagination.current, pagination.pageSize);
@@ -304,7 +306,7 @@ export default function SurgeryType() {
           ...values,
           department_id: parseInt(values.department_id)
         });
-        
+
         if (!response?.error) {
           message.success("Surgery type created successfully!");
           loadData(pagination.current, pagination.pageSize);
@@ -422,7 +424,7 @@ export default function SurgeryType() {
       key: "actions",
       width: 180,
       render: (_: any, record: SurgeryType) => (
-        <Space size="small">
+        hasPermission(['surgery-types:edit']) && <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
             label="View Details"
@@ -505,20 +507,23 @@ export default function SurgeryType() {
                 Refresh
               </Button>
             </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => handleOpenModal()}
-                size="large"
-                className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
+            {
+              hasPermission(['surgery-types:add']) &&
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                Add Surgery Type
-              </Button>
-            </motion.div>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => handleOpenModal()}
+                  size="large"
+                  className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
+                >
+                  Add Surgery Type
+                </Button>
+              </motion.div>
+            }
           </Space>
         </div>
       </div>

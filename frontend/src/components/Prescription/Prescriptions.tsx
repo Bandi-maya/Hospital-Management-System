@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Table,
   Input,
@@ -59,6 +59,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { DeleteApi, getApi, PostApi, PutApi } from "@/ApiService";
 import { useAuth } from "@/hooks/useAuth";
+import { AccountInfoContext } from "@/hooks/AccountInfoContext";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -102,7 +103,7 @@ interface Prescription {
 
 export default function Prescriptions() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [data, setData]=  useState<any>({})
+  const [data, setData] = useState<any>({})
   const [inventory, setInventory] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
@@ -125,6 +126,7 @@ export default function Prescriptions() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   const { user } = useAuth();
 
@@ -399,96 +401,111 @@ export default function Prescriptions() {
     pending: prescriptions.filter(p => !p.is_billed).length,
     today: data?.today_orders
   };
+  const [accountInfo] = useContext(AccountInfoContext)
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank", "width=800,height=600");
-    if (printWindow && viewingPrescription) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Prescription</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; }
-              h2 { text-align: center; color: #1890ff; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-              td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
-              .signature { margin-top: 40px; text-align: right; font-weight: bold; }
-              .signature-line { margin-top: 50px; border-top: 1px solid #000; width: 200px; float: right; text-align: center; }
-              .header { text-align: center; margin-bottom: 30px; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h2>Medical Prescription</h2>
-              <p>ClinicWise Healthcare System</p>
-            </div>
-            <p><strong>Patient:</strong> ${viewingPrescription.user?.username || 'N/A'}</p>
-            <p><strong>Doctor:</strong> ${viewingPrescription.prescription?.doctor?.username || 'N/A'}</p>
-            <h3>Medicines</h3>
-            <table>
-              <thead>
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow || !viewingPrescription) return;
+
+    const { user, prescription, medicines = [], lab_tests = [], surgeries = [], notes } = viewingPrescription;
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Prescription</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 30px; color: #333; }
+          h2 { text-align: center; color: #1890ff; margin-bottom: 10px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          td, th { border: 1px solid #ccc; padding: 8px; text-align: left; }
+          th { background-color: #f5f5f5; }
+          .signature { margin-top: 60px; text-align: right; font-weight: bold; }
+          .signature-line { margin-top: 50px; border-top: 1px solid #000; width: 200px; float: right; text-align: center; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .header img { max-height: 80px; margin-bottom: 10px; }
+          .section-title { margin-top: 30px; color: #1890ff; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          ${accountInfo?.logo_url 
+            ? `<img src="${accountInfo.logo_url}" alt="Clinic Logo" 
+                style="display:block; margin:0 auto 15px; max-width:120px; max-height:120px; object-fit:contain;" />`
+          : ""}
+          <h2>Medical Prescription</h2>
+          <p><strong>${accountInfo?.name || "ClinicWise Healthcare System"}</strong></p>
+        </div>
+
+        <p><strong>Patient:</strong> ${user?.username || "N/A"}</p>
+        <p><strong>Doctor:</strong> ${prescription?.doctor?.username || "N/A"}</p>
+
+        <h3 class="section-title">Medicines</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Medicine</th>
+              <th>Quantity</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${medicines.map((m: any) => `
+              <tr>
+                <td>${m.medicine_details?.name || m.medicine_id || "N/A"}</td>
+                <td>${m.quantity || "N/A"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+
+        ${lab_tests.length > 0 ? `
+          <h3 class="section-title">Lab Tests</h3>
+          <table>
+            <thead>
+              <tr><th>Test Name</th></tr>
+            </thead>
+            <tbody>
+              ${lab_tests.map((t: any) => `
+                <tr><td>${t.test_details?.name || t.test_id || "N/A"}</td></tr>
+              `).join("")}
+            </tbody>
+          </table>
+        ` : ""}
+
+        ${surgeries.length > 0 ? `
+          <h3 class="section-title">Surgeries</h3>
+          <table>
+            <thead>
+              <tr><th>Surgery Type</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${surgeries.map((s: any) => `
                 <tr>
-                  <th>Medicine</th>
-                  <th>Quantity</th>
+                  <td>${s.surgery_details?.name || s.surgery_type_id || "N/A"}</td>
+                  <td>${s.status || "N/A"}</td>
                 </tr>
-              </thead>
-              <tbody>
-                ${(viewingPrescription.medicines || []).map((m: any) => `
-                  <tr>
-                    <td>${m.medicine_details?.name || m.medicine_id}</td>
-                    <td>${m.quantity}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-            ${(viewingPrescription.lab_tests || []).length > 0 ? `
-              <h3>Tests</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Test Name</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(viewingPrescription.lab_tests || []).map((t: any) => `
-                    <tr>
-                      <td>${t.test_details?.name || t.test_id}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            ` : ''}
-            ${(viewingPrescription.surgeries || []).length > 0 ? `
-              <h3>Surgeries</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Surgery Type</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(viewingPrescription.surgeries || []).map((s: any) => `
-                    <tr>
-                      <td>${s.surgery_details?.name || s.surgery_type_id}</td>
-                      <td>${s.status || 'N/A'}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            ` : ''}
-            ${viewingPrescription.notes ? `
-              <p><strong>Notes:</strong> ${viewingPrescription.notes}</p>
-            ` : ''}
-            <div class="signature">
-              <div class="signature-line">Doctor's Signature</div>
-            </div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
+              `).join("")}
+            </tbody>
+          </table>
+        ` : ""}
+
+        ${notes ? `
+          <p><strong>Notes:</strong> ${notes}</p>
+        ` : ""}
+
+        <div class="signature">
+          <div class="signature-line">Doctor's Signature</div>
+        </div>
+      </body>
+    </html>
+  `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+
+    // 🕒 Wait for image and content to load before printing
+    printWindow.onload = () => printWindow.print();
   };
 
   const SkeletonTable = () => (
@@ -641,7 +658,7 @@ export default function Prescriptions() {
       key: "actions",
       width: 200,
       render: (_, record: Prescription) => (
-        <Space size="small">
+        hasPermission(['prescriptions:edit']) && <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
             label="View Details"
@@ -677,7 +694,7 @@ export default function Prescriptions() {
             disabled={record.is_billed}
           />
 
-          <ActionButton
+          {/* <ActionButton
             icon={<DeleteOutlined />}
             label="Delete Prescription"
             danger
@@ -685,7 +702,7 @@ export default function Prescriptions() {
             confirm
             confirmAction={() => handleDelete(record)}
             disabled={record.is_billed}
-          />
+          /> */}
 
           <Dropdown
             overlay={
@@ -742,22 +759,25 @@ export default function Prescriptions() {
                 Refresh
               </Button>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setEditingPrescription(null);
-                  form.resetFields();
-                  setIsModalOpen(true);
-                }}
-                size="large"
-                className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
-                disabled={loading}
-              >
-                Add Prescription
-              </Button>
-            </motion.div>
+            {
+              hasPermission(['prescriptions:add']) &&
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    setEditingPrescription(null);
+                    form.resetFields();
+                    setIsModalOpen(true);
+                  }}
+                  size="large"
+                  className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
+                  disabled={loading}
+                >
+                  Add Prescription
+                </Button>
+              </motion.div>
+            }
           </Space>
         </div>
       </div>
@@ -811,7 +831,7 @@ export default function Prescriptions() {
       )} */}
 
       {/* Auto Refresh Toggle */}
-      <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
+      {/* <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
         <div className="p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -829,7 +849,7 @@ export default function Prescriptions() {
             />
           </div>
         </div>
-      </Card>
+      </Card> */}
 
       {/* Search and Filter Section */}
       <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
@@ -861,7 +881,7 @@ export default function Prescriptions() {
                 </Button>
               </motion.div>
             </Col>
-            <Col xs={24} sm={12} md={4}>
+            {/* <Col xs={24} sm={12} md={4}>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button
                   icon={<FileTextOutlined />}
@@ -872,7 +892,7 @@ export default function Prescriptions() {
                   Export
                 </Button>
               </motion.div>
-            </Col>
+            </Col> */}
             <Col xs={24} sm={12} md={8}>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <TeamOutlined />

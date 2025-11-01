@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
     Table, Input, Button, Modal, Select, DatePicker,
@@ -73,6 +73,8 @@ import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { getApi } from "@/ApiService";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { AccountInfoContext } from "@/hooks/AccountInfoContext";
 
 dayjs.extend(relativeTime);
 dayjs.extend(isSameOrAfter);
@@ -120,6 +122,7 @@ export default function Payments() {
         total: 0,
     });
 
+    const { hasPermission } = useAuth()
     const handleTableChange = (newPagination: any) => {
         getPayments(newPagination.current, newPagination.pageSize);
     };
@@ -164,7 +167,7 @@ export default function Payments() {
     // Auto refresh notifier
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        
+
         if (autoRefresh) {
             interval = setInterval(() => {
                 message.info({
@@ -175,7 +178,7 @@ export default function Payments() {
                 getPayments();
             }, 30000);
         }
-        
+
         return () => {
             if (interval) {
                 clearInterval(interval);
@@ -271,69 +274,130 @@ export default function Payments() {
             message.success(`Payment ${formPayment.id ? 'updated' : 'added'} successfully`);
         }, 500);
     };
-
+    const [accountInfo] = useContext(AccountInfoContext)
     const handleExportPaymentPDF = (payment: Payment) => {
-        try {
-            const doc = new jsPDF();
-            const { customerName, email, amount, date, method, status, id } = payment;
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
-            const brandColor = '#4A90E2';
+        if (!payment) return;
 
-            if (status === 'PAID') {
-                doc.saveGraphicsState();
-                doc.setFontSize(80);
-                doc.setTextColor('#D0F0C0');
-                doc.setFont('helvetica', 'bold');
-                doc.text('PAID', pageWidth / 2, pageHeight / 2, { align: 'center', angle: -45, baseline: 'middle' });
-                doc.restoreGraphicsState();
-            }
+        const { billing, amount, date, method, status, id } = payment;
 
-            doc.setFillColor(236, 240, 241);
-            doc.rect(0, 0, pageWidth, 25, 'F');
-            doc.setFontSize(22);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(brandColor);
-            doc.text('Payment Receipt', pageWidth / 2, 17, { align: 'center' });
+        const printWindow = window.open("", "_blank", "width=900,height=700");
+        if (!printWindow) return;
 
-            autoTable(doc, {
-                startY: 35,
-                theme: 'plain',
-                body: [[
-                    { content: 'Billed From:\nMedicareHMS Inc.\n123 Health St, Wellness City\ncontact@medicarehms.com', styles: { fontStyle: 'bold' } },
-                    { content: `Receipt ID: ${id}\nDate: ${dayjs(date).format('MMM DD, YYYY')}\nStatus: ${status}`, styles: { halign: 'right', fontStyle: 'bold' } }
-                ]],
-            });
+        printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Payment Receipt</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            color: #333;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .header img {
+            display: block;
+            margin: 0 auto 10px;
+            max-width: 120px;
+            max-height: 120px;
+            object-fit: contain;
+          }
+          h2 {
+            color: #4A90E2;
+            margin-bottom: 5px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+          }
+          th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+          }
+          th {
+            background-color: #f5f5f5;
+          }
+          .amount {
+            text-align: right;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #777;
+            font-size: 12px;
+          }
+          .status {
+            font-size: 32px;
+            font-weight: bold;
+            color: #5cb85c;
+            text-align: center;
+            margin-top: 30px;
+          }
+          @media print {
+            body { -webkit-print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          ${accountInfo?.logo_url
+                ? `<img src="${accountInfo.logo_url}" style="display:block; margin:0 auto 15px; max-width:120px; max-height:120px; object-fit:contain;" alt="Clinic Logo" />`
+                : ""}
+        </div>
 
-            doc.setFontSize(11).setTextColor(100).text('BILLED TO', 14, (doc as any).lastAutoTable.finalY + 10);
-            doc.setFontSize(12).setTextColor(0).setFont('helvetica', 'bold').text(customerName, 14, (doc as any).lastAutoTable.finalY + 16);
-            doc.setFont('helvetica', 'normal').text(email, 14, (doc as any).lastAutoTable.finalY + 21);
+        <h3 style="text-align:center; color:#4A90E2;">Payment Receipt</h3>
+        <p><strong>Receipt ID:</strong> ${id}</p>
+        <p><strong>Date:</strong> ${dayjs(date).format("MMM DD, YYYY")}</p>
+        <p><strong>Status:</strong> ${status}</p>
 
-            autoTable(doc, {
-                startY: (doc as any).lastAutoTable.finalY + 30,
-                head: [['Description', 'Payment Method', 'Amount']],
-                body: [['Service Payment', method, `$${amount.toFixed(2)}`]],
-                theme: 'grid',
-                headStyles: { fillColor: brandColor, textColor: 255 },
-                columnStyles: { 2: { halign: 'right' } }
-            });
+        <h4>Billed To</h4>
+        <p><strong>${billing?.['order']?.['user']?.name}</strong><br/>${billing?.['order']?.['user']?.email}</p>
 
-            const finalY = (doc as any).lastAutoTable.finalY;
-            doc.setFontSize(14).setFont('helvetica', 'bold').text('Total:', pageWidth - 60, finalY + 15);
-            doc.text(`$${amount.toFixed(2)}`, pageWidth - 15, finalY + 15, { align: 'right' });
-            doc.setFontSize(10).setTextColor(150).text("Thank you for your business!", pageWidth / 2, pageHeight - 10, { align: 'center' });
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Payment Method</th>
+              <th class="amount">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Service Payment</td>
+              <td>${method}</td>
+              <td class="amount">$${amount.toFixed(2)}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" style="text-align:right;"><strong>Total:</strong></td>
+              <td class="amount"><strong>$${amount.toFixed(2)}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
 
-            doc.save(`Receipt_${customerName.replace(/\s+/g, '_')}.pdf`);
-            message.success("Receipt exported successfully!");
-        } catch (error) {
-            console.error("Error exporting PDF:", error);
-            message.error("Failed to export PDF");
-        }
+        ${status === "PAID" ? `<div class="status">PAID</div>` : ""}
+
+        <div class="footer">
+          <p>Thank you for your payment!</p>
+        </div>
+      </body>
+    </html>
+  `);
+
+        printWindow.document.close();
+        printWindow.onload = () => printWindow.print();
     };
+
 
     const handleBulkExport = () => {
         if (!filteredPayments.length) return message.warning("No payments to export");
-        
+
         try {
             const doc = new jsPDF();
             const brandColor = '#16A085';
@@ -837,7 +901,7 @@ export default function Payments() {
                             </Button>
                         </Dropdown>
 
-                        <Tooltip title="Add New Payment">
+                        {/* <Tooltip title="Add New Payment">
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
@@ -847,7 +911,7 @@ export default function Payments() {
                             >
                                 <RocketOutlined /> Add Payment
                             </Button>
-                        </Tooltip>
+                        </Tooltip> */}
                     </div>
                 </div>
             </Card>
@@ -1061,14 +1125,14 @@ export default function Payments() {
                                 value={dateRange}
                                 onChange={(dates) => setDateRange(dates as [Dayjs, Dayjs])}
                             />
-                            <Button
+                            {/* <Button
                                 icon={<FilePdfOutlined />}
                                 onClick={handleBulkExport}
                                 className="bg-purple-600 hover:bg-purple-700 text-white"
                                 disabled={filteredPayments.length === 0}
                             >
                                 Export PDF
-                            </Button>
+                            </Button> */}
                         </div>
                     </div>
                 </div>

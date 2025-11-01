@@ -46,6 +46,7 @@ import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { DepartmentInterface } from "../Departments/Departments";
 import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { countries } from "../Patients/AddPatient";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Title, Text } = Typography;
 
@@ -154,6 +155,7 @@ export default function PharmacistList() {
     extraFields: false,
     table: false
   });
+  const { hasPermission } = useAuth()
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -162,10 +164,10 @@ export default function PharmacistList() {
     pageSize: 10,
     total: 0,
   });
-  
-    const [stats, setStats] = useState<any>({});
-    const [statsLoading, setStatsLoading] = useState<boolean>(true);
-  
+
+  const [stats, setStats] = useState<any>({});
+  const [statsLoading, setStatsLoading] = useState<boolean>(true);
+
   // const [stats, setStats] = useState<Stats>({
   //   totalUsers: 0,
   //   activeUsers: 0,
@@ -185,7 +187,7 @@ export default function PharmacistList() {
     try {
       const data: ApiResponse = await getApi("/user-fields");
       if (!data?.error) {
-        const pharmacistFields = data.data.filter((field: ExtraField) => 
+        const pharmacistFields = data.data.filter((field: ExtraField) =>
           field.user_type_data.type.toUpperCase() === "PHARMACIST"
         );
         setExtraFields(pharmacistFields);
@@ -201,9 +203,9 @@ export default function PharmacistList() {
   };
 
   const loadPharmacists = async (
-    page: number = 1, 
-    limit: number = 10, 
-    searchQuery: string = searchTerm, 
+    page: number = 1,
+    limit: number = 10,
+    searchQuery: string = searchTerm,
     status: string = statusFilter
   ): Promise<void> => {
     setTableLoading(true);
@@ -217,7 +219,7 @@ export default function PharmacistList() {
           total: data.total_records || 0,
         }));
         setPharmacists(data.data || []);
-        
+
         // Update stats
         setStats({
           ...data
@@ -303,7 +305,7 @@ export default function PharmacistList() {
   // Delete pharmacist handler
   const deletePharmacist = async (record: Pharmacist): Promise<void> => {
     if (!record.id) return;
-    
+
     setLoadingActionId(record.id);
     try {
       const data: ApiResponse = await PutApi(`/users`, { ...record, is_active: false });
@@ -565,7 +567,7 @@ export default function PharmacistList() {
       key: "actions",
       width: 150,
       render: (_: any, record: Pharmacist) => (
-        <Space size="small">
+        hasPermission(['pharmacist:edit']) && <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
             label="Edit"
@@ -614,15 +616,18 @@ export default function PharmacistList() {
           >
             Refresh
           </Button>
-          <Button
-            type="primary"
-            onClick={() => navigate("/pharmacist/add")}
-            icon={<PlusOutlined />}
-            loading={tableLoading}
-            className="flex items-center"
-          >
-            Add Pharmacist
-          </Button>
+          {
+            hasPermission(['pharmacist:add']) &&
+            <Button
+              type="primary"
+              onClick={() => navigate("/pharmacist/add")}
+              icon={<PlusOutlined />}
+              loading={tableLoading}
+              className="flex items-center"
+            >
+              Add Pharmacist
+            </Button>
+          }
         </Space>
       </div>
 
@@ -701,9 +706,9 @@ export default function PharmacistList() {
                   onPressEnter={handleSearch}
                   className="pl-10 h-12"
                   suffix={
-                    <Button 
-                      type="text" 
-                      icon={<SearchOutlined />} 
+                    <Button
+                      type="text"
+                      icon={<SearchOutlined />}
                       onClick={handleSearch}
                       loading={tableLoading}
                     />

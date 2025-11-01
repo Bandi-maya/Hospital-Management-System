@@ -44,6 +44,7 @@ import { Button as UIButton } from "@/components/ui/button";
 import { DepartmentInterface } from "../Departments/Departments";
 import { CardContent, CardHeader, CardTitle } from "../ui/card";
 import { countries } from "./AddNurse";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Title, Text } = Typography;
 
@@ -135,6 +136,7 @@ export default function NurseList() {
     extraFields: false,
     table: false
   });
+  const { hasPermission } = useAuth()
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -143,14 +145,14 @@ export default function NurseList() {
     pageSize: 10,
     total: 0,
   });
-  
+
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     activeUsers: 0,
     inactiveUsers: 0,
     recentJoined: 0,
   });
-  
+
   const [statsLoading, setStatsLoading] = useState(true);
 
   const userTypeId = useMemo(() => {
@@ -176,7 +178,7 @@ export default function NurseList() {
     try {
       const data: ApiResponse = await getApi("/user-fields");
       if (!data?.error) {
-        const nurseFields = data.data.filter((field: ExtraField) => 
+        const nurseFields = data.data.filter((field: ExtraField) =>
           field.user_type_data.type.toUpperCase() === "NURSE"
         );
         setExtraFields(nurseFields);
@@ -192,9 +194,9 @@ export default function NurseList() {
   };
 
   const loadNurses = async (
-    page = pagination.current, 
-    limit = pagination.pageSize, 
-    searchQuery = searchTerm, 
+    page = pagination.current,
+    limit = pagination.pageSize,
+    searchQuery = searchTerm,
     status = statusFilter
   ) => {
     setTableLoading(true);
@@ -210,7 +212,7 @@ export default function NurseList() {
           total: data.total_records || 0,
         }));
         setNurses(data.data || []);
-        
+
         // Update stats
         setStats({
           totalUsers: data.total_records || 0,
@@ -331,7 +333,7 @@ export default function NurseList() {
       zip_code: record.address?.zip_code,
       country: record.address?.country,
     };
-    
+
     form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };
@@ -555,7 +557,7 @@ export default function NurseList() {
       key: "actions",
       width: 120,
       render: (_: any, record: Nurse) => (
-        <Space size="small">
+        hasPermission(['nurse:edit']) && <Space size="small">
           <ActionButton
             icon={<EditOutlined />}
             label="Edit Nurse"
@@ -598,14 +600,17 @@ export default function NurseList() {
           >
             Refresh
           </Button>
-          <Button
-            type="primary"
-            onClick={() => navigate("/nurse/add")}
-            icon={<PlusOutlined />}
-            className="flex items-center bg-blue-600 hover:bg-blue-700"
-          >
-            Add Nurse
-          </Button>
+          {
+            hasPermission(['nurse:add']) &&
+            <Button
+              type="primary"
+              onClick={() => navigate("/nurse/add")}
+              icon={<PlusOutlined />}
+              className="flex items-center bg-blue-600 hover:bg-blue-700"
+            >
+              Add Nurse
+            </Button>
+          }
         </Space>
       </div>
 
@@ -686,9 +691,9 @@ export default function NurseList() {
                   onPressEnter={handleSearch}
                   className="pl-10 h-12"
                   suffix={
-                    <Button 
-                      type="text" 
-                      icon={<SearchOutlined />} 
+                    <Button
+                      type="text"
+                      icon={<SearchOutlined />}
                       onClick={handleSearch}
                       loading={tableLoading}
                     />
@@ -697,9 +702,9 @@ export default function NurseList() {
               </div>
             </div>
 
-            <UIButton 
-              onClick={() => exportNurses()} 
-              variant="outline" 
+            <UIButton
+              onClick={() => exportNurses()}
+              variant="outline"
               className="h-12 px-6 border-gray-300"
             >
               <Download className="w-4 h-4 mr-2" />

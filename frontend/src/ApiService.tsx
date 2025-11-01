@@ -1,9 +1,9 @@
 const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/tenant/7';
 
-export function getApi(urlEndPoint, options: any = {}) {
+export function getApi(urlEndPoint, options: any = {}, isAccountInfo = false) {
     const token = localStorage.getItem('auth_token');
 
-    return fetch(baseUrl + urlEndPoint, {
+    return fetch((!isAccountInfo ? baseUrl : baseUrl.split('/tenant')[0]) + urlEndPoint, {
         ...options,
         method: 'GET',
         headers: {
@@ -49,9 +49,9 @@ export function DownloadApi(urlEndPoint, format, type) {
     });
 }
 
-export function PostApi(urlEndPoint, data: any, options: any = {}) {
+export function PostApi(urlEndPoint, data: any, options: any = {}, isAccountInfo = false) {
     const token = localStorage.getItem('auth_token');
-    return fetch(baseUrl + urlEndPoint, {
+    return fetch((!isAccountInfo ? baseUrl : baseUrl.split('/tenant')[0]) + urlEndPoint, {
         ...options,
         method: 'POST',
         headers: {
@@ -72,9 +72,9 @@ export function PostApi(urlEndPoint, data: any, options: any = {}) {
     });
 }
 
-export function PutApi(urlEndPoint, data: any, options: any = {}) {
+export function PutApi(urlEndPoint, data: any, options: any = {}, isAccountInfo = false) {
     const token = localStorage.getItem('auth_token');
-    return fetch(baseUrl + urlEndPoint, {
+    return fetch((!isAccountInfo ? baseUrl : baseUrl.split('/tenant')[0]) + urlEndPoint, {
         ...options,
         method: 'PUT',
         headers: {
@@ -95,9 +95,9 @@ export function PutApi(urlEndPoint, data: any, options: any = {}) {
     });
 }
 
-export function PostFormDataApi(urlEndPoint, data: any, options: any = {}) {
+export function PostFormDataApi(urlEndPoint, data: any, options: any = {}, isAccountInfo = false) {
     const token = localStorage.getItem('auth_token');
-    return fetch(baseUrl + urlEndPoint, {
+    return fetch((!isAccountInfo ? baseUrl : baseUrl.split('/tenant')[0]) + urlEndPoint, {
         ...options,
         method: 'POST',
         headers: {
@@ -117,9 +117,9 @@ export function PostFormDataApi(urlEndPoint, data: any, options: any = {}) {
     });
 }
 
-export function PutFormDataApi(urlEndPoint, data: any, options: any = {}) {
+export function PutFormDataApi(urlEndPoint, data: any, options: any = {}, isAccountInfo = false) {
     const token = localStorage.getItem('auth_token');
-    return fetch(baseUrl + urlEndPoint, {
+    return fetch((!isAccountInfo ? baseUrl : baseUrl.split('/tenant')[0]) + urlEndPoint, {
         ...options,
         method: 'PUT',
         headers: {

@@ -534,33 +534,33 @@ export default function MedicalRecords() {
                 key: "notes",
                 ellipsis: true,
               },
-              {
-                title: "Actions",
-                key: "actions",
-                width: 200,
-                render: (_, record) => (
-                  <div className="flex flex-wrap gap-1 justify-center items-center">
-                    <ActionButton
-                      icon={<EyeOutlined />}
-                      label="View"
-                      onClick={() => {
-                        setSelectedItem(record);
-                        setViewModalVisible(true);
-                      }}
-                    />
-                    <ActionButton
-                      icon={<EditOutlined />}
-                      label="Edit"
-                      onClick={() => handleEditPatient(record)}
-                    />
-                    <ActionButton
-                      icon={<FileTextOutlined />}
-                      label="Add Notes"
-                      onClick={() => handleAddMedicalRecord(record)}
-                    />
-                  </div>
-                ),
-              },
+              // {
+              //   title: "Actions",
+              //   key: "actions",
+              //   width: 200,
+              //   render: (_, record) => (
+              //     <div className="flex flex-wrap gap-1 justify-center items-center">
+              //       <ActionButton
+              //         icon={<EyeOutlined />}
+              //         label="View"
+              //         onClick={() => {
+              //           setSelectedItem(record);
+              //           setViewModalVisible(true);
+              //         }}
+              //       />
+              //       <ActionButton
+              //         icon={<EditOutlined />}
+              //         label="Edit"
+              //         onClick={() => handleEditPatient(record)}
+              //       />
+              //       <ActionButton
+              //         icon={<FileTextOutlined />}
+              //         label="Add Notes"
+              //         onClick={() => handleAddMedicalRecord(record)}
+              //       />
+              //     </div>
+              //   ),
+              // },
             ]}
           />
         </div>
@@ -588,38 +588,72 @@ export default function MedicalRecords() {
           dataSource={prescriptions}
           renderItem={(item) => (
             <List.Item
-              actions={[
-                <ActionButton
-                  icon={<EyeOutlined />}
-                  label="View Prescription"
-                  onClick={() => {
-                    setSelectedItem(item);
-                    setViewModalVisible(true);
-                  }}
-                />,
-                <ActionButton
-                  icon={<EditOutlined />}
-                  label="Edit Prescription"
-                  onClick={() => {/* Edit logic */ }}
-                />,
-                <ActionButton
-                  icon={<DeleteOutlined />}
-                  label="Delete Prescription"
-                  danger
-                  confirm
-                  confirmAction={() => handleDeleteItem('Prescription', item.id, '/prescriptions')}
-                  loading={loadingActionId === item.id}
-                />
-              ]}
+              // actions={[
+              //   <ActionButton
+              //     icon={<EyeOutlined />}
+              //     label="View Prescription"
+              //     onClick={() => {
+              //       setSelectedItem(item);
+              //       setViewModalVisible(true);
+              //     }}
+              //   />,
+              //   <ActionButton
+              //     icon={<EditOutlined />}
+              //     label="Edit Prescription"
+              //     onClick={() => {/* Edit logic */ }}
+              //   />,
+              //   <ActionButton
+              //     icon={<DeleteOutlined />}
+              //     label="Delete Prescription"
+              //     danger
+              //     confirm
+              //     confirmAction={() => handleDeleteItem('Prescription', item.id, '/prescriptions')}
+              //     loading={loadingActionId === item.id}
+              //   />
+              // ]}
             >
               <List.Item.Meta
-                title={item.medicine_name || item.name}
+                title={item.user?.name || 'Unknown Patient'}
                 description={
-                  <Space direction="vertical" size={0}>
-                    <Text>Dosage: {item.dosage || 'N/A'}</Text>
-                    <Text>Frequency: {item.frequency || 'N/A'}</Text>
-                    <Text>Duration: {item.duration || 'N/A'}</Text>
-                    {item.instructions && <Text>Instructions: {item.instructions}</Text>}
+                  <Space direction="vertical" size={2}>
+                    {/* Prescription Notes */}
+                    {item.prescription?.notes && <Text>Notes: {item.prescription.notes}</Text>}
+
+                    {/* Medicines */}
+                    {item.medicines?.length > 0 && (
+                      <div>
+                        <Text strong>Medicines:</Text>
+                        {item.medicines.map((med, idx) => (
+                          <Text key={idx}>
+                            {med.medicine?.name} - Qty: {med.quantity}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Lab Tests */}
+                    {item.lab_tests?.length > 0 && (
+                      <div>
+                        <Text strong>Lab Tests:</Text>
+                        {item.lab_tests.map((test, idx) => (
+                          <Text key={idx}>
+                            {test.lab_test?.name} - Status: {test.status}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Surgeries */}
+                    {item.surgeries?.length > 0 && (
+                      <div>
+                        <Text strong>Surgeries:</Text>
+                        {item.surgeries.map((surgery, idx) => (
+                          <Text key={idx}>
+                            {surgery.surgery_type?.name} - Status: {surgery.status}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
                   </Space>
                 }
               />
@@ -629,153 +663,305 @@ export default function MedicalRecords() {
       )}
     </Card>
   );
-
+  
   const MedicinesTab = () => (
     <Card
-      title="Medicines"
-      extra={
-        <Space>
+    title="Medicines"
+    extra={
+      <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.medicines} />
           {/* <AddButton
             label="Add Medicine"
             onClick={() => setMedicineModalVisible(true)}
-          /> */}
+            /> */}
         </Space>
       }
-    >
+      >
       {loadingStates.medicines ? (
         <TableSkeleton columns={5} rows={6} />
       ) : (
-        <Table
+        <List
           dataSource={medicines}
-          onChange={handleTableChange}
-          columns={[
-            { title: "Medicine Name", dataIndex: "name", key: "name" },
-            { title: "Dosage", dataIndex: "dosage", key: "dosage" },
-            { title: "Frequency", dataIndex: "frequency", key: "frequency" },
-            { title: "Duration", dataIndex: "duration", key: "duration" },
-            {
-              title: "Price",
-              dataIndex: "price",
-              key: "price",
-              render: (price) => price ? `$${price}` : 'N/A'
-            },
-            {
-              title: "Actions",
-              key: "actions",
-              width: 120,
-              render: (_, record) => (
-                <Space size="small">
-                  <ActionButton
-                    icon={<EyeOutlined />}
-                    label="View Medicine"
-                    onClick={() => {
-                      setSelectedItem(record);
-                      setViewModalVisible(true);
-                    }}
-                  />
-                  <ActionButton
-                    icon={<EditOutlined />}
-                    label="Edit Medicine"
-                    onClick={() => {/* Edit logic */ }}
-                  />
-                  <ActionButton
-                    icon={<DeleteOutlined />}
-                    label="Delete Medicine"
-                    danger
-                    confirm
-                    confirmAction={() => handleDeleteItem('Medicine', record.id, '/medicines')}
-                    loading={loadingActionId === record.id}
-                  />
-                </Space>
-              ),
-            },
-          ]}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
+          renderItem={(item) => (
+            <List.Item
+              // actions={[
+              //   <ActionButton
+              //     icon={<EyeOutlined />}
+              //     label="View Prescription"
+              //     onClick={() => {
+              //       setSelectedItem(item);
+              //       setViewModalVisible(true);
+              //     }}
+              //   />,
+              //   <ActionButton
+              //     icon={<EditOutlined />}
+              //     label="Edit Prescription"
+              //     onClick={() => {/* Edit logic */ }}
+              //   />,
+              //   <ActionButton
+              //     icon={<DeleteOutlined />}
+              //     label="Delete Prescription"
+              //     danger
+              //     confirm
+              //     confirmAction={() => handleDeleteItem('Prescription', item.id, '/prescriptions')}
+              //     loading={loadingActionId === item.id}
+              //   />
+              // ]}
+            >
+              <List.Item.Meta
+                title={item.user?.name || 'Unknown Patient'}
+                description={
+                  <Space direction="vertical" size={2}>
+                    {/* Prescription Notes */}
+                    {item.prescription?.notes && <Text>Notes: {item.prescription.notes}</Text>}
+      
+                    {/* Medicines */}
+                    {item.medicines?.length > 0 && (
+                      <div>
+                        <Text strong>Medicines:</Text>
+                        {item.medicines.map((med, idx) => (
+                          <Text key={idx}>
+                            {med.medicine?.name} - Qty: {med.quantity}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+      
+                    {/* Lab Tests */}
+                    {item.lab_tests?.length > 0 && (
+                      <div>
+                        <Text strong>Lab Tests:</Text>
+                        {item.lab_tests.map((test, idx) => (
+                          <Text key={idx}>
+                            {test.lab_test?.name} - Status: {test.status}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+      
+                    {/* Surgeries */}
+                    {item.surgeries?.length > 0 && (
+                      <div>
+                        <Text strong>Surgeries:</Text>
+                        {item.surgeries.map((surgery, idx) => (
+                          <Text key={idx}>
+                            {surgery.surgery_type?.name} - Status: {surgery.status}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+                  </Space>
+                }
+              />
+            </List.Item>
+          )}
         />
-      )}
+        // <Table
+        //   dataSource={medicines}
+        //   onChange={handleTableChange}
+        //   columns={[
+          //     { title: "Medicine Name", dataIndex: "name", key: "name" },
+          //     { title: "Dosage", dataIndex: "dosage", key: "dosage" },
+          //     { title: "Frequency", dataIndex: "frequency", key: "frequency" },
+          //     { title: "Duration", dataIndex: "duration", key: "duration" },
+          //     {
+        //       title: "Price",
+        //       dataIndex: "price",
+        //       key: "price",
+        //       render: (price) => price ? `$${price}` : 'N/A'
+        //     },
+        //     {
+          //       title: "Actions",
+          //       key: "actions",
+          //       width: 120,
+          //       render: (_, record) => (
+        //         <Space size="small">
+        //           <ActionButton
+        //             icon={<EyeOutlined />}
+        //             label="View Medicine"
+        //             onClick={() => {
+          //               setSelectedItem(record);
+          //               setViewModalVisible(true);
+          //             }}
+          //           />
+          //           <ActionButton
+          //             icon={<EditOutlined />}
+          //             label="Edit Medicine"
+          //             onClick={() => {/* Edit logic */ }}
+          //           />
+          //           <ActionButton
+          //             icon={<DeleteOutlined />}
+          //             label="Delete Medicine"
+          //             danger
+          //             confirm
+          //             confirmAction={() => handleDeleteItem('Medicine', record.id, '/medicines')}
+          //             loading={loadingActionId === record.id}
+          //           />
+          //         </Space>
+          //       ),
+          //     },
+          //   ]}
+          //   rowKey="id"
+          //   pagination={{ pageSize: 10 }}
+          // />
+        )}
     </Card>
   );
-
+  
   const LabTestsTab = () => (
     <Card
-      title="Lab Tests"
-      extra={
+    title="Lab Tests"
+    extra={
         <Space>
           <RefreshButton onClick={loadData} loading={loadingStates.labTests} />
           {/* <AddButton
             label="Add Lab Test"
             onClick={() => setLabTestModalVisible(true)}
-          /> */}
+            /> */}
         </Space>
       }
-    >
+      >
       {loadingStates.labTests ? (
         <TableSkeleton columns={6} rows={6} />
       ) : (
-        <Table
+        <List
           dataSource={labTests}
-          onChange={handleTableChange}
-          columns={[
-            { title: "Test Name", dataIndex: "name", key: "name" },
-            {
-              title: "Date",
-              dataIndex: "date",
-              key: "date",
-              render: (date) => date ? dayjs(date).format('MMM DD, YYYY') : 'N/A'
-            },
-            { title: "Result", dataIndex: "result", key: "result" },
-            {
-              title: "Status",
-              dataIndex: "status",
-              key: "status",
-              render: (status) => {
-                const statusConfig = statusOptions.find(s => s.value === status) ||
-                  statusOptions.find(s => s.label === status);
-                return (
-                  <Tag color={statusConfig?.color || 'blue'}>
-                    {statusConfig?.label || status || 'Pending'}
-                  </Tag>
-                );
-              },
-            },
-            {
-              title: "Cost",
-              dataIndex: "cost",
-              key: "cost",
-              render: (cost) => cost ? `$${cost}` : 'N/A'
-            },
-            {
-              title: "Actions",
-              key: "actions",
-              width: 100,
-              render: (_, record) => (
-                <Space size="small">
-                  <ActionButton
-                    icon={<EyeOutlined />}
-                    label="View Lab Test"
-                    onClick={() => {
-                      setSelectedItem(record);
-                      setViewModalVisible(true);
-                    }}
-                  />
-                  <ActionButton
-                    icon={<EditOutlined />}
-                    label="Edit Lab Test"
-                    onClick={() => {/* Edit logic */ }}
-                  />
-                </Space>
-              ),
-            },
-          ]}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
+          renderItem={(item) => (
+            <List.Item
+              // actions={[
+              //   <ActionButton
+              //     icon={<EyeOutlined />}
+              //     label="View Prescription"
+              //     onClick={() => {
+              //       setSelectedItem(item);
+              //       setViewModalVisible(true);
+              //     }}
+              //   />,
+              //   <ActionButton
+              //     icon={<EditOutlined />}
+              //     label="Edit Prescription"
+              //     onClick={() => {/* Edit logic */ }}
+              //   />,
+              //   <ActionButton
+              //     icon={<DeleteOutlined />}
+              //     label="Delete Prescription"
+              //     danger
+              //     confirm
+              //     confirmAction={() => handleDeleteItem('Prescription', item.id, '/prescriptions')}
+              //     loading={loadingActionId === item.id}
+              //   />
+              // ]}
+            >
+              <List.Item.Meta
+                title={item.user?.name || 'Unknown Patient'}
+                description={
+                  <Space direction="vertical" size={2}>
+                    {/* Prescription Notes */}
+                    {item.prescription?.notes && <Text>Notes: {item.prescription.notes}</Text>}
+      
+                    {/* Medicines */}
+                    {item.medicines?.length > 0 && (
+                      <div>
+                        <Text strong>Medicines:</Text>
+                        {item.medicines.map((med, idx) => (
+                          <Text key={idx}>
+                            {med.medicine?.name} - Qty: {med.quantity}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+      
+                    {/* Lab Tests */}
+                    {item.lab_tests?.length > 0 && (
+                      <div>
+                        <Text strong>Lab Tests:</Text>
+                        {item.lab_tests.map((test, idx) => (
+                          <Text key={idx}>
+                            {test.lab_test?.name} - Status: {test.status}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+      
+                    {/* Surgeries */}
+                    {item.surgeries?.length > 0 && (
+                      <div>
+                        <Text strong>Surgeries:</Text>
+                        {item.surgeries.map((surgery, idx) => (
+                          <Text key={idx}>
+                            {surgery.surgery_type?.name} - Status: {surgery.status}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+                  </Space>
+                }
+              />
+            </List.Item>
+          )}
         />
-      )}
+        // <Table
+        //   dataSource={labTests}
+        //   onChange={handleTableChange}
+        //   columns={[
+          //     { title: "Test Name", dataIndex: "name", key: "name" },
+          //     {
+        //       title: "Date",
+        //       dataIndex: "date",
+        //       key: "date",
+        //       render: (date) => date ? dayjs(date).format('MMM DD, YYYY') : 'N/A'
+        //     },
+        //     { title: "Result", dataIndex: "result", key: "result" },
+        //     {
+        //       title: "Status",
+        //       dataIndex: "status",
+        //       key: "status",
+        //       render: (status) => {
+          //         const statusConfig = statusOptions.find(s => s.value === status) ||
+          //           statusOptions.find(s => s.label === status);
+          //         return (
+            //           <Tag color={statusConfig?.color || 'blue'}>
+            //             {statusConfig?.label || status || 'Pending'}
+            //           </Tag>
+            //         );
+            //       },
+            //     },
+            //     {
+              //       title: "Cost",
+              //       dataIndex: "cost",
+              //       key: "cost",
+              //       render: (cost) => cost ? `$${cost}` : 'N/A'
+              //     },
+              //     {
+                //       title: "Actions",
+                //       key: "actions",
+                //       width: 100,
+        //       render: (_, record) => (
+          //         <Space size="small">
+          //           <ActionButton
+          //             icon={<EyeOutlined />}
+          //             label="View Lab Test"
+          //             onClick={() => {
+            //               setSelectedItem(record);
+            //               setViewModalVisible(true);
+            //             }}
+            //           />
+            //           <ActionButton
+            //             icon={<EditOutlined />}
+            //             label="Edit Lab Test"
+            //             onClick={() => {/* Edit logic */ }}
+            //           />
+            //         </Space>
+            //       ),
+            //     },
+            //   ]}
+            //   rowKey="id"
+            //   pagination={{ pageSize: 10 }}
+            // />
+          )}
     </Card>
   );
-
+  
   const OperationsTab = () => (
     <Card
       title="Operations"
@@ -785,62 +971,138 @@ export default function MedicalRecords() {
           {/* <AddButton
             label="Add Operation"
             onClick={() => setOperationModalVisible(true)}
-          /> */}
+            /> */}
         </Space>
       }
-    >
+      >
       {loadingStates.surgeries ? (
         <TableSkeleton columns={6} rows={6} />
       ) : (
-        <Table
+        <List
           dataSource={surgeries}
-          onChange={handleTableChange}
-          columns={[
-            { title: "Operation Name", dataIndex: "name", key: "name" },
-            {
-              title: "Date",
-              dataIndex: "date",
-              key: "date",
-              render: (date) => date ? dayjs(date).format('MMM DD, YYYY') : 'N/A'
-            },
-            { title: "Surgeon", dataIndex: "surgeon", key: "surgeon" },
-            { title: "Assistants", dataIndex: "assistants", key: "assistants" },
-            {
-              title: "Status",
-              dataIndex: "status",
-              key: "status",
-              render: (status) => (
-                <Tag color={status === "Successful" ? "green" : status === "Scheduled" ? "orange" : "red"}>
-                  {status}
-                </Tag>
-              ),
-            },
-            {
-              title: "Actions",
-              key: "actions",
-              width: 100,
-              render: (_, record) => (
-                <Space size="small">
-                  <ActionButton
-                    icon={<EyeOutlined />}
-                    label="View Operation"
-                    onClick={() => {
-                      setSelectedItem(record);
-                      setViewModalVisible(true);
-                    }}
-                  />
-                  <ActionButton
-                    icon={<EditOutlined />}
-                    label="Edit Operation"
-                    onClick={() => {/* Edit logic */ }}
-                  />
-                </Space>
-              ),
-            },
-          ]}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
+          renderItem={(item) => (
+            <List.Item
+              // actions={[
+              //   <ActionButton
+              //     icon={<EyeOutlined />}
+              //     label="View Prescription"
+              //     onClick={() => {
+              //       setSelectedItem(item);
+              //       setViewModalVisible(true);
+              //     }}
+              //   />,
+              //   <ActionButton
+              //     icon={<EditOutlined />}
+              //     label="Edit Prescription"
+              //     onClick={() => {/* Edit logic */ }}
+              //   />,
+              //   <ActionButton
+              //     icon={<DeleteOutlined />}
+              //     label="Delete Prescription"
+              //     danger
+              //     confirm
+              //     confirmAction={() => handleDeleteItem('Prescription', item.id, '/prescriptions')}
+              //     loading={loadingActionId === item.id}
+              //   />
+              // ]}
+            >
+              <List.Item.Meta
+                title={item.user?.name || 'Unknown Patient'}
+                description={
+                  <Space direction="vertical" size={2}>
+                    {/* Prescription Notes */}
+                    {item.prescription?.notes && <Text>Notes: {item.prescription.notes}</Text>}
+      
+                    {/* Medicines */}
+                    {item.medicines?.length > 0 && (
+                      <div>
+                        <Text strong>Medicines:</Text>
+                        {item.medicines.map((med, idx) => (
+                          <Text key={idx}>
+                            {med.medicine?.name} - Qty: {med.quantity}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+      
+                    {/* Lab Tests */}
+                    {item.lab_tests?.length > 0 && (
+                      <div>
+                        <Text strong>Lab Tests:</Text>
+                        {item.lab_tests.map((test, idx) => (
+                          <Text key={idx}>
+                            {test.lab_test?.name} - Status: {test.status}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+      
+                    {/* Surgeries */}
+                    {item.surgeries?.length > 0 && (
+                      <div>
+                        <Text strong>Surgeries:</Text>
+                        {item.surgeries.map((surgery, idx) => (
+                          <Text key={idx}>
+                            {surgery.surgery_type?.name} - Status: {surgery.status}
+                          </Text>
+                        ))}
+                      </div>
+                    )}
+                  </Space>
+                }
+              />
+            </List.Item>
+          )}
         />
+        // <Table
+        //   dataSource={surgeries}
+        //   onChange={handleTableChange}
+        //   columns={[
+        //     { title: "Operation Name", dataIndex: "name", key: "name" },
+        //     {
+        //       title: "Date",
+        //       dataIndex: "date",
+        //       key: "date",
+        //       render: (date) => date ? dayjs(date).format('MMM DD, YYYY') : 'N/A'
+        //     },
+        //     { title: "Surgeon", dataIndex: "surgeon", key: "surgeon" },
+        //     { title: "Assistants", dataIndex: "assistants", key: "assistants" },
+        //     {
+        //       title: "Status",
+        //       dataIndex: "status",
+        //       key: "status",
+        //       render: (status) => (
+        //         <Tag color={status === "Successful" ? "green" : status === "Scheduled" ? "orange" : "red"}>
+        //           {status}
+        //         </Tag>
+        //       ),
+        //     },
+        //     {
+        //       title: "Actions",
+        //       key: "actions",
+        //       width: 100,
+        //       render: (_, record) => (
+        //         <Space size="small">
+        //           <ActionButton
+        //             icon={<EyeOutlined />}
+        //             label="View Operation"
+        //             onClick={() => {
+        //               setSelectedItem(record);
+        //               setViewModalVisible(true);
+        //             }}
+        //           />
+        //           <ActionButton
+        //             icon={<EditOutlined />}
+        //             label="Edit Operation"
+        //             onClick={() => {/* Edit logic */ }}
+        //           />
+        //         </Space>
+        //       ),
+        //     },
+        //   ]}
+        //   rowKey="id"
+        //   pagination={{ pageSize: 10 }}
+        // />
       )}
     </Card>
   );
@@ -865,37 +1127,35 @@ export default function MedicalRecords() {
           dataSource={consultations}
           onChange={handleTableChange}
           columns={[
-            { title: "Doctor", dataIndex: "doctor", key: "doctor" },
+            { title: "Doctor", dataIndex: ["doctor", 'name'], key: "doctor" },
             {
               title: "Date",
-              dataIndex: "date",
+              dataIndex: "appointment_date",
               key: "date",
               render: (date) => date ? dayjs(date).format('MMM DD, YYYY') : 'N/A'
             },
-            { title: "Diagnosis", dataIndex: "diagnosis", key: "diagnosis" },
-            { title: "Notes", dataIndex: "notes", key: "notes", ellipsis: true },
-            {
-              title: "Actions",
-              key: "actions",
-              width: 100,
-              render: (_, record) => (
-                <Space size="small">
-                  <ActionButton
-                    icon={<EyeOutlined />}
-                    label="View Consultation"
-                    onClick={() => {
-                      setSelectedItem(record);
-                      setViewModalVisible(true);
-                    }}
-                  />
-                  <ActionButton
-                    icon={<EditOutlined />}
-                    label="Edit Consultation"
-                    onClick={() => {/* Edit logic */ }}
-                  />
-                </Space>
-              ),
-            },
+            // {
+            //   title: "Actions",
+            //   key: "actions",
+            //   width: 100,
+            //   render: (_, record) => (
+            //     <Space size="small">
+            //       <ActionButton
+            //         icon={<EyeOutlined />}
+            //         label="View Consultation"
+            //         onClick={() => {
+            //           setSelectedItem(record);
+            //           setViewModalVisible(true);
+            //         }}
+            //       />
+            //       <ActionButton
+            //         icon={<EditOutlined />}
+            //         label="Edit Consultation"
+            //         onClick={() => {/* Edit logic */ }}
+            //       />
+            //     </Space>
+            //   ),
+            // },
           ]}
           rowKey="id"
           pagination={{ pageSize: 10 }}
@@ -926,7 +1186,7 @@ export default function MedicalRecords() {
           columns={[
             {
               title: "Date",
-              dataIndex: "date",
+              dataIndex: "timestamp",
               key: "date",
               render: (date) => date ? dayjs(date).format('MMM DD, YYYY') : 'N/A'
             },
@@ -955,29 +1215,29 @@ export default function MedicalRecords() {
                 </Tag>
               ),
             },
-            { title: "Reference", dataIndex: "reference", key: "reference" },
-            {
-              title: "Actions",
-              key: "actions",
-              width: 100,
-              render: (_, record) => (
-                <Space size="small">
-                  <ActionButton
-                    icon={<EyeOutlined />}
-                    label="View Payment"
-                    onClick={() => {
-                      setSelectedItem(record);
-                      setViewModalVisible(true);
-                    }}
-                  />
-                  <ActionButton
-                    icon={<EditOutlined />}
-                    label="Edit Payment"
-                    onClick={() => {/* Edit logic */ }}
-                  />
-                </Space>
-              ),
-            },
+            // { title: "Reference", dataIndex: "reference", key: "reference" },
+            // {
+            //   title: "Actions",
+            //   key: "actions",
+            //   width: 100,
+            //   render: (_, record) => (
+            //     <Space size="small">
+            //       <ActionButton
+            //         icon={<EyeOutlined />}
+            //         label="View Payment"
+            //         onClick={() => {
+            //           setSelectedItem(record);
+            //           setViewModalVisible(true);
+            //         }}
+            //       />
+            //       <ActionButton
+            //         icon={<EditOutlined />}
+            //         label="Edit Payment"
+            //         onClick={() => {/* Edit logic */ }}
+            //       />
+            //     </Space>
+            //   ),
+            // },
           ]}
           rowKey="id"
           pagination={{ pageSize: 10 }}
@@ -1039,36 +1299,36 @@ export default function MedicalRecords() {
               key: "items",
               render: (items) => Array.isArray(items) ? items.join(', ') : items
             },
-            {
-              title: "Actions",
-              key: "actions",
-              width: 120,
-              render: (_, record) => (
-                <Space size="small">
-                  <ActionButton
-                    icon={<EyeOutlined />}
-                    label="View Invoice"
-                    onClick={() => {
-                      setSelectedItem(record);
-                      setViewModalVisible(true);
-                    }}
-                  />
-                  <ActionButton
-                    icon={<EditOutlined />}
-                    label="Edit Invoice"
-                    onClick={() => {/* Edit logic */ }}
-                  />
-                  <ActionButton
-                    icon={<DeleteOutlined />}
-                    label="Delete Invoice"
-                    danger
-                    confirm
-                    confirmAction={() => handleDeleteItem('Invoice', record.id, '/billing')}
-                    loading={loadingActionId === record.id}
-                  />
-                </Space>
-              ),
-            },
+            // {
+            //   title: "Actions",
+            //   key: "actions",
+            //   width: 120,
+            //   render: (_, record) => (
+            //     <Space size="small">
+            //       <ActionButton
+            //         icon={<EyeOutlined />}
+            //         label="View Invoice"
+            //         onClick={() => {
+            //           setSelectedItem(record);
+            //           setViewModalVisible(true);
+            //         }}
+            //       />
+            //       <ActionButton
+            //         icon={<EditOutlined />}
+            //         label="Edit Invoice"
+            //         onClick={() => {/* Edit logic */ }}
+            //       />
+            //       <ActionButton
+            //         icon={<DeleteOutlined />}
+            //         label="Delete Invoice"
+            //         danger
+            //         confirm
+            //         confirmAction={() => handleDeleteItem('Invoice', record.id, '/billing')}
+            //         loading={loadingActionId === record.id}
+            //       />
+            //     </Space>
+            //   ),
+            // },
           ]}
           rowKey="id"
           pagination={{ pageSize: 10 }}
@@ -1149,11 +1409,11 @@ export default function MedicalRecords() {
             label: "Payments",
             children: <PaymentsTab />
           },
-          {
-            key: "8",
-            label: "Invoices",
-            children: <InvoiceTab />
-          },
+          // {
+          //   key: "8",
+          //   label: "Invoices",
+          //   children: <InvoiceTab />
+          // },
         ]}
       />
 
@@ -1375,7 +1635,7 @@ export default function MedicalRecords() {
       </Modal>
 
       {/* View Item Modal */}
-      <ViewItemModal
+      {/* <ViewItemModal
         visible={viewModalVisible}
         onCancel={() => {
           setViewModalVisible(false);
@@ -1383,7 +1643,7 @@ export default function MedicalRecords() {
         }}
         item={selectedItem}
         type={selectedItem?.name || 'Item'}
-      />
+      /> */}
     </div>
   );
 }

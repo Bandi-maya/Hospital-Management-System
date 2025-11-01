@@ -51,6 +51,7 @@ import { toast } from "sonner";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
 import dayjs, { Dayjs } from "dayjs";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -176,6 +177,7 @@ export default function SurgeryList() {
         pageSize: 10,
         total: 0,
     });
+    const { hasPermission } = useAuth()
 
     // Form state
     const [formData, setFormData] = useState<FormData>({
@@ -495,7 +497,7 @@ export default function SurgeryList() {
             title: "Actions",
             key: "actions",
             render: (record: OrderSurgery) => (
-                <Space size="small">
+                hasPermission(['surgery:edit']) && <Space size="small">
                     <Tooltip title="View Details">
                         <Button
                             type="text"
@@ -572,15 +574,18 @@ export default function SurgeryList() {
                         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Surgery Management</h1>
                         <p className="text-gray-600 mt-1 text-base">Manage and track all surgical procedures</p>
                     </div>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => handleOpenModal()}
-                        size="large"
-                        className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700 shrink-0"
-                    >
-                        Schedule Surgery
-                    </Button>
+                    {
+                        hasPermission(['surgery:add']) &&
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => handleOpenModal()}
+                            size="large"
+                            className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700 shrink-0"
+                        >
+                            Schedule Surgery
+                        </Button>
+                    }
                 </div>
             </div>
 
@@ -647,7 +652,7 @@ export default function SurgeryList() {
                             value={data?.total_records || 0}
                             prefix={<ScissorOutlined />}
                             valueStyle={{ color: '#1890ff' }}
-                            />
+                        />
                     </Card>
                 </Col>
                 <Col xs={24} sm={6}>
@@ -657,7 +662,7 @@ export default function SurgeryList() {
                             value={data?.total_pending_surgeries || 0}
                             prefix={<ScheduleOutlined />}
                             valueStyle={{ color: '#1890ff' }}
-                            />
+                        />
                     </Card>
                 </Col>
                 <Col xs={24} sm={6}>
@@ -667,7 +672,7 @@ export default function SurgeryList() {
                             value={data?.total_in_progress_surgeries || 0}
                             prefix={<PlayCircleOutlined />}
                             valueStyle={{ color: '#faad14' }}
-                            />
+                        />
                     </Card>
                 </Col>
                 <Col xs={24} sm={6}>

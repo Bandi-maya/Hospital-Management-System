@@ -61,6 +61,7 @@ import { getApi, PostApi, PutApi } from "@/ApiService";
 import dayjs from "dayjs";
 import { toast } from "sonner";
 import type { ColumnsType } from "antd/es/table";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -254,6 +255,7 @@ export default function BillingPage() {
   const [tests, setTests] = useState<LabTest[]>([]);
   const [patients, setPatients] = useState<User[]>([]);
   const [doctors, setDoctors] = useState<User[]>([]);
+  const { hasPermission } = useAuth()
 
   const [form, setForm] = useState<Partial<Billing>>({
     patient_id: "",
@@ -665,7 +667,7 @@ export default function BillingPage() {
       key: "actions",
       width: 200,
       render: (_: any, rec: Billing) => (
-        <Space size="small">
+        hasPermission(['billing:edit']) && <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
             label="View Details"
@@ -758,17 +760,20 @@ export default function BillingPage() {
                 Refresh
               </Button>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => { resetForm(); setIsModalOpen(true); }}
-                size="large"
-                className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
-              >
-                Add Billing
-              </Button>
-            </motion.div>
+            {
+              hasPermission(['billing:add']) &&
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => { resetForm(); setIsModalOpen(true); }}
+                  size="large"
+                  className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
+                >
+                  Add Billing
+                </Button>
+              </motion.div>
+            }
           </Space>
         </div>
       </div>
@@ -1264,7 +1269,7 @@ export default function BillingPage() {
                 <Descriptions.Item label="Beds">
                   <div className="flex items-center gap-2 py-1">
                     <MedicineBoxOutlined className="text-gray-400" />
-                    {selectedBilling?.['bed']?.ward?.name} - {selectedBilling?.['bed']?.bed_no} 
+                    {selectedBilling?.['bed']?.ward?.name} - {selectedBilling?.['bed']?.bed_no}
                     {/* <Tag color="blue">Qty: {}</Tag> */}
                   </div>
                 </Descriptions.Item>

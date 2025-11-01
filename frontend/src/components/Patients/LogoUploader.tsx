@@ -1,27 +1,34 @@
 import { getApi, PostFormDataApi, PutFormDataApi } from '@/ApiService';
-import React, { useEffect, useState } from 'react';
+import { AccountInfoContext } from '@/hooks/AccountInfoContext';
+import React, { useContext, useEffect, useState } from 'react';
 
 const LogoUploader = () => {
   const [logo, setLogo] = useState<File | null>(null);
   const [name, setName] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<number | null>(null);
+  const [accountInfo, setAcccountInfo] = useContext(AccountInfoContext)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getApi('account-info')
+  function getData() {
+    getApi('/account-info?id=7', {}, true)
       .then((data) => {
         if (data) {
           setName(data.name);
           setPreview(data.logo_url);
           setAccountId(data.id);
+          setAcccountInfo(accountInfo)
         }
       })
       .catch((err) => {
         console.error(err);
         setError('Failed to load account info.');
       });
+  }
+
+  useEffect(() => {
+    getData()
   }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,13 +51,12 @@ const LogoUploader = () => {
 
     try {
       const response = await (accountId
-        ? PutFormDataApi('/account-info', formData)
-        : PostFormDataApi('/account-info', formData));
+        ? PutFormDataApi('/account-info', formData, {}, true)
+        : PostFormDataApi('/account-info', formData, {}, true));
 
       alert(accountId ? 'Updated successfully!' : 'Created successfully!');
-      if (response.logo_url) setPreview(response.logo_url);
-      if (response.id) setAccountId(response.id);
-      setLogo(null);
+      getData()
+
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
       console.error(err);
@@ -103,9 +109,8 @@ const LogoUploader = () => {
         <button
           type="submit"
           disabled={isSubmitting}
-          className={`w-full py-2 rounded text-white font-semibold ${
-            isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+          className={`w-full py-2 rounded text-white font-semibold ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
         >
           {isSubmitting ? 'Submitting...' : accountId ? 'Update' : 'Create'}
         </button>

@@ -49,6 +49,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { getApi, PostApi, PutApi, DeleteApi } from "@/ApiService";
 import type { ColumnsType } from "antd/es/table";
+import { useAuth } from "@/hooks/useAuth";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -247,6 +248,7 @@ export default function OperationTheatreManagement() {
     pageSize: 10,
     total: 0,
   });
+  const { hasPermission } = useAuth()
 
   // Load all data
   useEffect(() => {
@@ -543,7 +545,7 @@ export default function OperationTheatreManagement() {
       key: "actions",
       width: 200,
       render: (_: any, record: OperationTheatre) => (
-        <Space size="small">
+        hasPermission(['operation-theatres:edit']) && <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
             label="View Details"
@@ -642,17 +644,20 @@ export default function OperationTheatreManagement() {
                 Refresh
               </Button>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => handleOpenModal()}
-                size="large"
-                className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
-              >
-                Add Operation Theatre
-              </Button>
-            </motion.div>
+            {
+              hasPermission(['operation-theatres:add']) &&
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => handleOpenModal()}
+                  size="large"
+                  className="h-12 px-6 text-base font-medium bg-blue-600 hover:bg-blue-700"
+                >
+                  Add Operation Theatre
+                </Button>
+              </motion.div>
+            }
           </Space>
         </div>
       </div>
