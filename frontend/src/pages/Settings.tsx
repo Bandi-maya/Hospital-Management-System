@@ -179,7 +179,7 @@ export default function Settings() {
     try {
       // Here you would typically call your API to change the password
       const { currentPassword, newPassword, confirmPassword } = values;
-      
+
       if (newPassword !== confirmPassword) {
         message.error("New passwords do not match!");
         return;
@@ -187,9 +187,9 @@ export default function Settings() {
 
       // Simulate API call - replace with actual API call
       const response = await PostApi('/reset-password', {
-        userId: user?.id,
-        currentPassword,
-        newPassword
+        user_id: user?.id,
+        current_password: currentPassword,
+        new_password: newPassword
       });
 
       if (!response?.error) {
@@ -225,12 +225,12 @@ export default function Settings() {
     if (!value) {
       return Promise.reject('Please input your password!');
     }
-    
+
     const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!strongRegex.test(value)) {
       return Promise.reject('Password must be at least 8 characters with uppercase, lowercase, number and special character!');
     }
-    
+
     return Promise.resolve();
   };
 
@@ -620,7 +620,7 @@ export default function Settings() {
               size="large"
               placeholder="Enter current password"
               prefix={<LockOutlined />}
-              iconRender={(visible) => 
+              iconRender={(visible) =>
                 visible ? <EyeOutlined /> : <EyeInvisibleOutlined />
               }
             />
@@ -639,7 +639,7 @@ export default function Settings() {
               size="large"
               placeholder="Enter new password"
               prefix={<LockOutlined />}
-              iconRender={(visible) => 
+              iconRender={(visible) =>
                 visible ? <EyeOutlined /> : <EyeInvisibleOutlined />
               }
             />
@@ -665,7 +665,7 @@ export default function Settings() {
               size="large"
               placeholder="Confirm new password"
               prefix={<LockOutlined />}
-              iconRender={(visible) => 
+              iconRender={(visible) =>
                 visible ? <EyeOutlined /> : <EyeInvisibleOutlined />
               }
             />

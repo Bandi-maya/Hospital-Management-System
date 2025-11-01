@@ -29,7 +29,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   console.log(user);
 
   useEffect(() => {
-    if (user?.user_type?.type === 'Patient' && (window.location.pathname.split('/').length !== 3 || window.location.pathname.split('/')?.[1] !== 'patients')) {
+    if (user?.user_type?.type === 'Patient' && window.location.pathname !== '/settings' && (window.location.pathname.split('/').length !== 3 || window.location.pathname.split('/')?.[1] !== 'patients')) {
       navigate(`/patients/${user?.id}`)
     }
   }, [user])

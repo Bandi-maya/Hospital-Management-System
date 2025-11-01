@@ -95,7 +95,7 @@ export function PutApi(urlEndPoint, data: any, options: any = {}, isAccountInfo 
     });
 }
 
-export function PostFormDataApi(urlEndPoint, data: any, options: any = {}, isAccountInfo = false) {
+export function PostFormDataApi(urlEndPoint, data: any, options: any = {}, isAccountInfo=false) {
     const token = localStorage.getItem('auth_token');
     return fetch((!isAccountInfo ? baseUrl : baseUrl.split('/tenant')[0]) + urlEndPoint, {
         ...options,
@@ -117,7 +117,7 @@ export function PostFormDataApi(urlEndPoint, data: any, options: any = {}, isAcc
     });
 }
 
-export function PutFormDataApi(urlEndPoint, data: any, options: any = {}, isAccountInfo = false) {
+export function PutFormDataApi(urlEndPoint, data: any, options: any = {}, isAccountInfo=false) {
     const token = localStorage.getItem('auth_token');
     return fetch((!isAccountInfo ? baseUrl : baseUrl.split('/tenant')[0]) + urlEndPoint, {
         ...options,
