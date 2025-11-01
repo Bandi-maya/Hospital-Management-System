@@ -24,7 +24,7 @@ export function getApi(urlEndPoint, options: any = {}) {
     });
 }
 
-export function DownloadApi(urlEndPoint, format) {
+export function DownloadApi(urlEndPoint, format, type) {
     const token = localStorage.getItem('auth_token');
 
     return fetch(baseUrl + urlEndPoint, {
@@ -35,7 +35,7 @@ export function DownloadApi(urlEndPoint, format) {
 
     }).then(async response => {
         const blob = await response.blob();
-        const fileName = format === 'excel' ? 'departments.xlsx' : 'departments.csv';
+        const fileName = format === 'excel' ? `${type}.xlsx` : `${type}.csv`;
 
         // 🔹 Create a link element and trigger download
         const url = window.URL.createObjectURL(blob);

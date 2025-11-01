@@ -524,7 +524,7 @@ export default function SurgeryType() {
       </div>
 
       {/* Statistics Grid */}
-      {loading ? (
+      {/* {loading ? (
         <SkeletonStats />
       ) : (
         <Row gutter={[16, 16]} className="mb-6">
@@ -551,7 +551,7 @@ export default function SurgeryType() {
             </Col>
           ))}
         </Row>
-      )}
+      )} */}
 
       {/* Filters Card */}
       <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">

@@ -174,8 +174,9 @@ const createMenuItems = (): MenuItem[] => {
       requiredPermission: 'lab_tests:read',
       children: [
         { key: '/laboratory/tests', label: 'Lab Tests', requiredPermission: "lab_tests:read", icon: <ExperimentOutlined /> },
-        { key: '/laboratory/results', label: 'Test Results', requiredPermission: "lab_tests:read", icon: <FileTextOutlined /> },
-        { key: '/laboratory/reports', label: 'Lab Reports', requiredPermission: "lab_tests:read", icon: <BarChartOutlined /> },
+        // { key: '/laboratory/results', label: 'Test Results', requiredPermission: "lab_tests:read", icon: <FileTextOutlined /> },
+        { key: '/laboratory/requests', label: 'Test Requests', requiredPermission: "lab_tests:read", icon: <FileTextOutlined /> },
+        // { key: '/laboratory/reports', label: 'Lab Reports', requiredPermission: "lab_tests:read", icon: <BarChartOutlined /> },
       ],
     },
     {
@@ -267,8 +268,8 @@ const convertToAntdMenuItems = (items: MenuItem[]): MenuProps['items'] => {
   }));
 };
 
-export const AppSidebar: React.FC<AppSidebarProps> = ({ 
-  collapsed = false, 
+export const AppSidebar: React.FC<AppSidebarProps> = ({
+  collapsed = false,
   onToggle,
   mobileOpen = false,
   onMobileClose
@@ -279,7 +280,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const navigate = useNavigate();
   const { token: { colorBgContainer } } = theme.useToken();
   const screens = useBreakpoint();
-  
+
   const isMobile = !screens.md;
 
   // Sync internal state with prop changes
@@ -313,7 +314,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     return items.filter(item => {
       if (!item.requiredPermission) return true;
       if (item.children) {
-        item.children = item.children.filter((child) => 
+        item.children = item.children.filter((child) =>
           !child.requiredPermission || hasPermission(child.requiredPermission)
         );
       }
@@ -362,7 +363,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         zIndex: 30,
       }}
     >
-      
+
       {/* Menu */}
       <Menu
         mode="inline"

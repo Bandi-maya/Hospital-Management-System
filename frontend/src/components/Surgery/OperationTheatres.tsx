@@ -42,7 +42,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   PlayCircleOutlined,
-  PauseCircleOutlined
+  PauseCircleOutlined,
+  ContactsOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -231,6 +232,7 @@ const SkeletonStats = () => (
 export default function OperationTheatreManagement() {
   const [operationTheatres, setOperationTheatres] = useState<OperationTheatre[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [data, setData] = useState<any>({})
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedTheatre, setSelectedTheatre] = useState<OperationTheatre | null>(null);
@@ -252,10 +254,10 @@ export default function OperationTheatreManagement() {
   }, []);
 
   const loadData = async (
-    page = 1, 
-    limit = 10, 
-    searchQuery = search, 
-    status = statusFilter, 
+    page = 1,
+    limit = 10,
+    searchQuery = search,
+    status = statusFilter,
     department = departmentFilter
   ) => {
     setLoading(true);
@@ -266,6 +268,7 @@ export default function OperationTheatreManagement() {
       ]);
 
       if (!theatresData?.error) {
+        setData(theatresData)
         setOperationTheatres(theatresData.data || []);
         setPagination(prev => ({
           ...prev,
@@ -332,15 +335,15 @@ export default function OperationTheatreManagement() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      
+
       if (selectedTheatre) {
         setLoadingActionId(selectedTheatre.id);
-        const response = await PutApi(`/operation-theatre`, { 
-          ...values, 
+        const response = await PutApi(`/operation-theatre`, {
+          ...values,
           id: selectedTheatre.id,
           department_id: parseInt(values.department_id)
         });
-        
+
         if (!response?.error) {
           message.success("Operation theatre updated successfully!");
           loadData(pagination.current, pagination.pageSize);
@@ -353,7 +356,7 @@ export default function OperationTheatreManagement() {
           ...values,
           department_id: parseInt(values.department_id)
         });
-        
+
         if (!response?.error) {
           message.success("Operation theatre created successfully!");
           loadData(pagination.current, pagination.pageSize);
@@ -439,11 +442,11 @@ export default function OperationTheatreManagement() {
   });
 
   const stats: Stats = {
-    total: operationTheatres.length,
-    available: operationTheatres.filter(t => t.status === "AVAILABLE" && t.is_active).length,
-    inUse: operationTheatres.filter(t => t.status === "IN_USE").length,
-    underMaintenance: operationTheatres.filter(t => t.status === "UNDER_MAINTENANCE").length,
-    active: operationTheatres.filter(t => t.is_active).length
+    total: data?.total_records,
+    available: data?.available_theatres,
+    inUse: data?.in_use_theatres,
+    underMaintenance: data?.under_maintenance_theatres,
+    active: data?.active_theatres
   };
 
   const getStatusIcon = (status: string) => {
@@ -984,16 +987,21 @@ export default function OperationTheatreManagement() {
                 <Form.Item
                   label="Active Status"
                   name="is_active"
+                  valuePropName="checked"  // <-- important for Switch components
                 >
-                  <div className="flex items-center space-x-3 pt-2">
-                    <Switch
-                      checkedChildren="Active"
-                      unCheckedChildren="Inactive"
-                    />
-                    <span className="text-gray-600">
-                      {form.getFieldValue('is_active') ? "Active" : "Inactive"}
-                    </span>
-                  </div>
+                  {/* <div className="flex items-center space-x-3 pt-2"> */}
+                  <Switch
+                    checked={form.getFieldValue('is_active')}
+                    onChange={(checked) => {
+                      form.setFieldValue('is_active', checked);
+                    }}
+                    checkedChildren="Active"
+                    unCheckedChildren="Inactive"
+                  />
+                  {/* <span className="text-gray-600">
+                    {form.getFieldValue('is_active') ? "Active" : "Inactive"}
+                  </span> */}
+                  {/* </div> */}
                 </Form.Item>
               </Col>
             </Row>

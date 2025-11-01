@@ -533,7 +533,8 @@ export default function LabTests() {
               <Button
                 type="default"
                 icon={<FileTextOutlined />}
-                onClick={() => navigate("/laboratory/results")}
+                // onClick={() => navigate("/laboratory/results")}
+                onClick={() => navigate("/laboratory/requests")}
                 size="large"
                 className="border-blue-300 text-blue-600 hover:text-blue-700 hover:border-blue-400"
               >

@@ -25,6 +25,7 @@ interface HeaderProps {
   onToggleSidebar?: () => void;
   onMobileSidebarToggle?: () => void;
   sidebarCollapsed?: boolean;
+  accountInfo?: any;
   isMobile?: boolean;
   mobileSidebarOpen?: boolean;
 }
@@ -33,6 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,
   onMobileSidebarToggle,
   sidebarCollapsed = false,
+  accountInfo = {},
   isMobile = false,
   mobileSidebarOpen = false,
 }) => {
@@ -268,7 +270,7 @@ export const Header: React.FC<HeaderProps> = ({
               </Button>
             )}
 
-            <span className="text-lg font-bold text-blue-600">HMS</span>
+            <span className="text-lg font-bold text-blue-600">{accountInfo?.['logo_url'] ? <img src={accountInfo?.['logo_url']} /> : accountInfo?.['name'] ?? 'HMS'}</span>
           </div>
 
           {/* Center: Desktop Search */}

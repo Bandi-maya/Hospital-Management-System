@@ -5,6 +5,8 @@ import { Header } from './Header';
 import { getEmailFromToken } from '@/utils/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Grid } from 'antd';
+import { toast } from 'sonner';
+import { getApi } from '@/ApiService';
 
 const { useBreakpoint } = Grid;
 
@@ -18,10 +20,24 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [email, setEmail] = useState("");
   const { user, logout } = useAuth();
   const screens = useBreakpoint();
-  
+
   const isMobile = !screens.md;
 
   console.log(user);
+  const [accountInfo, setAccountInfo] = useState<any>({})
+
+  useEffect(() => {
+    getApi('/account-info')
+      .then((data) => {
+        if (data) {
+          setAccountInfo(data)
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error("Error occcurred while gteting account info")
+      });
+  }, []);
 
   useEffect(() => {
     if (localStorage.getItem("auth_token")) {
@@ -98,6 +114,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <header className="sticky top-0 z-30 bg-background border-b">
             <Header
               onToggleSidebar={handleToggleSidebar}
+              accountInfo={accountInfo}
               onMobileSidebarToggle={handleMobileSidebarToggle}
               sidebarCollapsed={sidebarCollapsed}
               isMobile={isMobile}

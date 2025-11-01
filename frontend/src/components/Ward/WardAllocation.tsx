@@ -374,10 +374,10 @@ export default function WardAllocations() {
   };
 
   const loadAllocations = async (
-    page = 1, 
-    limit = 10, 
-    searchQuery = searchText, 
-    filterStatus = status, 
+    page = 1,
+    limit = 10,
+    searchQuery = searchText,
+    filterStatus = status,
     ward_id = filterWard
   ) => {
     setLoading(true);
@@ -442,6 +442,7 @@ export default function WardAllocations() {
         bed_id: values.bed_id,
         patient_id: values.patient_id,
         admission_date: values.admission_date,
+        bed_no: values.bed_no,
         price: values.price,
         status: "ACTIVE",
       };
@@ -460,48 +461,50 @@ export default function WardAllocations() {
   };
 
   const handleUpdate = async () => {
-    try {
-      const values = await form.validateFields();
+    // try {
+    const values = await form.validateFields();
 
-      if (modalInfo.type === "add") {
-        await handleAdd(values);
-      } else if (modalInfo.type === "edit") {
-        const payload = {
-          id: values.bed_id,
-          ward_id: values.ward_id,
-          patient_id: values.patient_id,
-          admission_date: dayjs.utc(values.admission_date).local().format('YYYY-MM-DD'),
-          price: values.price,
-          status: values.status,
-        };
-        const res = await PutApi("/ward-beds", payload);
-        if (!res.error) {
-          message.success("Allocation updated successfully");
-          loadAllocations();
-          handleCancel();
-        } else {
-          message.error(res.error);
-        }
-      } else if (modalInfo.type === "insurance") {
-        const rec = modalInfo.record!;
-        const payload: any = {
-          id: rec.id,
-        };
-        if (values.insurance) {
-          payload.insurance = values.insurance;
-        }
-        const res = await PutApi("/ward-beds", payload);
-        if (!res.error) {
-          message.success("Insurance updated successfully");
-          loadAllocations();
-          handleCancel();
-        } else {
-          message.error(res.error);
-        }
-      }
-    } catch (errorInfo) {
-      console.log("Validation Failed:", errorInfo);
+    // if (modalInfo.type === "add") {
+    //   await handleAdd(values);
+    // } else if (modalInfo.type === "edit") {
+    const payload = {
+      id: values.bed_id,
+      bed_no: values.bed_no,
+      ward_id: values.ward_id,
+      patient_id: values.patient_id,
+      admission_date: dayjs.utc(values.admission_date).local().format('YYYY-MM-DD'),
+      price: values.price,
+      status: values.status,
+    };
+    const res = await PutApi("/ward-beds", payload);
+    if (!res.error) {
+      message.success("Allocation updated successfully");
+      loadAllocations();
+      handleCancel();
+    } else {
+      message.error(res.error);
     }
+    //   // } 
+    //   else if (modalInfo.type === "insurance") {
+    //     const rec = modalInfo.record!;
+    //     const payload: any = {
+    //       id: rec.id,
+    //     };
+    //     if (values.insurance) {
+    //       payload.insurance = values.insurance;
+    //     }
+    //     const res = await PutApi("/ward-beds", payload);
+    //     if (!res.error) {
+    //       message.success("Insurance updated successfully");
+    //       loadAllocations();
+    //       handleCancel();
+    //     } else {
+    //       message.error(res.error);
+    //     }
+    //   }
+    // } catch (errorInfo) {
+    //   console.log("Validation Failed:", errorInfo);
+    // }
   };
 
   const handleDelete = async (record: WardAllocation) => {

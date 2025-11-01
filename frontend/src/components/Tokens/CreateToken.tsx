@@ -133,9 +133,9 @@ const validateForm = (form: FormData): FormErrors => {
     errors.department_id = "Department selection is required";
   }
 
-  if (!form.doctor_id) {
-    errors.doctor_id = "Doctor selection is required";
-  }
+  // if (!form.doctor_id) {
+  //   errors.doctor_id = "Doctor selection is required";
+  // }
 
   if (!form.appointment_date) {
     errors.appointment_date = "Appointment date is required";
@@ -444,7 +444,8 @@ export default function CreateToken() {
               <div className="space-y-3">
                 <Label htmlFor="doctor" className="text-sm font-medium flex items-center gap-2">
                   <Stethoscope className="w-4 h-4 text-gray-600" />
-                  Doctor *
+                  Doctor 
+                  {/* * */}
                 </Label>
                 <Select 
                   value={form.doctor_id} 

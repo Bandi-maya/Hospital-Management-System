@@ -85,7 +85,7 @@ interface Billing {
   patient_id: string;
   doctor_id: string;
   medicines: MedicineItem[];
-  tests: TestItem[];
+  lab_tests: TestItem[];
   surgeries: SurgeryItem[];
   notes: string;
   status?: "PENDING" | "PAID" | "CANCELLED";
@@ -248,6 +248,7 @@ const SkeletonStats = () => (
 
 export default function BillingPage() {
   const [billings, setBillings] = useState<Billing[]>([]);
+  const [data, setData] = useState<any>({})
   const [inventory, setInventory] = useState<Medicine[]>([]);
   const [surgeries, setSurgeries] = useState<Surgery[]>([]);
   const [tests, setTests] = useState<LabTest[]>([]);
@@ -258,7 +259,7 @@ export default function BillingPage() {
     patient_id: "",
     doctor_id: "",
     medicines: [{ medicine_id: "", quantity: 1 }],
-    tests: [{ test_id: "" }],
+    lab_tests: [{ test_id: "" }],
     surgeries: [{ surgery_id: "" }],
     notes: "",
   });
@@ -330,9 +331,9 @@ export default function BillingPage() {
   };
 
   const loadBilling = async (
-    page = 1, 
-    limit = 10, 
-    searchQuery = searchText, 
+    page = 1,
+    limit = 10,
+    searchQuery = searchText,
     status = statusFilter
   ) => {
     setLoading(true);
@@ -341,6 +342,7 @@ export default function BillingPage() {
         `/billing?page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}`
       );
       if (!data.error) {
+        setData(data)
         setBillings(data.data || []);
         setPagination(prev => ({
           ...prev,
@@ -363,7 +365,7 @@ export default function BillingPage() {
       patient_id: "",
       doctor_id: "",
       medicines: [{ medicine_id: "", quantity: 1 }],
-      tests: [{ test_id: "" }],
+      lab_tests: [{ test_id: "" }],
       notes: "",
     });
     setSelectedBilling(null);
@@ -402,7 +404,7 @@ export default function BillingPage() {
           doctor_id: doctorId,
           medicines: form.medicines!,
           surgeries: form.surgeries || [],
-          tests: form.tests || [],
+          lab_tests: form.lab_tests || [],
           notes: form.notes || "",
           status: "PENDING",
         };
@@ -474,7 +476,12 @@ export default function BillingPage() {
 
   const handleEdit = (b: Billing) => {
     setSelectedBilling(b);
-    setForm({ ...b });
+    setForm({
+      ...b,
+      medicines: b?.['order']?.['medicines'],
+      lab_tests: b?.['order']?.['lab_tests'],
+      surgeries: b?.['order']?.['surgeries'],
+    });
     setIsModalOpen(true);
   };
 
@@ -517,9 +524,9 @@ export default function BillingPage() {
     field: "test_id",
     value: any
   ) => {
-    const newTests = [...(form.tests || [])];
+    const newTests = [...(form.lab_tests || [])];
     newTests[idx] = { ...newTests[idx], [field]: value };
-    setForm({ ...form, tests: newTests });
+    setForm({ ...form, lab_tests: newTests });
   };
 
   const addMedicineField = () => {
@@ -533,13 +540,13 @@ export default function BillingPage() {
   };
 
   const addTestField = () => {
-    const newTests = [...(form.tests || []), { test_id: "" }];
-    setForm({ ...form, tests: newTests });
+    const newTests = [...(form.lab_tests || []), { test_id: "" }];
+    setForm({ ...form, lab_tests: newTests });
   };
 
   const removeTestField = (idx: number) => {
-    const newTests = (form.tests || []).filter((_, i) => i !== idx);
-    setForm({ ...form, tests: newTests });
+    const newTests = (form.lab_tests || []).filter((_, i) => i !== idx);
+    setForm({ ...form, lab_tests: newTests });
   };
 
   const getStatusColor = (status: string | undefined) => {
@@ -568,23 +575,24 @@ export default function BillingPage() {
     }
   };
 
-  const filteredBillings = billings.filter((b) => {
-    const matchesSearch =
-      !searchText ||
-      String(b.patient_id).includes(searchText) ||
-      String(b.doctor_id).includes(searchText) ||
-      b.patient?.name?.toLowerCase().includes(searchText.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || b.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredBillings = billings
+  // .filter((b) => {
+  //   const matchesSearch =
+  //     !searchText ||
+  //     String(b.patient_id).includes(searchText) ||
+  //     String(b.doctor_id).includes(searchText) ||
+  //     b.patient?.name?.toLowerCase().includes(searchText.toLowerCase());
+  //   const matchesStatus =
+  //     statusFilter === "all" || b.status === statusFilter;
+  //   return matchesSearch && matchesStatus;
+  // });
 
   const stats: Stats = {
-    total: billings.length,
-    paid: billings.filter(b => b.status === 'PAID').length,
-    pending: billings.filter(b => b.status === 'PENDING').length,
+    total: data?.total_records,
+    paid: data?.paid_records,
+    pending: data?.total_records - data?.paid_records,
     cancelled: billings.filter(b => b.status === 'CANCELLED').length,
-    totalRevenue: billings.filter(b => b.status === 'PAID').reduce((sum, b) => sum + (b.total_amount || 0), 0)
+    totalRevenue: data?.total_revenue
   };
 
   const columns: ColumnsType<Billing> = [
@@ -619,11 +627,19 @@ export default function BillingPage() {
         <Space direction="vertical">
           <div className="flex items-center gap-2">
             <MedicineBoxOutlined className="text-gray-400" />
-            {rec.medicines?.length || 0} medicines
+            {rec?.['order']?.['medicines']?.length || 0} medicines
           </div>
           <div className="flex items-center gap-2">
             <ExperimentOutlined className="text-gray-400" />
-            {rec.tests?.length || 0} tests
+            {rec?.['order']?.['lab_tests']?.length || 0} tests
+          </div>
+          <div className="flex items-center gap-2">
+            <ExperimentOutlined className="text-gray-400" />
+            {rec?.['order']?.['surgeries']?.length || 0} surgeries
+          </div>
+          <div className="flex items-center gap-2">
+            <ExperimentOutlined className="text-gray-400" />
+            {(rec?.['bed']) !== null ? 1 : 0} beds
           </div>
           {rec.total_amount !== undefined && (
             <div className="font-medium text-green-600">
@@ -657,14 +673,14 @@ export default function BillingPage() {
             onClick={() => handleView(rec)}
           />
 
-          <ActionButton
+          {/* <ActionButton
             icon={<EditOutlined />}
             label="Edit Billing"
             type="default"
             loading={loadingActionId === rec.id}
             onClick={() => handleEdit(rec)}
             disabled={rec.status === "PAID"}
-          />
+          /> */}
 
           <ActionButton
             icon={<DollarOutlined />}
@@ -969,7 +985,7 @@ export default function BillingPage() {
                           {b.patient?.name || b.order?.user?.name || `Patient ${b.patient_id}`}
                         </div>
                         <div className="text-gray-600">
-                          {dayjs(b?.created_at).fromNow()} — {b?.medicines?.length || 0} meds, {b?.tests?.length || 0} tests
+                          {dayjs(b?.created_at).fromNow()} — {b?.medicines?.length || 0} meds, {b?.lab_tests?.length || 0} tests
                         </div>
                         {b.total_amount && (
                           <div className="text-green-600 font-medium">
@@ -1162,7 +1178,7 @@ export default function BillingPage() {
           </Form.Item>
 
           <Form.Item label="Tests">
-            {(form.tests || []).map((t, idx) => (
+            {(form.lab_tests || []).map((t, idx) => (
               <Space key={idx} style={{ display: "flex", marginBottom: 8 }} align="baseline">
                 <Select
                   placeholder="Select test"
@@ -1244,26 +1260,50 @@ export default function BillingPage() {
                   className="px-2 py-1"
                 />
               </Descriptions.Item>
-              <Descriptions.Item label="Medicines">
-                {selectedBilling.medicines?.map((med, i) => {
-                  const medicine = inventory.find(m => m.id === med.medicine_id);
-                  return (
-                    <div key={i} className="flex items-center gap-2 py-1">
-                      <MedicineBoxOutlined className="text-gray-400" />
-                      {medicine?.name || med.medicine_id}
-                      <Tag color="blue">Qty: {med.quantity}</Tag>
-                    </div>
-                  );
-                })}
-              </Descriptions.Item>
-              {selectedBilling.tests && selectedBilling.tests.length > 0 && (
+              {selectedBilling?.['bed'] && (
+                <Descriptions.Item label="Beds">
+                  <div className="flex items-center gap-2 py-1">
+                    <MedicineBoxOutlined className="text-gray-400" />
+                    {selectedBilling?.['bed']?.ward?.name} - {selectedBilling?.['bed']?.bed_no} 
+                    {/* <Tag color="blue">Qty: {}</Tag> */}
+                  </div>
+                </Descriptions.Item>
+              )}
+              {selectedBilling?.['order']?.['medicines'] && selectedBilling?.['order']?.['medicines'].length > 0 && (
+                <Descriptions.Item label="Medicines">
+                  {selectedBilling?.['order']?.['medicines']?.map((med, i) => {
+                    const medicine = inventory.find(m => m.id === med.medicine_id);
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-1">
+                        <MedicineBoxOutlined className="text-gray-400" />
+                        {medicine?.name || med.medicine_id}
+                        <Tag color="blue">Qty: {med.quantity}</Tag>
+                      </div>
+                    );
+                  })}
+                </Descriptions.Item>
+              )}
+              {selectedBilling?.['order']?.['lab_tests'] && selectedBilling?.['order']?.['lab_tests'].length > 0 && (
                 <Descriptions.Item label="Tests">
-                  {selectedBilling.tests.map((tt, i) => {
+                  {selectedBilling?.['order']?.['lab_tests'].map((tt, i) => {
                     const test = tests.find(t => t.id === tt.test_id);
                     return (
                       <div key={i} className="flex items-center gap-2 py-1">
                         <ExperimentOutlined className="text-gray-400" />
                         {test?.name || tt.test_id}
+                      </div>
+                    );
+                  })}
+                </Descriptions.Item>
+              )}
+              {selectedBilling?.['order']?.['surgeries'] && selectedBilling?.['order']?.['surgeries'].length > 0 && (
+                <Descriptions.Item label="Surgery">
+                  {selectedBilling?.['order']?.['surgeries'].map((tt, i) => {
+                    const test = tests.find(t => t.id === tt.test_id);
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-1">
+                        <ExperimentOutlined className="text-gray-400" />
+                        {tt?.surgery_type?.name || tt.surgery_id}
                       </div>
                     );
                   })}

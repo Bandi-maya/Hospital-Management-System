@@ -55,6 +55,7 @@ import DoctorList from "./components/Doctor/DoctorsList";
 import AddDoctor from "./components/Doctor/AddDoctor";
 import BookAppointment from "./components/Appointments/BookAppointment";
 import WardStatus from "./Components/Ward/WardStatus";
+import TestRequests from "./Components/Laboratory/LabRequests";
 
 // Lazy load pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -317,6 +318,16 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/laboratory/requests"
+                  element={
+                    <AuthGuard requiredPermission="appointments:read">
+                      <Layout>
+                        <TestRequests />
+                      </Layout>
+                    </AuthGuard>
+                  }
+                />
+                {/* <Route
                   path="/laboratory/results"
                   element={
                     <AuthGuard requiredPermission="appointments:read">
@@ -325,8 +336,8 @@ const App = () => (
                       </Layout>
                     </AuthGuard>
                   }
-                />
-                <Route
+                /> */}
+                {/* <Route
                   path="/laboratory/reports"
                   element={
                     <AuthGuard requiredPermission="appointments:read">
@@ -335,7 +346,7 @@ const App = () => (
                       </Layout>
                     </AuthGuard>
                   }
-                />
+                /> */}
                 <Route
                   path="/surgery/list"
                   element={

@@ -196,7 +196,7 @@ export default function TechnicianList() {
 
   const exportTechnicians = async (format: string = 'csv'): Promise<void> => {
     try {
-      await DownloadApi(`/export?type=users&user_type=labtechnician&format=${format}`, format);
+      await DownloadApi(`/export?type=users&user_type=labtechnician&format=${format}`, format, 'lab_technicians');
       toast.success(`Technicians exported successfully as ${format.toUpperCase()}`);
     } catch (err) {
       console.error('Export error:', err);
@@ -757,7 +757,7 @@ export default function TechnicianList() {
                 />
               </div>
             </div>
-            <div className="w-full md:w-48">
+            {/* <div className="w-full md:w-48">
               <Select
                 value={statusFilter}
                 onChange={(value: string) => setStatusFilter(value)}
@@ -768,7 +768,7 @@ export default function TechnicianList() {
                 <Option value="active">Active</Option>
                 <Option value="inactive">Inactive</Option>
               </Select>
-            </div>
+            </div> */}
             <UIButton 
               onClick={() => exportTechnicians()} 
               variant="outline" 

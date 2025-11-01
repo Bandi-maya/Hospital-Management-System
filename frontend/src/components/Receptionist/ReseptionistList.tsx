@@ -155,7 +155,7 @@ export default function ReceptionistList() {
   // Export function
   const exportReceptionists = async (format = 'csv') => {
     try {
-      await DownloadApi(`/export?type=users&user_type=receptionist&format=${format}`, format);
+      await DownloadApi(`/export?type=users&user_type=receptionist&format=${format}`, format, 'receptionists');
       toast.success(`Receptionists exported successfully as ${format.toUpperCase()}`);
     } catch (err) {
       console.error('Export error:', err);

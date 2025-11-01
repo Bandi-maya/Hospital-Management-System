@@ -148,7 +148,8 @@ export default function PatientList() {
     try {
       await DownloadApi(
         `/export?type=users&user_type=patient&format=${format}`,
-        format
+        format,
+        'patientss'
       );
     } catch {
       message.error("Something went wrong while exporting.");

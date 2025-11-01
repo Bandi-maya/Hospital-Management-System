@@ -408,7 +408,7 @@ export default function PharmacistList() {
 
   const exportPharmacists = async (format: string = 'csv'): Promise<void> => {
     try {
-      await DownloadApi(`/export?type=users&user_type=pharmacist&format=${format}`, format);
+      await DownloadApi(`/export?type=users&user_type=pharmacist&format=${format}`, format, 'pharmacists');
       toast.success(`Pharmacists exported successfully as ${format.toUpperCase()}`);
     } catch (err) {
       console.error('Export error:', err);

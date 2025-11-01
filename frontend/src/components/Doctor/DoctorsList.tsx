@@ -190,7 +190,7 @@ export default function DoctorList() {
   // Export function
   const exportDoctors = async (format: string = 'csv'): Promise<void> => {
     try {
-      await DownloadApi(`/export?type=users&user_type=doctor&format=${format}`, format);
+      await DownloadApi(`/export?type=users&user_type=doctor&format=${format}`, format, 'doctors');
       toast.success(`Doctors exported successfully as ${format.toUpperCase()}`);
     } catch (err) {
       console.error('Export error:', err);
@@ -204,7 +204,7 @@ export default function DoctorList() {
     try {
       const data: ApiResponse = await getApi("/user-fields");
       if (!data?.error) {
-        const doctorFields = data.data.filter((field: ExtraField) => 
+        const doctorFields = data.data.filter((field: ExtraField) =>
           field.user_type_data.type.toUpperCase() === "DOCTOR"
         );
         setExtraFields(doctorFields);
@@ -220,9 +220,9 @@ export default function DoctorList() {
   };
 
   const loadDoctors = async (
-    page: number = 1, 
-    limit: number = 10, 
-    searchQuery: string = searchTerm, 
+    page: number = 1,
+    limit: number = 10,
+    searchQuery: string = searchTerm,
     status: string = statusFilter
   ): Promise<void> => {
     setTableLoading(true);
@@ -323,7 +323,7 @@ export default function DoctorList() {
   // Delete doctor handler
   const deleteDoctor = async (record: Doctor): Promise<void> => {
     if (!record.id) return;
-    
+
     setLoadingActionId(record.id);
     try {
       const data: ApiResponse = await PutApi(`/users`, { ...record, is_active: false });
@@ -443,8 +443,6 @@ export default function DoctorList() {
   const openScheduleModal = (doctor: Doctor): void => {
     setSelectedDoctorForSchedule(doctor);
     setIsScheduleModalOpen(true);
-    scheduleForm.resetFields();
-    setScheduleItems([{ title: "", start_time: "", end_time: "", location: "", notes: "" }]);
   };
 
   const handleAddScheduleItem = (): void => {
@@ -459,11 +457,11 @@ export default function DoctorList() {
 
   const handleScheduleSubmit = async (values: ScheduleFormValues): Promise<void> => {
     if (!selectedDoctorForSchedule?.id) return;
-    
+
     setIsScheduleLoading(true);
     try {
       const payload = {
-        doctor_id: selectedDoctorForSchedule.id,
+        staff_id: selectedDoctorForSchedule.id,
         shift_type: values.shift_type,
         start_time: values.start_time,
         end_time: values.end_time,
@@ -471,7 +469,14 @@ export default function DoctorList() {
         schedule_items: scheduleItems,
       };
 
-      const data: ApiResponse = await PostApi(`/user-schedules`, payload);
+      let data = null;
+      if (!scheduleForm.getFieldValue('id')) {
+        data = await PostApi(`/staff-schedule`, payload);
+      }
+      else {
+        payload['id'] = scheduleForm.getFieldValue('id');
+        data = await PutApi(`/staff-schedule`, payload);
+      }
       if (!data?.error) {
         toast.success("Schedule added successfully!");
         setIsScheduleModalOpen(false);
@@ -647,7 +652,24 @@ export default function DoctorList() {
             icon={<CalendarOutlined />}
             label="Add Schedule"
             type="primary"
-            onClick={() => openScheduleModal(record)}
+            onClick={() => {
+              scheduleForm.resetFields();
+              setScheduleItems([{ title: "", start_time: "", end_time: "", location: "", notes: "" }]);
+              getApi(`/staff-schedule?staff_id=${record.id}`)
+                .then((data) => {
+                  if (!data.error) {
+                    if (Object.keys(data ?? {}).length > 0) {
+                      scheduleForm.setFieldValue('shift_type', data.shift_type);
+                      scheduleForm.setFieldValue('id', data.id);
+                      scheduleForm.setFieldValue('start_time', data.start_time);
+                      scheduleForm.setFieldValue('end_time', data.end_time);
+                      scheduleForm.setFieldValue('status', data.status);
+                      setScheduleItems(data.schedule_items);
+                    }
+                  }
+                })
+              openScheduleModal(record)
+            }}
           />
         </Space>
       ),
@@ -768,9 +790,9 @@ export default function DoctorList() {
                   onPressEnter={handleSearch}
                   className="pl-10 h-12"
                   suffix={
-                    <Button 
-                      type="text" 
-                      icon={<SearchOutlined />} 
+                    <Button
+                      type="text"
+                      icon={<SearchOutlined />}
                       onClick={handleSearch}
                       loading={tableLoading}
                     />

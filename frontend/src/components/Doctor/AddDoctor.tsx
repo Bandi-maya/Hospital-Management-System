@@ -141,6 +141,11 @@ export default function AddDoctor({ onAddNurse }: AddNurseProps) {
         setShowFullscreenLoader(true);
     };
 
+    useEffect(() => {
+        getExtraFields();
+        getDepartments();
+    }, []);
+
     // Fetch Data
     const getExtraFields = async () => {
         setLoadingStates(prev => ({ ...prev, extraFields: true }));

@@ -274,7 +274,7 @@ export default function AppointmentManagement() {
     if (!selectedAppointment) return;
 
     setLoadingActionId(selectedAppointment.id);
-    DeleteApi(`/appointment/${selectedAppointment.id}`)
+    DeleteApi(`/appointment`, {id: selectedAppointment.id})
       .then((res: ApiResponse) => {
         if (!res?.error) {
           toast.success("Appointment deleted successfully!");
@@ -353,7 +353,7 @@ export default function AppointmentManagement() {
       patient_id: appointment.patient_id,
       doctor_id: appointment.doctor_id,
       appointment_date: appointment.appointment_date.split("T")[0],
-      appointment_start_time: appointment.appointment_start_time,
+      appointment_start_time: appointment.appointment_start_time.slice(0,5),
       status: appointment.status,
     });
     setEditModalOpen(true);
@@ -421,13 +421,6 @@ export default function AppointmentManagement() {
       dataIndex: "appointment_date",
       key: "appointment_date",
       width: 100,
-    },
-    {
-      title: "Token",
-      dataIndex: "token_number",
-      key: "token_number",
-      width: 100,
-      render: (token: string) => token || "N/A"
     },
     {
       title: "Time",

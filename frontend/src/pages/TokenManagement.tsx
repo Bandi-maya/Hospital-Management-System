@@ -443,12 +443,6 @@ export default function TokenManagement() {
       )
     },
     {
-      title: "Time",
-      dataIndex: "appointment_start_time",
-      key: "appointment_start_time",
-      width: 100
-    },
-    {
       title: "Status",
       dataIndex: "status",
       key: "status",

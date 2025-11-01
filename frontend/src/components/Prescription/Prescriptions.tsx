@@ -102,6 +102,7 @@ interface Prescription {
 
 export default function Prescriptions() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [data, setData]=  useState<any>({})
   const [inventory, setInventory] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
@@ -139,7 +140,7 @@ export default function Prescriptions() {
   // Auto refresh notifier
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (autoRefresh) {
       interval = setInterval(() => {
         message.info({
@@ -150,7 +151,7 @@ export default function Prescriptions() {
         loadPrescriptions();
       }, 30000);
     }
-    
+
     return () => {
       if (interval) {
         clearInterval(interval);
@@ -191,6 +192,7 @@ export default function Prescriptions() {
     getApi(`/orders?order_type=prescription&page=${page}&limit=${limit}&q=${searchQuery}`)
       .then((data) => {
         if (!data.error) {
+          setData(data)
           setPrescriptions(data.data || []);
           setPagination(prev => ({
             ...prev,
@@ -300,7 +302,7 @@ export default function Prescriptions() {
 
     setLoadingActionId(editingPrescription?.id || 'new');
 
-    const apiCall = editingPrescription 
+    const apiCall = editingPrescription
       ? PutApi('/orders', { ...editingPrescription, ...payload })
       : PostApi('/orders', payload);
 
@@ -321,21 +323,9 @@ export default function Prescriptions() {
       }).finally(() => setLoadingActionId(null));
   };
 
-  const handleAddOrUpdateBilling = (values: any) => {
-    if (!values.patient_id || (!values.medicines && !values.tests && !values.surgeries)) {
-      toast.error("Please add at least one medicine, test, or surgery");
-      return;
-    }
-
-    setLoadingActionId(selectedPrescription?.id || 'billing');
-
+  const handleAddOrUpdateBilling = (selectedPrescription) => {
     const billingData = {
-      prescription_id: selectedPrescription?.id,
-      patient_id: values.patient_id,
-      medicines: values.medicines || [],
-      tests: values.tests || [],
-      surgeries: values.surgeries || [],
-      notes: values.notes || "",
+      order_id: selectedPrescription?.id,
     };
 
     PostApi('/billing', billingData)
@@ -404,15 +394,10 @@ export default function Prescriptions() {
   );
 
   const stats = {
-    total: prescriptions.length,
+    total: data?.total_records,
     billed: prescriptions.filter(p => p.is_billed).length,
     pending: prescriptions.filter(p => !p.is_billed).length,
-    today: prescriptions.filter(p => {
-      if (!p.created_at) return false;
-      const today = new Date().toDateString();
-      const created = new Date(p.created_at).toDateString();
-      return created === today;
-    }).length
+    today: data?.today_orders
   };
 
   const handlePrint = () => {
@@ -630,22 +615,22 @@ export default function Prescriptions() {
         </Space>
       ),
     },
-    {
-      title: (
-        <Space>
-          <FileTextOutlined />
-          Status
-        </Space>
-      ),
-      key: "status",
-      render: (_, record: Prescription) => (
-        <Badge
-          status={record.is_billed ? "success" : "processing"}
-          text={record.is_billed ? "Billed" : "Pending"}
-          className="px-2 py-1"
-        />
-      ),
-    },
+    // {
+    //   title: (
+    //     <Space>
+    //       <FileTextOutlined />
+    //       Status
+    //     </Space>
+    //   ),
+    //   key: "status",
+    //   render: (_, record: Prescription) => (
+    //     <Badge
+    //       status={record.is_billed ? "success" : "processing"}
+    //       text={record.is_billed ? "Billed" : "Pending"}
+    //       className="px-2 py-1"
+    //     />
+    //   ),
+    // },
     {
       title: (
         <Space>
@@ -678,15 +663,16 @@ export default function Prescriptions() {
             type="primary"
             loading={loadingActionId === record.id}
             onClick={() => {
-              setSelectedPrescription(record);
-              billingForm.setFieldsValue({
-                patient_id: record.patient_id || record.user?.id,
-                medicines: record.medicines || [],
-                tests: record.lab_tests || [],
-                surgeries: record.surgeries || [],
-                notes: record.notes || ""
-              });
-              setIsBillingModalOpen(true);
+              // setSelectedPrescription(record);
+              // billingForm.setFieldsValue({
+              //   patient_id: record.patient_id || record.user?.id,
+              //   medicines: record.medicines || [],
+              //   tests: record.lab_tests || [],
+              //   surgeries: record.surgeries || [],
+              //   notes: record.notes || ""
+              // });
+              handleAddOrUpdateBilling(record)
+              // setIsBillingModalOpen(true);
             }}
             disabled={record.is_billed}
           />
@@ -777,7 +763,7 @@ export default function Prescriptions() {
       </div>
 
       {/* Statistics Grid */}
-      {loading ? (
+      {/* {loading ? (
         <SkeletonStats />
       ) : (
         <Row gutter={[16, 16]} className="mb-6">
@@ -822,7 +808,7 @@ export default function Prescriptions() {
             </Card>
           </Col>
         </Row>
-      )}
+      )} */}
 
       {/* Auto Refresh Toggle */}
       <Card className="bg-white border-0 shadow-sm rounded-xl mb-6">
@@ -992,8 +978,8 @@ export default function Prescriptions() {
             label="Patient"
             rules={[{ required: true, message: "Please select patient" }]}
           >
-            <Select 
-              placeholder="Select patient" 
+            <Select
+              placeholder="Select patient"
               size="large"
               showSearch
               filterOption={(input, option: any) =>
@@ -1152,7 +1138,7 @@ export default function Prescriptions() {
       </Modal>
 
       {/* Billing Modal */}
-      <Modal
+      {/* <Modal
         title={
           <div className="flex items-center gap-3">
             <DollarOutlined className="text-green-600 text-lg" />
@@ -1316,7 +1302,7 @@ export default function Prescriptions() {
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </Modal> */}
 
       {/* View Prescription Modal */}
       <Modal
@@ -1403,9 +1389,9 @@ export default function Prescriptions() {
                       </div>
                     )
                   },
-                  { 
-                    title: 'Quantity', 
-                    dataIndex: 'quantity', 
+                  {
+                    title: 'Quantity',
+                    dataIndex: 'quantity',
                     key: 'quantity',
                     render: (quantity) => (
                       <Tag color="blue">{quantity}</Tag>

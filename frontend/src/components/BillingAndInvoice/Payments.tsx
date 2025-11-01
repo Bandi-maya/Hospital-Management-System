@@ -100,14 +100,6 @@ type Payment = {
     billing?: any;
 };
 
-const defaultPayments: Payment[] = [
-    { id: uuidv4(), customerName: "John Doe", email: "john@example.com", amount: 500, date: "2025-09-01", method: "CARD", status: "PAID" },
-    { id: uuidv4(), customerName: "Jane Smith", email: "jane@example.com", amount: 1200, date: "2025-09-05", method: "UPI", status: "PENDING" },
-    { id: uuidv4(), customerName: "Bob Johnson", email: "bob@example.com", amount: 750, date: "2025-09-10", method: "CASH", status: "FAILED" },
-    { id: uuidv4(), customerName: "Alice Brown", email: "alice@example.com", amount: 300, date: "2025-09-15", method: "ONLINE", status: "PAID" },
-    { id: uuidv4(), customerName: "Charlie Wilson", email: "charlie@example.com", amount: 950, date: "2025-09-20", method: "CARD", status: "PENDING" },
-];
-
 export default function Payments() {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -135,7 +127,6 @@ export default function Payments() {
     // Simulate data loading
     useEffect(() => {
         const timer = setTimeout(() => {
-            setPayments(defaultPayments);
             setLoading(false);
             setStatsLoading(false);
             setTableLoading(false);
@@ -192,16 +183,17 @@ export default function Payments() {
         };
     }, [autoRefresh]);
 
-    const filteredPayments = payments.filter(payment => {
-        const lowerSearchTerm = searchTerm.toLowerCase();
-        const matchesSearch = 
-            payment.customerName?.toLowerCase().includes(lowerSearchTerm) || 
-            payment.email?.toLowerCase().includes(lowerSearchTerm);
-        const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
-        const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
-        const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
-        return matchesSearch && matchesStatus && matchesMethod && matchesDate;
-    });
+    const filteredPayments = payments
+    // .filter(payment => {
+    //     const lowerSearchTerm = searchTerm.toLowerCase();
+    //     const matchesSearch = 
+    //         payment.customerName?.toLowerCase().includes(lowerSearchTerm) || 
+    //         payment.email?.toLowerCase().includes(lowerSearchTerm);
+    //     const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+    //     const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
+    //     const matchesDate = !dateRange || (dayjs(payment.date).isSameOrAfter(dateRange[0], 'day') && dayjs(payment.date).isSameOrBefore(dateRange[1], 'day'));
+    //     return matchesSearch && matchesStatus && matchesMethod && matchesDate;
+    // });
 
     // Statistics
     const stats = React.useMemo(() => {
@@ -455,9 +447,9 @@ export default function Payments() {
                 <Space>
                     <Avatar size="large" icon={<UserOutlined />} className="bg-blue-100 text-blue-600" />
                     <div>
-                        <div style={{ fontWeight: "bold" }}>{record.customerName}</div>
+                        <div style={{ fontWeight: "bold" }}>{record?.['billing']?.['order']?.['user']?.name}</div>
                         <div style={{ fontSize: "12px", color: "#666" }}>
-                            <MailOutlined /> {record.email}
+                            <MailOutlined /> {record?.['billing']?.['order']?.['user']?.email}
                         </div>
                     </div>
                 </Space>
@@ -544,7 +536,7 @@ export default function Payments() {
             key: "actions",
             render: (_, record) => (
                 <Space>
-                    <Tooltip title="View Details">
+                    {/* <Tooltip title="View Details">
                         <Button
                             icon={<EyeOutlined />}
                             shape="circle"
@@ -552,14 +544,14 @@ export default function Payments() {
                             ghost
                             onClick={() => openModal('view', record)}
                         />
-                    </Tooltip>
-                    <Tooltip title="Edit">
+                    </Tooltip> */}
+                    {/* <Tooltip title="Edit">
                         <Button
                             icon={<EditOutlined />}
                             shape="circle"
                             onClick={() => openModal('edit', record)}
                         />
-                    </Tooltip>
+                    </Tooltip> */}
                     <Tooltip title="Export PDF">
                         <Button
                             icon={<FilePdfOutlined />}
@@ -568,7 +560,7 @@ export default function Payments() {
                             onClick={() => handleExportPaymentPDF(record)}
                         />
                     </Tooltip>
-                    <Tooltip title="Delete">
+                    {/* <Tooltip title="Delete">
                         <Popconfirm
                             title="Delete this payment?"
                             description="Are you sure you want to delete this payment? This action cannot be undone."
@@ -580,7 +572,7 @@ export default function Payments() {
                         >
                             <Button icon={<DeleteOutlined />} shape="circle" danger />
                         </Popconfirm>
-                    </Tooltip>
+                    </Tooltip> */}
                 </Space>
             )
         }
@@ -783,23 +775,23 @@ export default function Payments() {
                 </Card>
 
                 {/* Statistics Skeleton */}
-                <Row gutter={[16, 16]}>
+                {/* <Row gutter={[16, 16]}>
                     {[...Array(6)].map((_, i) => (
                         <Col key={i} xs={24} sm={12} md={8} lg={4}>
                             <StatisticSkeleton />
                         </Col>
                     ))}
-                </Row>
+                </Row> */}
 
                 {/* Payment Methods Skeleton */}
-                <Row gutter={[16, 16]}>
+                {/* <Row gutter={[16, 16]}>
                     {[...Array(4)].map((_, i) => (
                         <Col key={i} xs={24} sm={12} md={6}>
                             <StatisticSkeleton />
                         </Col>
                     ))}
                 </Row>
-
+ */}
                 {/* Table Skeleton */}
                 <TableSkeleton />
             </div>
@@ -861,7 +853,7 @@ export default function Payments() {
             </Card>
 
             {/* Statistics Section */}
-            <Row gutter={[16, 16]}>
+            {/* <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={8} lg={4}>
                     <Card className="shadow-sm">
                         {statsLoading ? (
@@ -951,10 +943,10 @@ export default function Payments() {
                         )}
                     </Card>
                 </Col>
-            </Row>
+            </Row> */}
 
             {/* Payment Methods Statistics */}
-            <Row gutter={[16, 16]}>
+            {/* <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={6}>
                     <Card className="shadow-sm">
                         {statsLoading ? (
@@ -1011,7 +1003,7 @@ export default function Payments() {
                         )}
                     </Card>
                 </Col>
-            </Row>
+            </Row> */}
 
             {/* Search and Filter Section */}
             <Card className="bg-white shadow-sm border-0">

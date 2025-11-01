@@ -162,7 +162,7 @@ export default function NurseList() {
   // Export function
   const exportNurses = async (format = 'csv') => {
     try {
-      await DownloadApi(`/export?type=users&user_type=nurse&format=${format}`, format);
+      await DownloadApi(`/export?type=users&user_type=nurse&format=${format}`, format, 'nurses');
       toast.success(`Nurses exported successfully as ${format.toUpperCase()}`);
     } catch (err) {
       console.error('Export error:', err);

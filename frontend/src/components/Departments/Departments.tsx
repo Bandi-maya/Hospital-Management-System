@@ -442,7 +442,7 @@ export default function Department() {
   // });
   async function exportDepartments(format = 'csv') {
     try {
-      await DownloadApi(`/export?type=departments&format=${format}`, format);
+      await DownloadApi(`/export?type=departments&format=${format}`, format, 'departments');
     } catch (err) {
       console.error('Export error:', err);
       alert('Something went wrong while exporting.');

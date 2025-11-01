@@ -49,6 +49,7 @@ interface Medicine {
   name: string;
   manufacturer: string;
   description: string;
+  medicine_stock?: InventoryItem[];
 }
 
 interface InventoryItem {
@@ -58,7 +59,6 @@ interface InventoryItem {
   expiry_date: string;
   price: number;
   batch_no: string;
-  medicine: Medicine;
 }
 
 interface ApiResponse {
@@ -183,15 +183,15 @@ const ActionButton = ({
 );
 
 export default function MedicalInventory() {
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventory, setInventory] = useState<Medicine[]>([]);
   const [data, setData] = useState<ApiResponse>({});
   const [search, setSearch] = useState<string>("");
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<Medicine | null>(null);
+  const [editingItem, setEditingItem] = useState<Medicine | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [pagination, setPagination] = useState<Pagination>({
@@ -202,7 +202,7 @@ export default function MedicalInventory() {
 
   const loadData = async (page: number = 1, limit: number = 10, searchQuery: string = search): Promise<void> => {
     setLoading(true);
-    getApi(`/medicine-stock?page=${page}&limit=${limit}&q=${searchQuery}`)
+    getApi(`/medicines?page=${page}&limit=${limit}&q=${searchQuery}`)
       .then((data: ApiResponse) => {
         if (!data?.error) {
           setData(data);
@@ -275,7 +275,7 @@ export default function MedicalInventory() {
           description: values.description,
         };
 
-        const medicineData: ApiResponse = await PutApi('/medicines', { ...newItem, id: editingItem.medicine?.id });
+        const medicineData: ApiResponse = await PutApi('/medicines', { ...newItem, id: editingItem?.id });
         if (!medicineData?.error) {
           const stockData: ApiResponse = await PutApi('/medicine-stock', {
             id: editingItem.id,
@@ -334,27 +334,27 @@ export default function MedicalInventory() {
     }
   };
 
-  const handleEdit = (item: InventoryItem): void => {
+  const handleEdit = (item: Medicine): void => {
     setEditingItem(item);
     form.setFieldsValue({
       ...item,
-      name: item.medicine?.name,
-      manufacturer: item.medicine?.manufacturer,
-      description: item.medicine?.description,
-      quantity: item.quantity,
-      price: item.price,
-      expiry_date: item.expiry_date,
-      batch_no: item.batch_no
+      name: item?.name,
+      manufacturer: item?.manufacturer,
+      description: item?.description,
+      quantity: item?.medicine_stock?.[0].quantity,
+      price: item?.medicine_stock?.[0].price,
+      expiry_date: item?.medicine_stock?.[0].expiry_date,
+      batch_no: item?.medicine_stock?.[0].batch_no
     });
     setIsModalOpen(true);
   };
 
-  const handleView = (item: InventoryItem): void => {
+  const handleView = (item: Medicine): void => {
     setSelectedItem(item);
     setIsViewModalOpen(true);
   };
 
-  const handleDelete = (record: InventoryItem): void => {
+  const handleDelete = (record: Medicine): void => {
     setActionLoading(record.id);
     Modal.confirm({
       title: "Delete Inventory Item?",
@@ -367,7 +367,7 @@ export default function MedicalInventory() {
         DeleteApi("/medicine-stock", { id: record.id })
           .then((data: ApiResponse) => {
             if (!data?.error) {
-              DeleteApi("/medicines", { id: record.medicine.id })
+              DeleteApi("/medicines", { id: record.id })
                 .then((data: ApiResponse) => {
                   if (!data?.error) {
                     toast.success("Item deleted successfully!");
@@ -406,17 +406,17 @@ export default function MedicalInventory() {
   // Calculate statistics
   const stats: Stats = {
     totalItems: inventory.length,
-    lowStock: inventory.filter(item => item.quantity < 10).length,
-    totalValue: inventory.reduce((sum, item) => sum + (item.quantity * item.price), 0),
+    lowStock: inventory.filter(item => item?.medicine_stock?.[0].quantity < 10).length,
+    totalValue: inventory.reduce((sum, item) => sum + (item?.medicine_stock?.[0].quantity * item?.medicine_stock?.[0].price), 0),
     expiringSoon: inventory.filter(item => {
-      const expiry = new Date(item.expiry_date);
+      const expiry = new Date(item?.medicine_stock?.[0].expiry_date);
       const today = new Date();
       const daysDiff = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 3600 * 24));
       return daysDiff <= 30 && daysDiff > 0;
     }).length
   };
 
-  const columns: ColumnsType<InventoryItem> = [
+  const columns: ColumnsType<Medicine> = [
     {
       title: (
         <Space>
@@ -425,21 +425,21 @@ export default function MedicalInventory() {
         </Space>
       ),
       key: "medicine",
-      render: (_, record: InventoryItem) => (
+      render: (_, record: Medicine) => (
         <Space>
           <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center border border-blue-200">
             <MedicineBoxOutlined className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <div className="font-semibold text-gray-900">{record.medicine?.name}</div>
+            <div className="font-semibold text-gray-900">{record?.name}</div>
             <div className="text-sm text-gray-500">
-              {record.medicine?.manufacturer}
+              {record?.manufacturer}
             </div>
-            {record.medicine?.description && (
+            {record?.description && (
               <div className="text-xs text-gray-400 mt-1">
-                {record.medicine.description.length > 50
-                  ? `${record.medicine.description.substring(0, 50)}...`
-                  : record.medicine.description
+                {record.description.length > 50
+                  ? `${record.description.substring(0, 50)}...`
+                  : record.description
                 }
               </div>
             )}
@@ -455,10 +455,10 @@ export default function MedicalInventory() {
         </Space>
       ),
       key: "batch",
-      render: (_, record: InventoryItem) => (
+      render: (_, record: Medicine) => (
         <Space direction="vertical" size={0}>
           <Tag color="purple" className="font-mono font-semibold">
-            {record.batch_no || "N/A"}
+            {record?.medicine_stock?.[0].batch_no || "N/A"}
           </Tag>
           <div className="text-xs text-gray-500 mt-1">
             Batch Number
@@ -473,7 +473,7 @@ export default function MedicalInventory() {
           Stock Status
         </Space>
       ),
-      dataIndex: "quantity",
+      dataIndex: ["medicine_stock", 0, "quantity"],
       key: "quantity",
       render: (quantity: number) => (
         <Space direction="vertical" size={0}>
@@ -496,7 +496,7 @@ export default function MedicalInventory() {
           Pricing
         </Space>
       ),
-      dataIndex: "price",
+      dataIndex: ["medicine_stock", 0, "price"],
       key: "price",
       render: (price: number) => (
         <Space direction="vertical" size={0}>
@@ -550,7 +550,7 @@ export default function MedicalInventory() {
         </Space>
       ),
       key: "actions",
-      render: (_, record: InventoryItem) => (
+      render: (_, record: Medicine) => (
         <Space size="small">
           <ActionButton
             icon={<EyeOutlined />}
@@ -879,8 +879,8 @@ export default function MedicalInventory() {
                 <MedicineBoxOutlined className="w-8 h-8 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">{selectedItem.medicine?.name}</h3>
-                <p className="text-gray-600">{selectedItem.medicine?.manufacturer}</p>
+                <h3 className="text-xl font-bold text-gray-900">{selectedItem?.name}</h3>
+                <p className="text-gray-600">{selectedItem?.manufacturer}</p>
               </div>
             </div>
 
@@ -889,8 +889,8 @@ export default function MedicalInventory() {
                 <Card size="small" className="border-l-4 border-l-blue-500">
                   <Statistic
                     title="Quantity in Stock"
-                    value={selectedItem.quantity}
-                    valueStyle={{ color: selectedItem.quantity < 10 ? '#ef4444' : selectedItem.quantity < 50 ? '#f59e0b' : '#10b981' }}
+                    value={selectedItem?.medicine_stock?.[0].quantity}
+                    valueStyle={{ color: selectedItem?.medicine_stock?.[0].quantity < 10 ? '#ef4444' : selectedItem?.medicine_stock?.[0].quantity < 50 ? '#f59e0b' : '#10b981' }}
                   />
                 </Card>
               </Col>
@@ -898,7 +898,7 @@ export default function MedicalInventory() {
                 <Card size="small" className="border-l-4 border-l-green-500">
                   <Statistic
                     title="Unit Price"
-                    value={selectedItem.price}
+                    value={selectedItem?.medicine_stock?.[0].price}
                     prefix="₹"
                     valueStyle={{ color: '#10b981' }}
                   />
@@ -908,7 +908,7 @@ export default function MedicalInventory() {
                 <Card size="small" className="border-l-4 border-l-purple-500">
                   <div className="space-y-2">
                     <div className="text-sm font-medium text-gray-700">Batch Number</div>
-                    <div className="font-semibold text-lg">{selectedItem.batch_no || "N/A"}</div>
+                    <div className="font-semibold text-lg">{selectedItem?.medicine_stock?.[0].batch_no || "N/A"}</div>
                   </div>
                 </Card>
               </Col>
@@ -916,15 +916,15 @@ export default function MedicalInventory() {
                 <Card size="small" className="border-l-4 border-l-orange-500">
                   <div className="space-y-2">
                     <div className="text-sm font-medium text-gray-700">Expiry Date</div>
-                    <div className="font-semibold text-lg">{selectedItem.expiry_date}</div>
+                    <div className="font-semibold text-lg">{selectedItem?.medicine_stock?.[0].expiry_date}</div>
                   </div>
                 </Card>
               </Col>
             </Row>
 
-            {selectedItem.medicine?.description && (
+            {selectedItem?.description && (
               <Card title="Description" className="border-l-4 border-l-gray-500">
-                <p className="text-gray-700">{selectedItem.medicine.description}</p>
+                <p className="text-gray-700">{selectedItem.description}</p>
               </Card>
             )}
           </div>

@@ -177,6 +177,7 @@ const ActionButton = ({
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [data, setData]=  useState<any>({})
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -228,6 +229,7 @@ export default function PurchaseOrders() {
     try {
       const res = await getApi(`/orders?order_type=medicine&page=${page}&limit=${limit}&q=${searchQuery}`);
       if (!res.error) {
+        setData(res)
         setOrders(res.data || []);
         setPagination(prev => ({
           ...prev,
@@ -381,10 +383,10 @@ export default function PurchaseOrders() {
 
   // Calculate statistics
   const stats = {
-    totalOrders: orders.length,
-    todayOrders: orders.filter(order => order.received_date === dayjs().format('YYYY-MM-DD')).length,
-    totalItems: orders.reduce((sum, order) => sum + ((order.medicines || order.items)?.length || 0), 0),
-    pendingOrders: orders.filter(order => !order.received_date).length
+    totalOrders: data?.total_records,
+    todayOrders: data?.today_orders,
+    totalItems: data?.total_purchase_items,
+    // pendingOrders: orders.filter(order => !order.received_date).length
   };
 
   const columns: ColumnsType<PurchaseOrder> = [
@@ -625,7 +627,7 @@ export default function PurchaseOrders() {
               />
             </Card>
           </Col>
-          <Col xs={24} sm={12} lg={6}>
+          {/* <Col xs={24} sm={12} lg={6}>
             <Card className="text-center shadow-sm border-0 bg-gradient-to-br from-red-50 to-red-100">
               <Statistic
                 title="Pending Orders"
@@ -634,7 +636,7 @@ export default function PurchaseOrders() {
                 valueStyle={{ color: '#dc2626' }}
               />
             </Card>
-          </Col>
+          </Col> */}
         </Row>
       )}
 
@@ -842,7 +844,6 @@ export default function PurchaseOrders() {
                         label="Quantity"
                         rules={[
                           { required: true, message: 'Please enter quantity' },
-                          { type: 'number', min: 1, message: 'Quantity must be at least 1' }
                         ]}
                       >
                         <Input

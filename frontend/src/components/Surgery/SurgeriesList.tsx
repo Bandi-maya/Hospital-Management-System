@@ -95,6 +95,7 @@ interface Surgery {
     patient_id: number;
     surgery_type_id: number;
     operation_theatre_id: number;
+    price: number;
     scheduled_start_time: string;
     scheduled_end_time: string;
     actual_start_time: string;
@@ -159,6 +160,7 @@ const SURGEON_ROLES = [
 export default function SurgeryList() {
     const [surgeries, setSurgeries] = useState<OrderSurgery[]>([]);
     const [surgeryTypes, setSurgeryTypes] = useState<SurgeryType[]>([]);
+    const [data, setData] = useState<any>({});
     const [operationTheatres, setOperationTheatres] = useState<OperationTheatre[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -199,6 +201,7 @@ export default function SurgeryList() {
         getApi(`/orders?order_type=surgery&page=${page}&limit=${limit}&q=${searchQuery}&status=${status === 'all' ? '' : status}`)
             .then((res: ApiResponse) => {
                 if (!res.error) {
+                    setData(res)
                     setSurgeries(res.data || []);
                     setPagination(prev => ({
                         ...prev,
@@ -236,7 +239,7 @@ export default function SurgeryList() {
         if (surgery) {
             form.setFieldValue("patient_id", surgery.user_id);
             form.setFieldValue('surgery_type_id', surgery.surgeries[0]?.surgery_type_id);
-            form.setFieldValue('price', surgery.surgeries[0]?.surgery_type_id);
+            form.setFieldValue('price', surgery.surgeries[0]?.price);
             form.setFieldValue('operation_theatre_id', surgery.surgeries[0]?.operation_theatre_id || "");
             form.setFieldValue('scheduled_start_time', surgery.surgeries[0]?.scheduled_start_time ? dayjs(surgery.surgeries[0].scheduled_start_time) : null);
             form.setFieldValue('scheduled_end_time', surgery.surgeries[0]?.scheduled_end_time ? dayjs(surgery.surgeries[0].scheduled_end_time) : null);
@@ -302,7 +305,7 @@ export default function SurgeryList() {
                     .then((data: ApiResponse) => {
                         if (!data?.error) {
                             toast.success("Surgery updated successfully!");
-                            loadData();
+                            fetchOrders();
                             setSelectedSurgery(null);
                             setIsModalOpen(false);
                         } else {
@@ -318,7 +321,7 @@ export default function SurgeryList() {
                     .then((data: ApiResponse) => {
                         if (!data?.error) {
                             toast.success("Surgery created successfully!");
-                            loadData();
+                            fetchOrders();
                             setIsModalOpen(false);
                         } else {
                             toast.error(data.error);
@@ -641,37 +644,37 @@ export default function SurgeryList() {
                     <Card>
                         <Statistic
                             title="Total Surgeries"
-                            value={surgeries.length}
+                            value={data?.total_records || 0}
                             prefix={<ScissorOutlined />}
                             valueStyle={{ color: '#1890ff' }}
-                        />
+                            />
                     </Card>
                 </Col>
                 <Col xs={24} sm={6}>
                     <Card>
                         <Statistic
                             title="Scheduled"
-                            value={surgeries.filter(s => s.surgeries[0]?.status === 'SCHEDULED').length}
+                            value={data?.total_pending_surgeries || 0}
                             prefix={<ScheduleOutlined />}
                             valueStyle={{ color: '#1890ff' }}
-                        />
+                            />
                     </Card>
                 </Col>
                 <Col xs={24} sm={6}>
                     <Card>
                         <Statistic
                             title="In Progress"
-                            value={surgeries.filter(s => s.surgeries[0]?.status === 'IN_PROGRESS').length}
+                            value={data?.total_in_progress_surgeries || 0}
                             prefix={<PlayCircleOutlined />}
                             valueStyle={{ color: '#faad14' }}
-                        />
+                            />
                     </Card>
                 </Col>
                 <Col xs={24} sm={6}>
                     <Card>
                         <Statistic
                             title="Completed"
-                            value={surgeries.filter(s => s.surgeries[0]?.status === 'COMPLETED').length}
+                            value={data?.total_completed_surgeries || 0}
                             prefix={<CheckCircleOutlined />}
                             valueStyle={{ color: '#52c41a' }}
                         />
@@ -751,7 +754,7 @@ export default function SurgeryList() {
                                     size="large"
                                 >
                                     {patients.map(patient => (
-                                        <Option key={patient.id} value={patient.id.toString()}>
+                                        <Option key={patient.id} value={patient.id}>
                                             {patient.name}
                                         </Option>
                                     ))}
@@ -771,7 +774,7 @@ export default function SurgeryList() {
                                     size="large"
                                 >
                                     {surgeryTypes.map(type => (
-                                        <Option key={type.id} value={type.id.toString()}>
+                                        <Option key={type.id} value={type.id}>
                                             {type.name}
                                         </Option>
                                     ))}
@@ -807,7 +810,7 @@ export default function SurgeryList() {
                                     size="large"
                                 >
                                     {operationTheatres.map(theatre => (
-                                        <Option key={theatre.id} value={theatre.id.toString()}>
+                                        <Option key={theatre.id} value={theatre.id}>
                                             {theatre.name} - {theatre.location}
                                         </Option>
                                     ))}
@@ -865,7 +868,7 @@ export default function SurgeryList() {
                         </Col>
                     </Row>
 
-                    <Form.Item label="Surgical Team">
+                    {/* <Form.Item label="Surgical Team">
                         <div className="space-y-3">
                             {formData.surgery_doctors.map((surgeon, index) => (
                                 <div key={index} className="flex gap-2">
@@ -910,7 +913,7 @@ export default function SurgeryList() {
                                 Add Surgeon
                             </Button>
                         </div>
-                    </Form.Item>
+                    </Form.Item> */}
 
                     <Form.Item label="Notes">
                         <TextArea
