@@ -105,7 +105,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [localStorage.getItem("auth_token")]);
 
   useEffect(() => {
-    if (email && user.email && user.email !== email) {
+    if (email && user?.email && user?.email !== email) {
       logout();
     }
   });

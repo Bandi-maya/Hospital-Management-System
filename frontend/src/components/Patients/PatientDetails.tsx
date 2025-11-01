@@ -76,16 +76,16 @@ const PatientDetails = () => {
                             <Space direction="vertical">
                                 <Text strong>Personal Information</Text>
                                 <Text><UserOutlined /> Name: {getFieldValue(extraFields, 'first_name')} {getFieldValue(extraFields, 'last_name')}</Text>
-                                <Text>Gender: {patientInfo.gender || "N/A"}</Text>
-                                <Text>Age: {patientInfo.age || "N/A"}</Text>
+                                <Text>Gender: {patientInfo?.gender || "N/A"}</Text>
+                                <Text>Age: {patientInfo?.age || "N/A"}</Text>
                                 <Text><DropboxOutlined /> Disease: {getFieldValue(extraFields, 'disease')}</Text>
                             </Space>
                         </Col>
                         <Col xs={24} sm={12} md={8}>
                             <Space direction="vertical">
                                 <Text strong>Contact Information</Text>
-                                <Text><PhoneOutlined /> Phone: {patientInfo.phone_no || "N/A"}</Text>
-                                <Text><MailOutlined /> Email: {patientInfo.email || "N/A"}</Text>
+                                <Text><PhoneOutlined /> Phone: {patientInfo?.phone_no || "N/A"}</Text>
+                                <Text><MailOutlined /> Email: {patientInfo?.email || "N/A"}</Text>
                             </Space>
                         </Col>
                         <Col xs={24} sm={12} md={8}>

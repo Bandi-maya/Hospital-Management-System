@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, UserRole } from '@/types/common';
 import { authService } from '@/services/auth';
 import { PostApi } from '@/ApiService';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -106,6 +107,7 @@ export const useAuthProvider = () => {
     setUser(null);
     clearAuthData();
     authService.logout();
+    window.location.replace('/')
   };
 
   const hasRole = (role: UserRole): boolean => {
