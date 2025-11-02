@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/tenant/7';
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.hms.logybyte.in/tenant/7';
 
 export function getApi(urlEndPoint, options: any = {}, isAccountInfo = false) {
     const token = localStorage.getItem('auth_token');
